@@ -38,7 +38,7 @@ Well, I just made it because I can ¯\\\_(ツ)_/¯
 I just wanted to understand its underlying protocols, as well as practice to write a big package.
 
 Also, since Discord.py heavily depends on coroutine and that coufuses the hell out of beginners and make them write a spaghetti,
-I thought we might need a corountine-less library. That's why I didn't use a famous websocket library, and went with websocket-client instead.
+I thought we might need a corountine-less library. That's why I didn't use a famous `websockets` library, and went with websocket-client instead.
 
 It currently uses urllib to communicate with their HTTP endpoints, websocket-client to communicate with Gateway.
 Since It doesn't use coroutine on purpose, It currently uses threading library to parallelly run websockets and heartbeats.
@@ -55,7 +55,7 @@ I know that code is quite complicated and there are no comments, I'm gonna add a
 
 I'm well aware that threading in python has a disadvantage due to Global Interpreter Lock. so I'm planning to migrate to multiprocessing.
 also, Since websocket-client is not really good performance-wise, I'm considering to migrate to autobahn.
-but, websocket is not an option, since It depends on coroutine heavily.
+but, `websockets` is not an option, since It depends on coroutine heavily.
 [They stated that its purpose is to provide a convenient asynchronous API.](https://github.com/aaugustin/websockets/issues/173)
 
 ## Contributions?
