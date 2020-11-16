@@ -9,7 +9,7 @@ If you're still interested, let me explain these further.
 
 ## How does it stream things from Nicovideo?
 First of all, I implemented this in my another bot already, [at here.](https://github.com/KokoseiJ/DiscordBot/blob/master/modules/nico.py)
-Code is a mess, but I did my best at the moment.
+Code is a mess, but I did my best at that time.
 
 Thankfully, not like Youtube, Nicovideo's system is easy enough to reverse-engineer without even reading JS scripts.
 
