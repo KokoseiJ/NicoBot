@@ -133,8 +133,6 @@ class Gateway:
                         name="gateway_resume").start())
 
     def _init_gateway(self, ws):
-        self.ws = ws
-
         if not self.is_connected.wait(timeout=GATEWAY_CONNECT_TIMEOUT):
             raise TimeoutError("Timed out while connecting to Discord Gateway")
 
