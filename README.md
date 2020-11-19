@@ -34,7 +34,7 @@ Those exist, but they won't be provided if you don't specify that you're using f
 They will be served through DMC server without problems these days, so that's not a problem.
 
 ## Care to talk about your new Discord API library?
-Well, I just made it because I can ¯\\\_(ツ)_/¯
+Well, I just made it because I can ¯\\\_(ツ)\_/¯
 I just wanted to understand its underlying protocols, as well as practice to write a big package.
 
 Also, since Discord.py heavily depends on coroutine and that coufuses the hell out of beginners and make them write a spaghetti,
