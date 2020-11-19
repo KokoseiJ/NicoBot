@@ -45,6 +45,7 @@ class Gateway:
         self.session_id = None
         self.seq = None
         self.ready_data = None
+        self.heartbeat_seq = 0
 
         self.is_connected = threading.Event()
         self.is_ready = threading.Event()
@@ -140,7 +141,6 @@ class Gateway:
         print("starting heartbeat")
         self.heartbeat_thread = threading.Thread(
             target=self._heartbeat,
-            args=(ws,),
             name="gateway_heartbeat")
         self.heartbeat_thread.start()
 
@@ -165,13 +165,6 @@ class Gateway:
         if not self.is_connected.wait(GATEWAY_CONNECT_TIMEOUT):
             raise TimeoutError("Timed out while connecting to Discord Gateway")
 
-        print("starting heartbeat")
-        self.heartbeat_thread = threading.Thread(
-            target=self._heartbeat,
-            args=(ws,),
-            name="gateway_heartbeat")
-        self.heartbeat_thread.start()
-
         print("sending resume")
         ws.send(json.dumps({
             "op": 6,
@@ -185,29 +178,26 @@ class Gateway:
         self.is_ready.wait()
         print("READY!")
 
-    def _heartbeat(self, ws):
-        count = 0
+    def _heartbeat(self):
+        self.heartbeat_seq = 0
         while self.is_connected.is_set():
             self.heartbeat_ack_recieved.clear()
 
-            sendtime = time.time()
-            ws.send(json.dumps({"op": 1, "d": count if count else None}))
+            sendtime = time.perf_counter()
+            self.websocket.send(json.dumps({
+                "op": 1,
+                "d": self.heartbeat_seq if self.heartbeat_seq else None
+            }))
 
             if not self.heartbeat_ack_recieved.wait(self.heartbeat_interval):
                 if self.is_connected.is_set():
-                    ws.close(websocket.STATUS_ABNORMAL_CLOSED)
+                    self.websocket.close(websocket.STATUS_ABNORMAL_CLOSED)
                     raise TimeoutError("Timed out while sending heartbeat")
                 else:
                     break
 
-            while self.heartbeat_interval > time.time() - sendtime:
-                if not self.is_connected.is_set():
-                    break
-                time.sleep(0.1)
-            else:
-                count += 1
-                continue
-            break
+            time.sleep(sendtime+self.heartbeat_interval - time.perf_counter())
+            self.heartbeat_seq += 1
 
         print("Socket disconnected, stopping heartbeat...")
 
