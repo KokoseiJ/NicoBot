@@ -14,7 +14,7 @@ ch.setFormatter(
 
 logger.addHandler(ch)
 
-gw = DiscordGateway("NzY5OTgxODMyMDA2NTk4NzE4.X5W7dg.wRjIlSMRHP6bjf77Jr2pyGKcDso")
+gw = DiscordGateway("fuckmylife")
 
 gw.connect()
 
