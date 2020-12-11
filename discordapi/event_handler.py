@@ -18,12 +18,30 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
-NAME = "NicoBot"
+from queue import Queue
 
-API_URL = "https://discord.com/api/v{}"
-API_VERSION = 8 
 
-GATEWAY_URL = "wss://gateway.discord.gg/?v={}&encoding=json"
-GATEWAY_VERSION = 6
+class EventHandler:
+	def __init__(self, client):
+		self.client = client
 
-INTENTS_DEFAULT = 32509
+	def handler(self, event, data, msg):
+		raise NotImplementedError()
+
+class GeneratorEventHandler(EventHandler):
+	def __init__(self, client):
+		super().__init__(client)
+		self.event_queue = Queue()
+
+	def handler(self, event, data, msg):
+		self.event_queue.put((event, data))
+
+	def event_generator(self):
+		try:
+			self.client.is_ready.wait()
+			while self.client.is_ready.is_set():
+				yield self.event_queue.get()
+		except KeyboardInterrupt:
+			return
+
+## TODO: Add a handler that uses decorator to register the handler

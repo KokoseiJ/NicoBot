@@ -18,12 +18,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
-NAME = "NicoBot"
-
-API_URL = "https://discord.com/api/v{}"
-API_VERSION = 8 
-
-GATEWAY_URL = "wss://gateway.discord.gg/?v={}&encoding=json"
-GATEWAY_VERSION = 6
-
-INTENTS_DEFAULT = 32509
+class JSONObject:
+	def __init__(self, json):
+		for key, val in zip(json.keys(), json.values()):
+			self.__setattr__(key, val)

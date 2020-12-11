@@ -18,12 +18,24 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
-NAME = "NicoBot"
+from .gateway import DiscordGateway
+from .const import INTENTS_DEFAULT, NAME
+from .event_handler import GeneratorEventHandler
 
-API_URL = "https://discord.com/api/v{}"
-API_VERSION = 8 
 
-GATEWAY_URL = "wss://gateway.discord.gg/?v={}&encoding=json"
-GATEWAY_VERSION = 6
+class DiscordClient:
+    def __init__(self, token, intents=INTENTS_DEFAULT,
+            handler=GeneratorEventHandler):
+        self.token = token
+        self.intents = intents
 
-INTENTS_DEFAULT = 32509
+        self.header = {
+            "User-Agent": NAME,
+            "authorization": f"Bot {self.token}"
+        }
+
+        self.event_handler = GeneratorEventHandler(self)
+
+        self.gateway = DiscordGateway(
+            token, intents, self.event_handler.handler)
+        self.is_ready = self.gateway.is_ready

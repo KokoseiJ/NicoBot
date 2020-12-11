@@ -18,7 +18,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
-from discordapi.const import GATEWAY_URL, GATEWAY_VERSION, INTENTS_DEFAULT,\
+from .const import GATEWAY_URL, GATEWAY_VERSION, INTENTS_DEFAULT,\
                              NAME
 
 import json
@@ -27,15 +27,15 @@ from sys import platform
 from websocket import WebSocketApp
 from threading import Thread, Event
 
-API_URL = GATEWAY_URL.format(GATEWAY_VERSION)
+URL = GATEWAY_URL.format(GATEWAY_VERSION)
 
 logger = logging.getLogger(NAME)
 
 
 class DiscordGateway:
-    def __init__(self, token, intents=INTENTS_DEFAULT):
+    def __init__(self, token, intents, event_handler):
         """
-        This class defines the connectino to discord gateway.
+        This class defines the connection to discord gateway.
 
         This class will internally run 2 threads-
         gateway_heartbeat, gateway_run.
@@ -44,14 +44,16 @@ class DiscordGateway:
 
         Attributes:
             token:
-                represents discord token which will be used to authorize the
-                client and issuing the voice connection.
+                represents discord token which will be used when authorizing
+                the client and issuing the voice connection.
             intents:
-                Intents that will get sent when identifying.
+                Intents that will be sent when identifying.
                 WARNING! Default value is 32509, which doesn't include
                 `GUILD_MEMBERS`, `GUILD_PRESENCES`. If you wish to use these,
                 You have to first enable them in your bot dashboard, and
                 initialize gateway with this parameter set to 32767.
+            event_handler:
+                Handler that will be used to handle events sent by gateway.
             heartbeat_interval:
                 Heartbeat interval sent in `hello`(Opcode 10), *in msec.*
             sequence:
@@ -95,6 +97,7 @@ class DiscordGateway:
         """
         self.token = token
         self.intents = intents
+        self.event_handler = event_handler
 
         self.heartbeat_interval = None
         self.sequence = None
@@ -119,14 +122,14 @@ class DiscordGateway:
         if self.run_thread is not None:
             raise RuntimeError("Thread is already running!")
 
-        logger.info("Starting heartbeat_thread.")
+        logger.info("Starting heartbeat thread.")
         self.heartbeat_thread = Thread(
             target=self._heartbeat,
             name="gateway_heartbeat"
         )
         self.heartbeat_thread.start()
 
-        logger.info("Starting run_thread.")
+        logger.info("Starting run thread.")
         self.run_thread = Thread(
             target=self._connect,
             name="gateway_run"
@@ -135,6 +138,7 @@ class DiscordGateway:
 
         logger.info("Waiting for client to get ready...")
         self.is_ready.wait()
+        logger.info("Connection established!")
 
     def disconnect(self):
         """
@@ -150,7 +154,7 @@ class DiscordGateway:
         """
         logger.info("Creating websocket...")
         self.websocket = WebSocketApp(
-            API_URL,
+            URL,
             on_message=lambda ws, msg:  self._on_message(ws, msg),
             on_open=lambda ws:  Thread(
                 target=self._gateway_init,
@@ -169,12 +173,12 @@ class DiscordGateway:
             if self.is_stop_requested.is_set():
                 logger.info("is_stop_requested set, killing this thread...")
                 return
-            elif self.is_restart_required.is_set():
-                logger.info("is_restart_required set, creating new websocket "
+            elif self.is_restart_required.is_set() or self.ready_data is None:
+                logger.info("Restart required, creating new websocket "
                             "with _gateway_init...")
                 self.sequence = None
                 self.websocket = WebSocketApp(
-                    API_URL,
+                    URL,
                     on_message=lambda ws, msg:  self._on_message(ws, msg),
                     on_open=lambda ws:  Thread(
                         target=self._gateway_init,
@@ -185,7 +189,7 @@ class DiscordGateway:
             else:
                 logger.info("Creating new websocket with _gateway_resume...")
                 self.websocket = WebSocketApp(
-                    API_URL,
+                    URL,
                     on_message=lambda ws, msg:  self._on_message(ws, msg),
                     on_open=lambda ws:  Thread(
                         target=self._gateway_resume,
@@ -267,16 +271,17 @@ class DiscordGateway:
             if self.is_connected.is_set() and \
                     not self.heartbeat_ack_received.is_set():
                 logger.error("Server didn't return ACK! closing websocket...")
-                self.websocket.close(1006)
+                    self.websocket.close(status=1006)
+            self.heartbeat_ack_received.clear()
 
     def _on_message(self, ws, msg):
         """
         Handles messages sent by discord server.
         """
-        logger.debug(msg)
         payload = json.loads(msg)
         op = payload['op']
         data = payload['d']
+        logger.debug(payload)
 
         if op == 10:
             self.heartbeat_interval = data['heartbeat_interval']
@@ -290,7 +295,7 @@ class DiscordGateway:
             logger.info("Received Heartbeat ACK!")
             self.heartbeat_ack_received.set()
         elif op == 0:
-            if self.sequence+1 != payload['s']:
+            if self.sequence is not None and self.sequence+1 != payload['s']:
                 self.websocket.close()
             self.sequence = payload['s']
             event = payload['t']
@@ -302,3 +307,5 @@ class DiscordGateway:
             elif event == "RESUMED":
                 self.got_respond.set()
                 self.is_ready.set()
+
+            self.event_handler(event, data, msg)

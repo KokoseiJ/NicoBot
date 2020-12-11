@@ -18,12 +18,8 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
-NAME = "NicoBot"
+from .JSONObject import JSONObject
 
-API_URL = "https://discord.com/api/v{}"
-API_VERSION = 8 
 
-GATEWAY_URL = "wss://gateway.discord.gg/?v={}&encoding=json"
-GATEWAY_VERSION = 6
-
-INTENTS_DEFAULT = 32509
+class Channel(JSONObject):
+	pass
