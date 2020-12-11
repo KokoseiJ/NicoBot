@@ -271,7 +271,7 @@ class DiscordGateway:
             if self.is_connected.is_set() and \
                     not self.heartbeat_ack_received.is_set():
                 logger.error("Server didn't return ACK! closing websocket...")
-                    self.websocket.close(status=1006)
+                self.websocket.close(status=1006)
             self.heartbeat_ack_received.clear()
 
     def _on_message(self, ws, msg):
