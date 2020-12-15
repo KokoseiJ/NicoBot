@@ -19,6 +19,6 @@
 #
 
 class JSONObject:
-	def __init__(self, json):
-		for key, val in zip(json.keys(), json.values()):
-			self.__setattr__(key, val)
+    def __init__(self, json):
+        for key, val in zip(json.keys(), json.values()):
+            self.__setattr__(key, val)

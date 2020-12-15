@@ -22,26 +22,27 @@ from queue import Queue
 
 
 class EventHandler:
-	def __init__(self, client):
-		self.client = client
+    def __init__(self, client):
+        self.client = client
 
-	def handler(self, event, data, msg):
-		raise NotImplementedError()
+    def handler(self, event, data, msg):
+        raise NotImplementedError()
+
 
 class GeneratorEventHandler(EventHandler):
-	def __init__(self, client):
-		super().__init__(client)
-		self.event_queue = Queue()
+    def __init__(self, client):
+        super().__init__(client)
+        self.event_queue = Queue()
 
-	def handler(self, event, data, msg):
-		self.event_queue.put((event, data))
+    def handler(self, event, data, msg):
+        self.event_queue.put((event, data))
 
-	def event_generator(self):
-		try:
-			self.client.is_ready.wait()
-			while self.client.is_ready.is_set():
-				yield self.event_queue.get()
-		except KeyboardInterrupt:
-			return
+    def event_generator(self):
+        try:
+            while not self.client.is_stop_requested.is_set():
+                yield self.event_queue.get()
+            return
+        except KeyboardInterrupt:
+            return
 
-## TODO: Add a handler that uses decorator to register the handler
+# TODO: Add a handler that uses decorator to register the handler

@@ -24,8 +24,9 @@ from .event_handler import GeneratorEventHandler
 
 
 class DiscordClient:
+    # TODO: Inherit DiscordGateway
     def __init__(self, token, intents=INTENTS_DEFAULT,
-            handler=GeneratorEventHandler):
+                 handler=GeneratorEventHandler):
         self.token = token
         self.intents = intents
 

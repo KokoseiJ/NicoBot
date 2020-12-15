@@ -20,6 +20,7 @@
 
 from .const import GATEWAY_URL, GATEWAY_VERSION, INTENTS_DEFAULT,\
                              NAME
+from .event_handler import GeneratorEventHandler
 
 import json
 import logging
@@ -33,7 +34,7 @@ logger = logging.getLogger(NAME)
 
 
 class DiscordGateway:
-    def __init__(self, token, intents, event_handler):
+    def __init__(self, token, intents=None, event_handler=None):
         """
         This class defines the connection to discord gateway.
 
@@ -96,8 +97,9 @@ class DiscordGateway:
                 methods with your own needs.
         """
         self.token = token
-        self.intents = intents
-        self.event_handler = event_handler
+        self.intents = intents if intents is not None else INTENTS_DEFAULT
+        self.event_handler = event_handler(self) if event_handler is not None\
+            else GeneratorEventHandler(self)
 
         self.heartbeat_interval = None
         self.sequence = None
@@ -156,6 +158,7 @@ class DiscordGateway:
         self.websocket = WebSocketApp(
             URL,
             on_message=lambda ws, msg:  self._on_message(ws, msg),
+            on_error=lambda ws, error: print(error),
             on_open=lambda ws:  Thread(
                 target=self._gateway_init,
                 args=(ws,),
@@ -167,15 +170,19 @@ class DiscordGateway:
             self.websocket.run_forever()
 
             logger.warning("Websocket disconnected!")
+            if not self.is_connected.is_set():
+                logger.error("Server unreachable, stopping this thread...")
+                return
             self.is_connected.clear()
             self.is_ready.clear()
             self.got_respond.clear()
             if self.is_stop_requested.is_set():
-                logger.info("is_stop_requested set, killing this thread...")
+                logger.info("is_stop_requested set, stopping this thread...")
                 return
             elif self.is_restart_required.is_set() or self.ready_data is None:
                 logger.info("Restart required, creating new websocket "
                             "with _gateway_init...")
+                self.is_restart_required.clear()
                 self.sequence = None
                 self.websocket = WebSocketApp(
                     URL,
@@ -308,4 +315,4 @@ class DiscordGateway:
                 self.got_respond.set()
                 self.is_ready.set()
 
-            self.event_handler(event, data, msg)
+            self.event_handler.handler(event, data, msg)
