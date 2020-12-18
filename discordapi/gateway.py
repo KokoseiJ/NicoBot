@@ -18,19 +18,37 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
+from .user import User
+from .channel import Channel
+from .guild import Guild, Member
+from .event_handler import GeneratorEventHandler
 from .const import GATEWAY_URL, GATEWAY_VERSION, INTENTS_DEFAULT,\
                              NAME
-from .event_handler import GeneratorEventHandler
 
+import sys
 import json
+import time
 import logging
 from sys import platform
+from traceback import print_exc
 from websocket import WebSocketApp
 from threading import Thread, Event
 
 URL = GATEWAY_URL.format(GATEWAY_VERSION)
 
 logger = logging.getLogger(NAME)
+
+
+def handle_exception(exc_type, exc_value, exc_traceback):
+    if issubclass(exc_type, KeyboardInterrupt):
+        sys.__excepthook__(exc_type, exc_value, exc_traceback)
+        return
+
+    logger.error(
+        "Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
+
+
+sys.excepthook = handle_exception
 
 
 class DiscordGateway:
@@ -84,6 +102,8 @@ class DiscordGateway:
                 Event used to check if heartbeat ACK has been received by
                 client. since heartbeat thread can't directly receive websocket
                 messages, This event should be used.
+            restart_heartbeat:
+                Flag to indicate if heartbeat should be restarted.
             is_restart_required:
                 Event used to determine if connection is resumable or it should
                 be reconnected when disconnection happens.
@@ -103,7 +123,12 @@ class DiscordGateway:
 
         self.heartbeat_interval = None
         self.sequence = None
+
         self.ready_data = None
+        self.user = None
+        self.guilds = None
+        self.session_id = None
+        self.application = None
 
         self.run_thread = None
         self.heartbeat_thread = None
@@ -112,6 +137,7 @@ class DiscordGateway:
         self.is_ready = Event()
         self.got_respond = Event()
         self.heartbeat_ack_received = Event()
+        self.restart_heartbeat = Event()
         self.is_restart_required = Event()
         self.is_stop_requested = Event()
 
@@ -121,7 +147,7 @@ class DiscordGateway:
         """
         Runs heartbeat_thread, run_thread and hangs until is_ready is set.
         """
-        if self.run_thread is not None:
+        if self.run_thread and self.run_thread.is_alive():
             raise RuntimeError("Thread is already running!")
 
         logger.info("Starting heartbeat thread.")
@@ -271,12 +297,16 @@ class DiscordGateway:
                 "d": self.sequence
             }
             self.websocket.send(json.dumps(payload))
-            if self.is_stop_requested.wait(self.heartbeat_interval / 1000):
-                logger.info("Stop requested, stopping heartbeat...")
-                return
-
-            if self.is_connected.is_set() and \
-                    not self.heartbeat_ack_received.is_set():
+            if self.restart_heartbeat.wait(int(self.heartbeat_interval/1000)):
+                self.restart_heartbeat.clear()
+                if self.is_stop_requested.is_set():
+                    logger.info("is_stop_requested set. stopping heartbeat...")
+                    return
+                logger.info(
+                    "Heartbeat restart requested, skipping this ACK...")
+                continue
+            if not self.is_connected.is_set() and\
+                    self.heartbeat_ack_received.is_set():
                 logger.error("Server didn't return ACK! closing websocket...")
                 self.websocket.close(status=1006)
             self.heartbeat_ack_received.clear()
