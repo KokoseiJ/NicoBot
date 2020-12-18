@@ -18,7 +18,10 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
+from .message import Message
+
 from queue import Queue
+from traceback import print_exc
 
 
 class EventHandler:
@@ -35,7 +38,12 @@ class GeneratorEventHandler(EventHandler):
         self.event_queue = Queue()
 
     def handler(self, event, data, msg):
-        self.event_queue.put((event, data))
+        try:
+            if event in ["MESSAGE_CREATE", "MESSAGE_UPDATE"]:
+                data = Message(data, self.client)
+            self.event_queue.put((event, data))
+        except:
+            print_exc()
 
     def event_generator(self):
         try:

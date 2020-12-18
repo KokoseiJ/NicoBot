@@ -4,6 +4,5 @@
 		{
 			"path": "."
 		}
-	],
-	"virtualenv": "./venv"
+	]
 }

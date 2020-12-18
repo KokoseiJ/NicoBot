@@ -80,6 +80,14 @@ class DiscordGateway:
             ready_data:
                 data received from discord gateway when `READY` event has
                 been issued.
+            user:
+                User object present in ready_data.
+            guilds:
+                Guilds present in ready_data.
+            session_id:
+                Session ID present in ready_data.
+            application:
+                application object present in ready_data.
             run_thread:
                 thread where websocket connection is running. This thread will
                 also attempt to reconnect to gateway when it disconnects.
@@ -202,10 +210,12 @@ class DiscordGateway:
             self.is_connected.clear()
             self.is_ready.clear()
             self.got_respond.clear()
+            self.heartbeat_ack_received.clear()
+            self.restart_heartbeat.set()
             if self.is_stop_requested.is_set():
                 logger.info("is_stop_requested set, stopping this thread...")
                 return
-            elif self.is_restart_required.is_set() or self.ready_data is None:
+            elif self.is_restart_required.is_set() or self.session_id is None:
                 logger.info("Restart required, creating new websocket "
                             "with _gateway_init...")
                 self.is_restart_required.clear()
@@ -267,7 +277,7 @@ class DiscordGateway:
             "op": 6,
             "d": {
                 "token": self.token,
-                "session_id": self.ready_data['session_id'],
+                "session_id": self.session_id,
                 "seq": self.sequence
             }
         }
@@ -339,10 +349,69 @@ class DiscordGateway:
 
             if event == "READY":
                 self.ready_data = data
+                self.user = User(data['user'], self)
+                self.guilds = {
+                    guild['id']: False for guild in data['guilds']}
                 self.got_respond.set()
                 self.is_ready.set()
+
             elif event == "RESUMED":
                 self.got_respond.set()
                 self.is_ready.set()
+
+            elif event == "CHANNEL_CREATE":
+                channel = Channel(data, self)
+                channel.guild.channels[channel.id] = channel
+
+            elif event == "CHANNEL_UPDATE":
+                if data.get("guild_id") is not None:
+                    guild = self.guilds.get(data['guild_id'])
+                    channel = guild.channels.get(data['id'])
+                    for key, val in zip(data.keys(), data.values()):
+                        setattr(channel, key, val)
+
+            elif event == "CHANNEL_DELETE":
+                guild = self.guilds.get(data['guild_id'])
+                del guild.channels[data['id']]
+
+            elif event == "CHANNEL_PINS_UPDATE":
+                if data.get("guild_id") is not None:
+                    guild = self.guilds[data['guild_id']]
+                    channel = guild.channels[data['channel_id']]
+                    channel.last_pin_timestamp = data['last_pin_timestamp']
+
+            elif event == "GUILD_CREATE":
+                try:
+                    guild = Guild(data, self)
+                    self.guilds[guild.id] = guild
+                except Exception:
+                    print_exc()
+
+            elif event == "GUILD_UPDATE":
+                guild = self.guilds.get(data['id'])
+                for key, val in zip(data.keys(), data.values()):
+                    setattr(guild, key, val)
+
+            elif event == "GUILD_DELETE":
+                if data.get('unavailable'):
+                    self.guilds[data['id']] = False
+                else:
+                    del self.guilds[data['ID']]
+
+            elif event == "GUILD_MEMBER_ADD":
+                member = Member(data, self)
+                guild = self.guilds.get(member.guild_id)
+                guild.members[member.user.id] = member
+
+            elif event == "GUILD_MEMBER_REMOVE":
+                guild = self.guilds.get(data['guild_id'])
+                del guild.members[data['user']['id']]
+
+            elif event == "GUILD_MEMBER_UPDATE":
+                data['user'] = User(data['user'], self)
+                guild = self.guilds.get(data['guild_id'])
+                member = guild.members.get(data['user'].id)
+                for key, val in zip(data.keys(), data.values()):
+                    setattr(member, key, val)
 
             self.event_handler.handler(event, data, msg)

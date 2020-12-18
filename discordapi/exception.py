@@ -18,19 +18,5 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
-class JSONObject:
-    def __init__(self, json, keys=None):
-        if keys is not None:
-            for key in keys:
-                self.__setattr__(key, None)
-        for key, val in zip(json.keys(), json.values()):
-            self.__setattr__(key, val)
-
-    def _get_repr(self, repr_str, name=None):
-        if name is None:
-            name = self.__class__.__name__
-        return f"<{name} {repr_str}>"
-
-    def __repr__(self):
-        name = self.__dict__.get("name")
-        return self._get_repr(f"{name if name else ''}({self.id})")
+class DiscordError(Exception):
+    pass

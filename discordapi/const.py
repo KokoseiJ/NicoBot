@@ -27,3 +27,5 @@ GATEWAY_URL = "wss://gateway.discord.gg/?v={}&encoding=json"
 GATEWAY_VERSION = 6
 
 INTENTS_DEFAULT = 32509
+
+IMAGE_URL = "https://cdn.discordapp.com/"
