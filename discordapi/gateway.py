@@ -352,6 +352,7 @@ class DiscordGateway:
                 self.user = User(data['user'], self)
                 self.guilds = {
                     guild['id']: False for guild in data['guilds']}
+                self.session_id = data['session_id']
                 self.got_respond.set()
                 self.is_ready.set()
 
