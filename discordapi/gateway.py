@@ -192,7 +192,7 @@ class DiscordGateway:
         self.websocket = WebSocketApp(
             URL,
             on_message=lambda ws, msg:  self._on_message(ws, msg),
-            on_error=lambda ws, error: print(error),
+            on_error=lambda ws, error: logger.error(error),
             on_open=lambda ws:  Thread(
                 target=self._gateway_init,
                 args=(ws,),
@@ -277,7 +277,7 @@ class DiscordGateway:
             "op": 6,
             "d": {
                 "token": self.token,
-                "session_id": self.session_id,
+                "session_id": self.ready_data['session_id'],
                 "seq": self.sequence
             }
         }
