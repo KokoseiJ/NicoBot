@@ -88,6 +88,8 @@ class DiscordGateway:
                 Session ID present in ready_data.
             application:
                 application object present in ready_data.
+            retry_count:
+                Variable to count connection retries.
             run_thread:
                 thread where websocket connection is running. This thread will
                 also attempt to reconnect to gateway when it disconnects.
@@ -138,6 +140,8 @@ class DiscordGateway:
         self.session_id = None
         self.application = None
 
+        self.retry_count = 0
+
         self.run_thread = None
         self.heartbeat_thread = None
 
@@ -149,7 +153,16 @@ class DiscordGateway:
         self.is_restart_required = Event()
         self.is_stop_requested = Event()
 
-        self.websocket = None
+        self.websocket = WebSocketApp(
+            URL,
+            on_message=lambda ws, msg:  self._on_message(ws, msg),
+            on_error=lambda ws, error: logger.error(error),
+            on_open=lambda ws:  Thread(
+                target=self._gateway_init,
+                args=(ws,),
+                name="gateway_init"
+            ).start()
+        )
 
     def connect(self):
         """
@@ -173,7 +186,13 @@ class DiscordGateway:
         self.run_thread.start()
 
         logger.info("Waiting for client to get ready...")
-        self.is_ready.wait()
+        while True:
+            if not self.run_thread.is_alive():
+                logger.error("Run thread has stopped without getting ready!")
+                return
+            if self.is_ready.wait(0.1):
+                break
+
         logger.info("Connection established!")
 
     def disconnect(self):
@@ -188,25 +207,25 @@ class DiscordGateway:
         """
         Creates websocket, run it, attempts to reconnect when it disconencts.
         """
-        logger.info("Creating websocket...")
-        self.websocket = WebSocketApp(
-            URL,
-            on_message=lambda ws, msg:  self._on_message(ws, msg),
-            on_error=lambda ws, error: logger.error(error),
-            on_open=lambda ws:  Thread(
-                target=self._gateway_init,
-                args=(ws,),
-                name="gateway_init"
-            ).start()
-        )
         while True:
             logger.info("Connecting to websocket...")
+
+            self.websocket.enable_multithread = True
             self.websocket.run_forever()
 
             logger.warning("Websocket disconnected!")
             if not self.is_connected.is_set():
-                logger.error("Server unreachable, stopping this thread...")
-                return
+                if self.retry_count == 5:
+                    logger.error("Server unreachable! stopping this thread...")
+                    self.is_stop_requested.set()
+                else:
+                    self.retry_count += 1
+                    logger.warning("Server unreachable! "
+                                   f"retrying {self.retry_count} times after "
+                                   "5 seconds...")
+                    time.sleep(5)
+                    continue
+            self.retry_count = 0
             self.is_connected.clear()
             self.is_ready.clear()
             self.got_respond.clear()
@@ -215,31 +234,28 @@ class DiscordGateway:
             if self.is_stop_requested.is_set():
                 logger.info("is_stop_requested set, stopping this thread...")
                 return
-            elif self.is_restart_required.is_set() or self.session_id is None:
+
+            self.websocket = WebSocketApp(
+                    URL,
+                    on_message=lambda ws, msg:  self._on_message(ws, msg))
+
+            if self.is_restart_required.is_set() or self.session_id is None:
                 logger.info("Restart required, creating new websocket "
                             "with _gateway_init...")
                 self.is_restart_required.clear()
                 self.sequence = None
-                self.websocket = WebSocketApp(
-                    URL,
-                    on_message=lambda ws, msg:  self._on_message(ws, msg),
-                    on_open=lambda ws:  Thread(
-                        target=self._gateway_init,
-                        args=(ws,),
-                        name="gateway_init"
-                    ).start()
-                )
+                self.websocket.on_open = lambda ws:  Thread(
+                    target=self._gateway_init,
+                    args=(ws,),
+                    name="gateway_init"
+                ).start()
             else:
                 logger.info("Creating new websocket with _gateway_resume...")
-                self.websocket = WebSocketApp(
-                    URL,
-                    on_message=lambda ws, msg:  self._on_message(ws, msg),
-                    on_open=lambda ws:  Thread(
-                        target=self._gateway_resume,
-                        args=(ws,),
-                        name="gateway_init"
-                    ).start()
-                )
+                self.websocket.on_open = lambda ws:  Thread(
+                    target=self._gateway_resume,
+                    args=(ws,),
+                    name="gateway_init"
+                ).start()
             self.is_stop_requested.clear()
             self.is_restart_required.clear()
 
@@ -300,13 +316,20 @@ class DiscordGateway:
         """
         logger.info("Heartbeat started! waiting for client to get ready...")
         while True:
-            self.is_connected.wait()
+            while True:
+                if self.is_stop_requested.is_set():
+                    return
+                elif self.is_connected.wait(0.5):
+                    break
             logger.info("Sending heartbeat...")
             payload = {
                 "op": 1,
                 "d": self.sequence
             }
-            self.websocket.send(json.dumps(payload))
+            try:
+                self.websocket.send(json.dumps(payload))
+            except WebSocketConnectionClosedException:
+                continue
             if self.restart_heartbeat.wait(int(self.heartbeat_interval/1000)):
                 self.restart_heartbeat.clear()
                 if self.is_stop_requested.is_set():
@@ -315,8 +338,8 @@ class DiscordGateway:
                 logger.info(
                     "Heartbeat restart requested, skipping this ACK...")
                 continue
-            if not self.is_connected.is_set() and\
-                    self.heartbeat_ack_received.is_set():
+            if not (self.is_connected.is_set() and
+                    self.heartbeat_ack_received.is_set()):
                 logger.error("Server didn't return ACK! closing websocket...")
                 self.websocket.close(status=1006)
             self.heartbeat_ack_received.clear()
