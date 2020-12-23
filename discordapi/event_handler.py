@@ -38,12 +38,9 @@ class GeneratorEventHandler(EventHandler):
         self.event_queue = Queue()
 
     def handler(self, event, data, msg):
-        try:
-            if event in ["MESSAGE_CREATE", "MESSAGE_UPDATE"]:
-                data = Message(data, self.client)
-            self.event_queue.put((event, data))
-        except:
-            print_exc()
+        if event in ["MESSAGE_CREATE", "MESSAGE_UPDATE"]:
+            data = Message(data, self.client)
+        self.event_queue.put((event, data))
 
     def event_generator(self):
         try:

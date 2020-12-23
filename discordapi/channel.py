@@ -21,6 +21,8 @@
 from .user import User
 from .JSONObject import JSONObject
 
+import json
+
 TYPES = ["GUILD_TEXT", "DM", "GUILD_VOICE", "GROUP_DM ", "GUILD_CATEGORY",
          "GUILD_NEWS", "GUILD_STORE"]
 
@@ -56,6 +58,24 @@ class Channel(JSONObject):
     def __init__(self, json, client):
         super().__init__(json, KEY_LIST)
         self.client = client
+
+    def send_message(
+            self, content=None, tts=False, embed=None, reply=None, _json=None):
+        if _json is not None:
+            data = _json
+        else:
+            data = {
+                "content": content,
+                "tts": tts,
+                "embed": embed,
+                "allowed_mentions": None,
+                "message_reference": reply
+            }
+
+        bdata = json.dumps(data).encode()
+
+        is_ok, resdata, status = self.client._request(
+            f"channels/{self.id}/messages", "POST", bdata)
 
 
 class DMChannel(Channel):

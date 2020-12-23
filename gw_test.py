@@ -1,4 +1,4 @@
-from discordapi.gateway import DiscordGateway
+from discordapi.client import DiscordClient as Client
 import logging
 
 logger = logging.getLogger("NicoBot")
@@ -14,7 +14,7 @@ ch.setFormatter(
 logger.addHandler(ch)
 
 with open("token") as f:
-    client = DiscordGateway(f.read())
+    client = Client(f.read())
 
 client.connect()
 
@@ -27,9 +27,12 @@ try:
             try:
                 nick = message.member.nick
             except:
-                nick = None
+                continue
             print(f"{author.username}#{author.discriminator}({nick}): {message.content}")
-            if message.content[:6] == "!eval " and author.id == "378898017249525771":
-                print(eval(message.content[6:]))
+            if author.id == "378898017249525771":
+                if message.content[:6] == "?eval ":
+                    message.channel.send_message(eval(message.content[6:]))
+                elif message.content[:6] == "?echo ":
+                    message.channel.send_message(message.content[6:])
 finally:
     client.disconnect()

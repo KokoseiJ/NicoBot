@@ -22,8 +22,8 @@ from .user import User
 from .channel import Channel
 from .guild import Guild, Member
 from .event_handler import GeneratorEventHandler
-from .const import GATEWAY_URL, GATEWAY_VERSION, INTENTS_DEFAULT,\
-                             NAME
+from .const import GATEWAY_URL, GATEWAY_VER, INTENTS_DEFAULT,\
+                             LIB_NAME
 
 import sys
 import json
@@ -33,10 +33,11 @@ from sys import platform
 from traceback import print_exc
 from websocket import WebSocketApp
 from threading import Thread, Event
+from websocket._exceptions import WebSocketConnectionClosedException
 
-URL = GATEWAY_URL.format(GATEWAY_VERSION)
+URL = GATEWAY_URL.format(GATEWAY_VER)
 
-logger = logging.getLogger(NAME)
+logger = logging.getLogger(LIB_NAME)
 
 
 def handle_exception(exc_type, exc_value, exc_traceback):
@@ -273,8 +274,8 @@ class DiscordGateway:
                 "intents": self.intents,
                 "properties": {
                     "$os": platform,
-                    "$browser": NAME,
-                    "$device": NAME
+                    "$browser": LIB_NAME,
+                    "$device": LIB_NAME
                 }
             }
         }

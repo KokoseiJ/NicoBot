@@ -18,13 +18,15 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
-NAME = "NicoBot"
+LIB_NAME = "NicoBot"
+LIB_URL = "https://github.com/KokoseiJ/NicoBot"
+LIB_VER = "alpha1"
 
-API_URL = "https://discord.com/api/v{}"
-API_VERSION = 8 
+API_URL = "https://discord.com/api/v{}/"
+API_VER = 8
 
 GATEWAY_URL = "wss://gateway.discord.gg/?v={}&encoding=json"
-GATEWAY_VERSION = 6
+GATEWAY_VER = 6
 
 INTENTS_DEFAULT = 32509
 
