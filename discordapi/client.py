@@ -24,6 +24,7 @@ from .channel import get_channel
 from .const import LIB_NAME, LIB_URL, LIB_VER, API_URL
 
 import json
+import time
 import logging
 from urllib.parse import urljoin
 from urllib.error import HTTPError
@@ -42,9 +43,19 @@ class DiscordClient(DiscordGateway):
             "authorization": f"Bot {self.token}"
         }
 
+        self.rate_limit = {"global": (False, None)}
+
     def get_channel(self, id):
-        data, status = self._request(f"channels/{id}")
+        data, status, _ = self._request(f"channels/{id}")
         return get_channel(data, self)
+
+    def _get_rate_limit(self, endpoint):
+        if self.rate_limit['global'][0]:
+            return self.rate_limit['global'][1]
+        return self.rate_limit.get("endpoint")
+
+    def _set_rate_limit(self, endpoint, until):
+        self.rate_limit[endpoint] = until
 
     def _request(self, endpoint, method="GET", data=None, is_json=True,
                  headers=None, throw=True):
@@ -60,6 +71,14 @@ class DiscordClient(DiscordGateway):
             _headers.update({"Content-Type": "application/json"})
         if headers is not None and isinstance(headers, dict):
             _headers.update(headers)
+
+        rate_limit = self._get_rate_limit(endpoint)
+        if rate_limit is not None:
+            now = time.time()
+            if now < rate_limit:
+                time.sleep(rate_limit - now)
+            else:
+                del rate_limit
 
         logger.debug(f"Sending {method} request to {url}")
         req = Request(url, data, _headers, method=method)
@@ -81,6 +100,13 @@ class DiscordClient(DiscordGateway):
         except JSONDecodeError:
             data = rawdata.decode()
 
-        if raised and throw:
-            raise DiscordHTTPError(res, data) from res
-        return data, status
+        if raised:
+            if status == 429:
+                logger.warning("Rate Limit provoked!")
+                self._set_rate_limit(
+                    endpoint, res.headers['x-ratelimit-reset'])
+                return self._request(
+                    endpoint, method, data, is_json, headers, throw)
+            if throw:
+                raise DiscordHTTPError(res, data) from res
+        return data, status, res

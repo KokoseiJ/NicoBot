@@ -57,8 +57,10 @@ class Channel(JSONObject):
         super().__init__(data, KEY_LIST)
         self.client = client
 
-    def send_message(self, content=None, tts=False, embed=None, mentions=None,
-                     reply=None, _json=None):
+    def send(self, content=None, tts=False, embed=None, mentions=None,
+             reference=None, _json=None):
+        from .message import Message
+
         if _json is not None:
             data = _json
         else:
@@ -66,12 +68,14 @@ class Channel(JSONObject):
                 "content": content,
                 "tts": tts,
                 "embed": embed,
-                "allowed_mentions": None,
-                "message_reference": reply
+                "allowed_mentions": mentions,
+                "message_reference": reference
             }
 
-        resdata, status = self.client._request(
+        data, _, _ = self.client._request(
             f"channels/{self.id}/messages", "POST", data)
+
+        return Message(data, self.client)
 
 
 class DMChannel(Channel):

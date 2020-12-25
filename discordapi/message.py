@@ -56,3 +56,49 @@ class Message(JSONObject):
         channel = self.client.get_channel(self.channel_id)
         self.channel = channel
         return channel
+
+    def send(self, content=None, tts=False, embed=None, mentions=None,
+             reply=False, _json=None):
+        if _json is not None:
+            data = _json
+        else:
+            if reply:
+                ref = {
+                    "message_id": self.id,
+                    "channel_id": self.channel_id,
+                    "guild_id": self.guild_id
+                }
+            else:
+                ref = None
+            data = {
+                "content": content,
+                "tts": tts,
+                "embed": embed,
+                "allowed_mentions": mentions,
+                "message_reference": ref
+            }
+
+        data, _, _ = self.client._request(
+            f"channels/{self.channel_id}/messages", "POST", data)
+
+        return Message(data, self.client)
+
+    def edit(self, content=None, embed=None, flags=None,
+             mentions=None, _json=None):
+        if _json is not None:
+            data = _json
+        else:
+            data = {
+                "content": content,
+                "embed": embed,
+                "flags": flags,
+                "allowed_mentions": mentions
+            }
+
+        data, _, _ = self.client._request(
+            f"channels/{self.channel_id}/messages/{self.id}", "PATCH", data)
+        return Message(data, self.client)
+
+    def delete(self):
+        self.client._request(
+            f"channels/{self.channel_id}/messages/{self.id}", "DELETE")

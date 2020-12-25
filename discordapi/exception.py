@@ -27,7 +27,7 @@ class DiscordHTTPError(DiscordError):
         if message is None:
             try:
                 message = f"Error {data['code']}: {data['message']}"
-            except KeyError:
+            except (KeyError, TypeError):
                 message = data
         super().__init__(message)
         self.error = error

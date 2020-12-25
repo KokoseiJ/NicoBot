@@ -29,9 +29,10 @@ import sys
 import json
 import time
 import logging
+from ssl import SSLError
 from sys import platform
 from traceback import print_exc
-from websocket import WebSocketApp
+from websocket import WebSocketApp, STATUS_ABNORMAL_CLOSE
 from threading import Thread, Event
 from websocket._exceptions import WebSocketConnectionClosedException
 
@@ -320,14 +321,14 @@ class DiscordGateway:
                     return
                 elif self.is_connected.wait(0.5):
                     break
-            logger.debug("Sending heartbeat...")
             payload = {
                 "op": 1,
                 "d": self.sequence
             }
             try:
                 self.websocket.send(json.dumps(payload))
-            except WebSocketConnectionClosedException:
+                logger.debug("Sending heartbeat...")
+            except (WebSocketConnectionClosedException, SSLError, OSError):
                 continue
             if self.restart_heartbeat.wait(int(self.heartbeat_interval/1000)):
                 self.restart_heartbeat.clear()
@@ -340,7 +341,7 @@ class DiscordGateway:
             if not (self.is_connected.is_set() and
                     self.heartbeat_ack_received.is_set()):
                 logger.error("Server didn't return ACK! closing websocket...")
-                self.websocket.close(status=1006)
+                self.websocket.close(status=STATUS_ABNORMAL_CLOSE)
             self.heartbeat_ack_received.clear()
 
     def _on_message(self, ws, msg):

@@ -1,4 +1,5 @@
 from discordapi.client import DiscordClient as Client
+
 import logging
 
 logger = logging.getLogger("NicoBot")
@@ -26,18 +27,21 @@ try:
             author = message.author
             try:
                 nick = message.member.nick
-            except:
+            except AttributeError:
                 nick = None
-            print(f"{author.username}#{author.discriminator}({nick}): {message.content}")
+            print(
+                f"{author.username}#{author.discriminator}({nick}): {message.content}")
             if message.content.startswith("?"):
-                if message.channel is None:
-                    message.get_channel()
                 if author.id == "378898017249525771":
                     if message.content[:6] == "?eval ":
-                        message.channel.send_message(eval(message.content[6:]))
+                        try:
+                            message.send(eval(message.content[6:]).__repr__())
+                        except Exception as e:
+                            message.send(f"Error! {e.__class__.__name__}: {e.args[0]}")
                     elif message.content[:6] == "?echo ":
-                        message.channel.send_message(message.content[6:])
+                        message.delete()
+                        message.send(message.content[6:])
                 else:
-                    message.channel.send_message("だれ?")
+                    message.send("だれ?")
 finally:
     client.disconnect()
