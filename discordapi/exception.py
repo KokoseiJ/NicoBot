@@ -20,3 +20,15 @@
 
 class DiscordError(Exception):
     pass
+
+
+class DiscordHTTPError(DiscordError):
+    def __init__(self, error, data, message=None):
+        if message is None:
+            try:
+                message = f"Error {data['code']}: {data['message']}"
+            except KeyError:
+                message = data
+        super().__init__(message)
+        self.error = error
+        self.data = data

@@ -27,12 +27,17 @@ try:
             try:
                 nick = message.member.nick
             except:
-                continue
+                nick = None
             print(f"{author.username}#{author.discriminator}({nick}): {message.content}")
-            if author.id == "378898017249525771":
-                if message.content[:6] == "?eval ":
-                    message.channel.send_message(eval(message.content[6:]))
-                elif message.content[:6] == "?echo ":
-                    message.channel.send_message(message.content[6:])
+            if message.content.startswith("?"):
+                if message.channel is None:
+                    message.get_channel()
+                if author.id == "378898017249525771":
+                    if message.content[:6] == "?eval ":
+                        message.channel.send_message(eval(message.content[6:]))
+                    elif message.content[:6] == "?echo ":
+                        message.channel.send_message(message.content[6:])
+                else:
+                    message.channel.send_message("だれ?")
 finally:
     client.disconnect()

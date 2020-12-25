@@ -33,6 +33,7 @@ KEY_LIST = ["id", "channel_id", "guild_id", "author", "member", "content",
 class Message(JSONObject):
     def __init__(self, json, client):
         super().__init__(json, KEY_LIST)
+        self.client = client
 
         self.guild = client.guilds.get(self.guild_id)
         if self.guild is not None:
@@ -50,4 +51,8 @@ class Message(JSONObject):
                 for data in self.mention_channels]
         if self.referenced_message is not None:
             self.referenced_message = Message(self.referenced_message, client)
-    # TODO: Add a method to retrieve channel object
+
+    def get_channel(self):
+        channel = self.client.get_channel(self.channel_id)
+        self.channel = channel
+        return channel
