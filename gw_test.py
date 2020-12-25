@@ -29,8 +29,7 @@ try:
                 nick = message.member.nick
             except AttributeError:
                 nick = None
-            print(
-                f"{author.username}#{author.discriminator}({nick}): {message.content}")
+            print(f"{author.username}#{author.discriminator}({nick}): {message.content}")
             if message.content.startswith("?"):
                 if author.id == "378898017249525771":
                     if message.content[:6] == "?eval ":

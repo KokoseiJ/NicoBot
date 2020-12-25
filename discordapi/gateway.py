@@ -32,7 +32,7 @@ import logging
 from ssl import SSLError
 from sys import platform
 from traceback import print_exc
-from websocket import WebSocketApp, STATUS_ABNORMAL_CLOSE
+from websocket import WebSocketApp, STATUS_ABNORMAL_CLOSED
 from threading import Thread, Event
 from websocket._exceptions import WebSocketConnectionClosedException
 
@@ -341,7 +341,7 @@ class DiscordGateway:
             if not (self.is_connected.is_set() and
                     self.heartbeat_ack_received.is_set()):
                 logger.error("Server didn't return ACK! closing websocket...")
-                self.websocket.close(status=STATUS_ABNORMAL_CLOSE)
+                self.websocket.close(status=STATUS_ABNORMAL_CLOSED)
             self.heartbeat_ack_received.clear()
 
     def _on_message(self, ws, msg):
