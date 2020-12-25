@@ -21,8 +21,6 @@
 from .user import User
 from .JSONObject import JSONObject
 
-import json
-
 TYPES = ["GUILD_TEXT", "DM", "GUILD_VOICE", "GROUP_DM ", "GUILD_CATEGORY",
          "GUILD_NEWS", "GUILD_STORE"]
 
@@ -32,35 +30,35 @@ KEY_LIST = ["id", "type", "guild_id", "position", "permission_overwrites",
             "owner_id", "application_id", "parent_id", "last_pin_timestamp"]
 
 
-def get_channel(json, client, guild=None, type=None):
+def get_channel(data, client, guild=None, type=None):
     if type is None:
-        type = json['type']
+        type = data['type']
 
     if type == 0:
-        return GuildTextChannel(json, client, guild)
+        return GuildTextChannel(data, client, guild)
     elif type == 1:
-        return DMChannel(json, client)
+        return DMChannel(data, client)
     elif type == 2:
-        return GuildVoiceChannel(json, client, guild)
+        return GuildVoiceChannel(data, client, guild)
     elif type == 3:
-        return GroupDMChannel(json, client)
+        return GroupDMChannel(data, client)
     elif type == 4:
-        return ChannelCategory(json, client)
+        return ChannelCategory(data, client)
     elif type == 5:
-        return GuildNewsChannel(json, client, guild)
+        return GuildNewsChannel(data, client, guild)
     elif type == 6:
-        return GuildStoreChannel(json, client, guild)
+        return GuildStoreChannel(data, client, guild)
     else:
         raise NotImplementedError(f"Type {type} is not implemented")
 
 
 class Channel(JSONObject):
-    def __init__(self, json, client):
-        super().__init__(json, KEY_LIST)
+    def __init__(self, data, client):
+        super().__init__(data, KEY_LIST)
         self.client = client
 
-    def send_message(
-            self, content=None, tts=False, embed=None, reply=None, _json=None):
+    def send_message(self, content=None, tts=False, embed=None, mentions=None,
+                     reply=None, _json=None):
         if _json is not None:
             data = _json
         else:
@@ -72,15 +70,13 @@ class Channel(JSONObject):
                 "message_reference": reply
             }
 
-        bdata = json.dumps(data).encode()
-
-        is_ok, resdata, status = self.client._request(
-            f"channels/{self.id}/messages", "POST", bdata)
+        resdata, status = self.client._request(
+            f"channels/{self.id}/messages", "POST", data)
 
 
 class DMChannel(Channel):
-    def __init__(self, json, client):
-        super().__init__(json, client)
+    def __init__(self, data, client):
+        super().__init__(data, client)
         self.recipients = {
             user['id']: User(user, client) for user in self.recipients}
 
@@ -92,8 +88,8 @@ class DMChannel(Channel):
 
 
 class GroupDMChannel(DMChannel):
-    def __init__(self, json, client):
-        super().__init__(json, client)
+    def __init__(self, data, client):
+        super().__init__(data, client)
         self.owner = client.recipients.get(self.owner_id)
 
     def __repr__(self):
@@ -101,8 +97,8 @@ class GroupDMChannel(DMChannel):
 
 
 class GuildChannel(Channel):
-    def __init__(self, json, client, guild=None):
-        super().__init__(json, client)
+    def __init__(self, data, client, guild=None):
+        super().__init__(data, client)
 
         if guild is not None:
             self.guild = guild

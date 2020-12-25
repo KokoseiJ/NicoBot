@@ -19,11 +19,11 @@
 #
 
 class JSONObject:
-    def __init__(self, json, keys=None):
+    def __init__(self, data, keys=None):
         if keys is not None:
             for key in keys:
                 self.__setattr__(key, None)
-        for key, val in zip(json.keys(), json.values()):
+        for key, val in zip(data.keys(), data.values()):
             self.__setattr__(key, val)
 
     def _get_repr(self, repr_str, name=None):

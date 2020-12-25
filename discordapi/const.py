@@ -22,11 +22,11 @@ LIB_NAME = "NicoBot"
 LIB_URL = "https://github.com/KokoseiJ/NicoBot"
 LIB_VER = "alpha1"
 
-API_URL = "https://discord.com/api/v{}/"
 API_VER = 8
+API_URL = f"https://discord.com/api/v{API_VER}/"
 
-GATEWAY_URL = "wss://gateway.discord.gg/?v={}&encoding=json"
 GATEWAY_VER = 6
+GATEWAY_URL = f"wss://gateway.discord.gg/?v={GATEWAY_VER}&encoding=json"
 
 INTENTS_DEFAULT = 32509
 

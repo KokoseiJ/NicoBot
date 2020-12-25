@@ -22,7 +22,7 @@ from .user import User
 from .channel import Channel
 from .guild import Guild, Member
 from .event_handler import GeneratorEventHandler
-from .const import GATEWAY_URL, GATEWAY_VER, INTENTS_DEFAULT,\
+from .const import GATEWAY_URL, INTENTS_DEFAULT,\
                              LIB_NAME
 
 import sys
@@ -34,8 +34,6 @@ from traceback import print_exc
 from websocket import WebSocketApp
 from threading import Thread, Event
 from websocket._exceptions import WebSocketConnectionClosedException
-
-URL = GATEWAY_URL.format(GATEWAY_VER)
 
 logger = logging.getLogger(LIB_NAME)
 
@@ -155,7 +153,7 @@ class DiscordGateway:
         self.is_stop_requested = Event()
 
         self.websocket = WebSocketApp(
-            URL,
+            GATEWAY_URL,
             on_message=lambda ws, msg:  self._on_message(ws, msg),
             on_error=lambda ws, error: logger.error(error),
             on_open=lambda ws:  Thread(
@@ -237,7 +235,7 @@ class DiscordGateway:
                 return
 
             self.websocket = WebSocketApp(
-                    URL,
+                    GATEWAY_URL,
                     on_message=lambda ws, msg:  self._on_message(ws, msg))
 
             if self.is_restart_required.is_set() or self.session_id is None:
@@ -315,14 +313,14 @@ class DiscordGateway:
         It checks if ACK has been received with `heartbeat_ack_received` event,
         which gets set by `_on_message`.
         """
-        logger.info("Heartbeat started! waiting for client to get ready...")
+        logger.debug("Heartbeat started! waiting for client to get ready...")
         while True:
             while True:
                 if self.is_stop_requested.is_set():
                     return
                 elif self.is_connected.wait(0.5):
                     break
-            logger.info("Sending heartbeat...")
+            logger.debug("Sending heartbeat...")
             payload = {
                 "op": 1,
                 "d": self.sequence
@@ -363,7 +361,7 @@ class DiscordGateway:
             self.got_respond.set()
             self.websocket.close()
         elif op == 11:
-            logger.info("Received Heartbeat ACK!")
+            logger.debug("Received Heartbeat ACK!")
             self.heartbeat_ack_received.set()
         elif op == 0:
             if self.sequence is not None and self.sequence+1 != payload['s']:
