@@ -28,6 +28,8 @@ API_URL = f"https://discord.com/api/v{API_VER}/"
 GATEWAY_VER = 6
 GATEWAY_URL = f"wss://gateway.discord.gg/?v={GATEWAY_VER}&encoding=json"
 
+VOICE_VER = 4
+
 INTENTS_DEFAULT = 32509
 
 IMAGE_URL = "https://cdn.discordapp.com/"
