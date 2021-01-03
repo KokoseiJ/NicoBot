@@ -18,16 +18,35 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
-from .const import IMAGE_URL
-from .JSONObject import JSONObject
+from .message import Message
 
-KEY_LIST = ["id", "username", "discriminator", "avatar", "bot", "system",
-            "mfa_enabled", "locale", "verified", "email", "flags",
-            "premium_type", "public_flags"]
+from queue import Queue
 
 
-class User(JSONObject):
-    def __init__(self, json, client):
-        super().__init__(json, KEY_LIST)
+class EventHandler:
+    def __init__(self, client):
         self.client = client
-        self.avatar = f"{IMAGE_URL}avatars/{self.id}/{self.avatar}.{{}}"
+
+    def handler(self, event, data, msg):
+        raise NotImplementedError()
+
+
+class GeneratorEventHandler(EventHandler):
+    def __init__(self, client):
+        super().__init__(client)
+        self.event_queue = Queue()
+
+    def handler(self, event, data, msg):
+        if event in ["MESSAGE_CREATE", "MESSAGE_UPDATE"]:
+            data = Message(data, self.client)
+        self.event_queue.put((event, data))
+
+    def event_generator(self):
+        try:
+            while not self.client.is_stop_requested.is_set():
+                yield self.event_queue.get()
+            return
+        except KeyboardInterrupt:
+            return
+
+# TODO: Add a handler that uses decorator to register the handler

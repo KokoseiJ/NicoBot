@@ -1,7 +1,10 @@
-# NicoBot - Nicovideo player bot for discord, written from the scratch
-# Copyright (C) 2020 Wonjun Jung (Kokosei J)
 #
-#    This program is free software: you can redistribute it and/or modify
+# NicoBot is Nicovideo Player bot for Discord, written from the scratch.
+# This file is part of NicoBot.
+#
+# Copyright (C) 2020 Wonjun Jung (KokoseiJ)
+#
+#    Nicobot is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation, either version 3 of the License, or
 #    (at your option) any later version.
@@ -15,83 +18,117 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
-from discordapi import API_URL
+from .user import User
+from .JSONObject import JSONObject
 
-import json
-import urllib.request
-from urllib.parse import urljoin
+TYPES = ["GUILD_TEXT", "DM", "GUILD_VOICE", "GROUP_DM ", "GUILD_CATEGORY",
+         "GUILD_NEWS", "GUILD_STORE"]
+
+KEY_LIST = ["id", "type", "guild_id", "position", "permission_overwrites",
+            "name", "topic", "nsfw", "last_message_id", "bitrate",
+            "user_limit", "rate_limit_per_user", "recipients", "icon",
+            "owner_id", "application_id", "parent_id", "last_pin_timestamp"]
 
 
-class Channel:
-    def __init__(self, obj):
-        self.id = obj.get("id")
-        self.type = obj.get("type")
-        self.last_message_id = obj.get("last_message_id")
+def get_channel(data, client, guild=None, type=None):
+    if type is None:
+        type = data['type']
+
+    if type == 0:
+        return GuildTextChannel(data, client, guild)
+    elif type == 1:
+        return DMChannel(data, client)
+    elif type == 2:
+        return GuildVoiceChannel(data, client, guild)
+    elif type == 3:
+        return GroupDMChannel(data, client)
+    elif type == 4:
+        return ChannelCategory(data, client)
+    elif type == 5:
+        return GuildNewsChannel(data, client, guild)
+    elif type == 6:
+        return GuildStoreChannel(data, client, guild)
+    else:
+        raise NotImplementedError(f"Type {type} is not implemented")
+
+
+class Channel(JSONObject):
+    def __init__(self, data, client):
+        super().__init__(data, KEY_LIST)
+        self.client = client
+
+    def send(self, content=None, tts=False, embed=None, mentions=None,
+             reference=None, _json=None):
+        from .message import Message
+
+        if _json is not None:
+            data = _json
+        else:
+            data = {
+                "content": content,
+                "tts": tts,
+                "embed": embed,
+                "allowed_mentions": mentions,
+                "message_reference": reference
+            }
+
+        data, _, _ = self.client._request(
+            f"channels/{self.id}/messages", "POST", data)
+
+        return Message(data, self.client)
 
 
 class DMChannel(Channel):
-    def __init__(self, obj):
-        # TODO: Change objects in recipients to User objects
-        #       when it gets implemented
-        #       change repl too while you're at it ;) -10/26
-        super().__init__(obj)
-        self.recipients = obj.get("recipients")
+    def __init__(self, data, client):
+        super().__init__(data, client)
+        self.recipients = {
+            user['id']: User(user, client) for user in self.recipients}
+
+    def __repr__(self):
+        user = self.recipients.values()[0]
+        name = user.username
+        disc = user.discriminator
+        return self._get_repr(f"{name}#{disc}({self.id})")
 
 
 class GroupDMChannel(DMChannel):
-    def __init__(self, obj):
-        # TODO: Add owner property
-        super().__init__(obj)
-        self.name = obj.get("name")
-        self.icon = obj.get("icon")
-        self.owner_id = obj.get("owner_id")
-        self.application_id = obj.get("application_id")
+    def __init__(self, data, client):
+        super().__init__(data, client)
+        self.owner = client.recipients.get(self.owner_id)
+
+    def __repr__(self):
+        return self._get_repr(f"{self.name}({self.id})")
 
 
 class GuildChannel(Channel):
-    def __init__(self, obj, guild=None):
-        super().__init__(obj)
-        self.guild = guild
-        self.guild_id = obj.get("guild_id")
-        self.name = obj.get("name")
-        self.position = obj.get("position")
-        self.permission_overwrites = obj.get("permission_overwrites")
-        self.is_nsfw = obj.get("nsfw")
-        self.parent_id = obj.get("parent_id")
+    def __init__(self, data, client, guild=None):
+        super().__init__(data, client)
+
+        if guild is not None:
+            self.guild = guild
+        else:
+            self.guild = client.guilds.get(self.guild_id)
+
+        if self.parent_id is not None:
+            channels = self.guild.channels
+            if isinstance(channels, list):
+                self.parent = [Channel(chn, self) for chn in channels
+                               if chn['id'] == self.parent_id][0]
+            else:
+                self.parent = self.guild.channels.get(self.id)
+        else:
+            self.parent = None
 
     def __repr__(self):
-        return f"<{self.__class__.__name__} " +\
-               f"{self.guild.name}:{self.name}({self.id})>"
+        return self._get_repr(f"{self.guild.name}:{self.name}({self.id})")
+
+
+class ChannelCategory(GuildChannel):
+    pass
 
 
 class GuildTextChannel(GuildChannel):
-    def __init__(self, obj, guild=None):
-        super().__init__(obj, guild)
-        self.topic = obj.get("topic")
-        self.rate_limit = obj.get("rate_limit_per_user")
-        self.last_message_id = obj.get("last_message_id")
-        self.last_pin_timestamp = obj.get("last_pin_timestamp")
-
-    def send_message(self, content, nonce=None, tts=False, file=None,
-                     embed=None, allowed_mentions=None):
-        endpoint = urljoin(API_URL, f"channels/{self.id}/messages")
-        header = self.guild.client.header.copy()
-        header.update({"Content-Type": "application/json"})
-        req = urllib.request.Request(
-            endpoint,
-            json.dumps({
-                "content": content,
-                "nonce": nonce,
-                "tts": tts,
-                "embed": embed,
-                "allowed_mentions": allowed_mentions
-            }).encode(),
-            header
-        )
-        with urllib.request.urlopen(req) as res:
-            if res.status != 200:
-                raise ValueError(f"Server returned code {res.status}.\n"
-                                 f"Body: {res.read().encode()}")
+    pass
 
 
 class GuildNewsChannel(GuildTextChannel):
@@ -99,13 +136,6 @@ class GuildNewsChannel(GuildTextChannel):
 
 
 class GuildVoiceChannel(GuildChannel):
-    def __init__(self, obj, guild=None):
-        super().__init__(obj, guild)
-        self.bitrate = obj.get("bitrate")
-        self.user_limit = obj.get("user_limit")
-
-
-class GuildCategory(GuildChannel):
     pass
 
 

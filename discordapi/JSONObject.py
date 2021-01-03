@@ -18,16 +18,19 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
-from .const import IMAGE_URL
-from .JSONObject import JSONObject
+class JSONObject:
+    def __init__(self, data, keys=None):
+        if keys is not None:
+            for key in keys:
+                self.__setattr__(key, None)
+        for key, val in zip(data.keys(), data.values()):
+            self.__setattr__(key, val)
 
-KEY_LIST = ["id", "username", "discriminator", "avatar", "bot", "system",
-            "mfa_enabled", "locale", "verified", "email", "flags",
-            "premium_type", "public_flags"]
+    def _get_repr(self, repr_str, name=None):
+        if name is None:
+            name = self.__class__.__name__
+        return f"<{name} {repr_str}>"
 
-
-class User(JSONObject):
-    def __init__(self, json, client):
-        super().__init__(json, KEY_LIST)
-        self.client = client
-        self.avatar = f"{IMAGE_URL}avatars/{self.id}/{self.avatar}.{{}}"
+    def __repr__(self):
+        name = self.__dict__.get("name")
+        return self._get_repr(f"{name if name else ''}({self.id})")

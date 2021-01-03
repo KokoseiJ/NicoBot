@@ -18,16 +18,17 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
-from .const import IMAGE_URL
-from .JSONObject import JSONObject
-
-KEY_LIST = ["id", "username", "discriminator", "avatar", "bot", "system",
-            "mfa_enabled", "locale", "verified", "email", "flags",
-            "premium_type", "public_flags"]
+class DiscordError(Exception):
+    pass
 
 
-class User(JSONObject):
-    def __init__(self, json, client):
-        super().__init__(json, KEY_LIST)
-        self.client = client
-        self.avatar = f"{IMAGE_URL}avatars/{self.id}/{self.avatar}.{{}}"
+class DiscordHTTPError(DiscordError):
+    def __init__(self, error, data, message=None):
+        if message is None:
+            try:
+                message = f"Error {data['code']}: {data['message']}"
+            except (KeyError, TypeError):
+                message = data
+        super().__init__(message)
+        self.error = error
+        self.data = data

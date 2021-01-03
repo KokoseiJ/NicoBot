@@ -1,7 +1,10 @@
-# NicoBot - Nicovideo player bot for discord, written from the scratch
-# Copyright (C) 2020 Wonjun Jung (Kokosei J)
 #
-#    This program is free software: you can redistribute it and/or modify
+# NicoBot is Nicovideo Player bot for Discord, written from the scratch.
+# This file is part of NicoBot.
+#
+# Copyright (C) 2020 Wonjun Jung (KokoseiJ)
+#
+#    Nicobot is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation, either version 3 of the License, or
 #    (at your option) any later version.
@@ -15,69 +18,222 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
-from discordapi import LIB_NAME, GATEWAY_URL, GATEWAY_CONNECT_TIMEOUT
+from .user import User
+from .channel import Channel
+from .guild import Guild, Member
+from .exception import DiscordError
+from .event_handler import GeneratorEventHandler
+from .const import GATEWAY_URL, INTENTS_DEFAULT,\
+                             LIB_NAME
 
+import sys
 import json
 import time
-import queue
-import platform
-import threading
-import websocket
+import logging
+from queue import Queue, Empty
+from ssl import SSLError
+from sys import platform
+from traceback import print_exc
+from threading import Thread, Event
+from websocket import WebSocketApp, STATUS_ABNORMAL_CLOSED
+from websocket._exceptions import WebSocketConnectionClosedException
 
-INTENTS_DEFAULT = 32509
+logger = logging.getLogger(LIB_NAME)
 
 
-class Gateway:
-    def __init__(self, token, event_handler, intents=INTENTS_DEFAULT):
+def handle_exception(exc_type, exc_value, exc_traceback):
+    if issubclass(exc_type, KeyboardInterrupt):
+        sys.__excepthook__(exc_type, exc_value, exc_traceback)
+        return
+
+    logger.error(
+        "Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
+
+
+sys.excepthook = handle_exception
+
+
+class DiscordGateway:
+    def __init__(self, token, intents=None, event_handler=None):
         """
-        self.is_connected indicates if connection is available.
-        This is used to stop threads when websocket is disconnected.
-        self.is_ready indicates if client is in ready status.
-        self.heartbeat_ack_recieved indicates if heartbeat ack is recieved.
-        self.restart_requested indicates if socket is terminated by interrupt
-        or closed socket.
+        This class defines the connection to discord gateway.
+
+        This class will internally run 2 threads-
+        gateway_heartbeat, gateway_run.
+        It also runs gateway_init at the beginning, which gets terminated after
+        identifying with discord gateway has been completed.
+
+        Attributes:
+            token:
+                represents discord token which will be used when authorizing
+                the client and issuing the voice connection.
+            intents:
+                Intents that will be sent when identifying.
+                WARNING! Default value is 32509, which doesn't include
+                `GUILD_MEMBERS`, `GUILD_PRESENCES`. If you wish to use these,
+                You have to first enable them in your bot dashboard, and
+                initialize gateway with this parameter set to 32767.
+            event_handler:
+                Handler that will be used to handle events sent by gateway.
+            heartbeat_interval:
+                Heartbeat interval sent in `hello`(Opcode 10), *in msec.*
+            sequence:
+                sequence received from discord gateway.
+            ready_data:
+                data received from discord gateway when `READY` event has
+                been issued.
+            user:
+                User object present in ready_data.
+            guilds:
+                Guilds present in ready_data.
+            session_id:
+                Session ID present in ready_data.
+            application:
+                application object present in ready_data.
+            voice_queue:
+                dict used to receive Voice connection data.
+            voices:
+                dict that will store Voice clients.
+            retry_count:
+                Variable to count connection retries.
+            run_thread:
+                thread where websocket connection is running. This thread will
+                also attempt to reconnect to gateway when it disconnects.
+            heartbeat_thread:
+                thread where heartbeat is happening.
+            is_connected:
+                Event object representing if gateway has been responded with
+                `hello`(Opcode 10). When client disconnects, this gets cleared.
+                If you want to check if gateway is prepared to use, You should
+                use is_ready instead.
+            is_ready:
+                Event object representing if identification between gateway and
+                client has been completed, and is now in connected state.
+                You can use this event to ensure if client is connected to
+                gateway.
+            got_respond:
+                Event object used to determine if server has returned Resume or
+                Invalid Session when resuming connection.
+            heartbeat_ack_received:
+                Event used to check if heartbeat ACK has been received by
+                client. since heartbeat thread can't directly receive websocket
+                messages, This event should be used.
+            restart_heartbeat:
+                Flag to indicate if heartbeat should be restarted.
+            is_restart_required:
+                Event used to determine if connection is resumable or it should
+                be reconnected when disconnection happens.
+            is_stop_requested:
+                Event used to determine if cilent needs to attempt to reconnect
+                to gateway or just stop the connection completely.
+            websocket:
+                WebSocketApp object used for communication. Using this
+                attribute directly to communicate with gateway is not
+                recommended, please inherit this class and override
+                methods with your own needs.
         """
         self.token = token
-        self.intents = intents
-        self.event_handler = event_handler
+        self.intents = intents if intents is not None else INTENTS_DEFAULT
+        self.event_handler = event_handler(self) if event_handler is not None\
+            else GeneratorEventHandler(self)
 
         self.heartbeat_interval = None
-        self.session_id = None
-        self.seq = None
+        self.sequence = None
+
         self.ready_data = None
-        self.heartbeat_seq = 0
-
-        self.is_connected = threading.Event()
-        self.is_ready = threading.Event()
-        self.heartbeat_ack_recieved = threading.Event()
-        self.stop_heartbeat = threading.Event()
-        self.is_close_requested = threading.Event()
-
-        self.run_thread = threading.Thread(target=self._connect,
-                                           name="gateway_run")
-        self.heartbeat_thread = None
-
-        self.event_queue = queue.Queue()
-        self.guild_list = list()
+        self.user = None
+        self.guilds = None
+        self.session_id = None
+        self.application = None
         self.voice_queue = dict()
 
-        self.websocket = websocket.WebSocketApp(
+        self.retry_count = 0
+
+        self.run_thread = None
+        self.heartbeat_thread = None
+
+        self.is_connected = Event()
+        self.is_ready = Event()
+        self.got_respond = Event()
+        self.heartbeat_ack_received = Event()
+        self.restart_heartbeat = Event()
+        self.is_restart_required = Event()
+        self.is_stop_requested = Event()
+
+        self.websocket = WebSocketApp(
             GATEWAY_URL,
-            on_message=lambda ws, message: self._on_message(ws, message),
-            on_open=lambda ws: threading.Thread(
-                    target=self._init_gateway,
-                    args=(ws,),
-                    name="gateway_init").start())
+            on_message=lambda ws, msg:  self._on_message(ws, msg),
+            on_error=lambda ws, error: logger.error(error),
+            on_open=lambda ws:  Thread(
+                target=self._gateway_init,
+                args=(ws,),
+                name="gateway_init"
+            ).start()
+        )
 
     def connect(self):
+        """
+        Runs heartbeat_thread, run_thread and hangs until is_ready is set.
+        """
+        if self.run_thread and self.run_thread.is_alive():
+            raise RuntimeError("Thread is already running!")
+
+        logger.info("Starting heartbeat thread.")
+        self.heartbeat_thread = Thread(
+            target=self._heartbeat,
+            name="gateway_heartbeat"
+        )
+        self.heartbeat_thread.start()
+
+        logger.info("Starting run thread.")
+        self.run_thread = Thread(
+            target=self._connect,
+            name="gateway_run"
+        )
         self.run_thread.start()
-        self.is_ready.wait()
-        return self.run_thread
+
+        logger.info("Waiting for client to get ready...")
+        while True:
+            if not self.run_thread.is_alive():
+                logger.error("Run thread has stopped without getting ready!")
+                return
+            if self.is_ready.wait(0.1):
+                break
+
+        logger.info("Connection established!")
 
     def voice_connect(self, guild_id, channel_id, mute=False, deaf=False):
-        self.voice_queue[str(guild_id)] = queue.Queue()
+        token, endpoint, session_id = self._voice_connect(
+            guild_id, channel_id, mute, deaf)
 
-        self.websocket.send(json.dumps({
+    def disconnect(self):
+        """
+        Sets is_stop_requested, and kills the websocket.
+        """
+        logger.info("Setting is_stop_requested and killing websocket...")
+        self.is_stop_requested.set()
+        self.websocket.close()
+
+    def _voice_connect(self, guild_id, channel_id, mute=False, deaf=False):
+        if self.voice_queue.get(guild_id) is not None:
+            raise DiscordError(
+                "Client is already connecting to the voice channel.")
+        else:
+            guild = self.guilds.get(guild_id)
+            if guild is None:
+                raise DiscordError("Guild doesn't exist.")
+            elif channel_id not in guild.channels.keys():
+                raise DiscordError("Channel doesn't exist in the guild.")
+            elif guild.channels.get(channel_id).type != 2:
+                raise DiscordError("Channel is not a voice channel.")
+
+        self.voice_queue[guild_id] = Queue()
+
+        token = None
+        endpoint = None
+        session_id = None
+
+        payload = {
             "op": 4,
             "d": {
                 "guild_id": guild_id,
@@ -85,154 +241,261 @@ class Gateway:
                 "self_mute": mute,
                 "self_deaf": deaf
             }
-        }))
-
-        voice_state = self.voice_queue[str(guild_id)].get()
-        if not (voice_state['op'] == 0 and
-                voice_state['t'] == "VOICE_STATE_UPDATE"):
-            raise RuntimeError("OPcode is wrong!")
-
-        session_id = voice_state['d']['session_id']
-
-        voice_server = self.voice_queue[str(guild_id)].get()
-        if not (voice_server['op'] == 0 and
-                voice_server['t'] == "VOICE_SERVER_UPDATE"):
-            raise RuntimeError("OPcode is wrong!")
-
-        token = voice_server['d']['token']
-        guild_id = voice_server['d']['guild_id']
-        endpoint = voice_server['d']['endpoint']
-
-        del self.voice_queue[str(guild_id)]
-
-        return session_id, token, guild_id, endpoint
-
-    def disconnect(self):
-        self.is_close_requested.set()
-        self.websocket.close()
+        }
+        self.websocket.send(json.dumps(payload))
+        while not (token and endpoint and session_id):
+            try:
+                data = self.voice_queue[guild_id].get(timeout=10)
+            except Empty:
+                del self.voice_queue[guild_id]
+                raise DiscordError("Gateway didn't respond with needed info!")
+            if data['t'] == "VOICE_SERVER_UPDATE":
+                token = data['d']['token']
+                endpoint = data['d']['endpoint']
+            elif data['t'] == "VOICE_STATE_UPDATE":
+                session_id = data['d']['session_id']
+        return token, endpoint, session_id
 
     def _connect(self):
+        """
+        Creates websocket, run it, attempts to reconnect when it disconencts.
+        """
         while True:
-            print("Connecting to Gateway...")
+            logger.info("Connecting to websocket...")
+
+            self.websocket.enable_multithread = True
             self.websocket.run_forever()
+
+            logger.warning("Websocket disconnected!")
+            if not self.is_connected.is_set():
+                if self.retry_count == 5:
+                    logger.error("Server unreachable! stopping this thread...")
+                    self.is_stop_requested.set()
+                else:
+                    self.retry_count += 1
+                    logger.warning("Server unreachable! "
+                                   f"retrying {self.retry_count} times after "
+                                   "5 seconds...")
+                    time.sleep(5)
+                    continue
+            self.retry_count = 0
             self.is_connected.clear()
             self.is_ready.clear()
-            self.heartbeat_ack_recieved.set()
-            if self.is_close_requested.is_set():
+            self.got_respond.clear()
+            self.heartbeat_ack_received.clear()
+            self.restart_heartbeat.set()
+            if self.is_stop_requested.is_set():
+                logger.info("is_stop_requested set, stopping this thread...")
                 return
-            print("Socket closed. reconnecting...")
-            self._reconnect()
 
-    def _reconnect(self):
-        self.websocket = websocket.WebSocketApp(
-            GATEWAY_URL,
-            on_message=lambda ws, message: self._on_message(ws, message),
-            on_open=lambda ws: threading.Thread(
-                        target=self._resume_gateway,
-                        args=(ws,),
-                        name="gateway_resume").start())
+            self.websocket = WebSocketApp(
+                    GATEWAY_URL,
+                    on_message=lambda ws, msg:  self._on_message(ws, msg))
 
-    def _init_gateway(self, ws):
-        if not self.is_connected.wait(timeout=GATEWAY_CONNECT_TIMEOUT):
-            raise TimeoutError("Timed out while connecting to Discord Gateway")
+            if self.is_restart_required.is_set() or self.session_id is None:
+                logger.info("Restart required, creating new websocket "
+                            "with _gateway_init...")
+                self.is_restart_required.clear()
+                self.sequence = None
+                self.websocket.on_open = lambda ws:  Thread(
+                    target=self._gateway_init,
+                    args=(ws,),
+                    name="gateway_init"
+                ).start()
+            else:
+                logger.info("Creating new websocket with _gateway_resume...")
+                self.websocket.on_open = lambda ws:  Thread(
+                    target=self._gateway_resume,
+                    args=(ws,),
+                    name="gateway_init"
+                ).start()
+            self.is_stop_requested.clear()
+            self.is_restart_required.clear()
 
-        print("starting heartbeat")
-        self.heartbeat_thread = threading.Thread(
-            target=self._heartbeat,
-            name="gateway_heartbeat")
-        self.heartbeat_thread.start()
-
-        print("sending auth")
-        ws.send(json.dumps({
+    def _gateway_init(self, ws):
+        """
+        Initialize gateway.
+        """
+        logger.info("Waiting for gateway to send Hello...")
+        self.is_connected.wait()
+        logger.info("Sending Identify payload...")
+        payload = {
             "op": 2,
             "d": {
                 "token": self.token,
                 "intents": self.intents,
                 "properties": {
-                    "$os": platform.system().lower(),
+                    "$os": platform,
                     "$browser": LIB_NAME,
                     "$device": LIB_NAME
                 }
             }
-        }))
+        }
+        ws.send(json.dumps(payload))
+        logger.info("Waiting for reply...")
+        self.got_respond.wait()
 
-        self.is_ready.wait()
-        print("READY!")
-
-    def _resume_gateway(self, ws):
-        if not self.is_connected.wait(GATEWAY_CONNECT_TIMEOUT):
-            raise TimeoutError("Timed out while connecting to Discord Gateway")
-
-        print("sending resume")
-        ws.send(json.dumps({
+    def _gateway_resume(self, ws):
+        """
+        Resumes gateway connection when it disconnects.
+        """
+        logger.info("Waiting for gateway to send Hello...")
+        self.is_connected.wait()
+        logger.info("Sending Resume payload...")
+        payload = {
             "op": 6,
             "d": {
                 "token": self.token,
-                "session_id": self.session_id,
-                "seq": self.seq
+                "session_id": self.ready_data['session_id'],
+                "seq": self.sequence
             }
-        }))
+        }
+        ws.send(json.dumps(payload))
+        logger.info("Waiting for reply...")
 
-        self.is_ready.wait()
-        print("READY!")
+        self.got_respond.wait()
 
     def _heartbeat(self):
-        self.heartbeat_seq = 0
-        while self.is_connected.is_set():
-            self.heartbeat_ack_recieved.clear()
-
-            sendtime = time.perf_counter()
-            self.websocket.send(json.dumps({
-                "op": 1,
-                "d": self.heartbeat_seq if self.heartbeat_seq else None
-            }))
-
-            if not self.heartbeat_ack_recieved.wait(self.heartbeat_interval):
-                if self.is_connected.is_set():
-                    self.websocket.close(websocket.STATUS_ABNORMAL_CLOSED)
-                    raise TimeoutError("Timed out while sending heartbeat")
-                else:
+        """
+        It does the heartbeat. kinda self-explanatory.
+        Since heartbeating really doesn't require recreating the whole thread
+        between resuming, This thread remains through disconnects.
+        It uses `websocket` attribute, so its sending target also gets changed
+        whenever client establishes new connection.
+        Since it waits until `is_connected` is set, It shouldn't send message
+        to unconnected websocket.
+        It checks if ACK has been received with `heartbeat_ack_received` event,
+        which gets set by `_on_message`.
+        """
+        logger.debug("Heartbeat started! waiting for client to get ready...")
+        while True:
+            while True:
+                if self.is_stop_requested.is_set():
+                    return
+                elif self.is_connected.wait(0.5):
                     break
+            payload = {
+                "op": 1,
+                "d": self.sequence
+            }
+            try:
+                self.websocket.send(json.dumps(payload))
+                logger.debug("Sending heartbeat...")
+            except (WebSocketConnectionClosedException, SSLError, OSError):
+                continue
+            if self.restart_heartbeat.wait(int(self.heartbeat_interval/1000)):
+                self.restart_heartbeat.clear()
+                if self.is_stop_requested.is_set():
+                    logger.info("is_stop_requested set. stopping heartbeat...")
+                    return
+                logger.info(
+                    "Heartbeat restart requested, skipping this ACK...")
+                continue
+            if not (self.is_connected.is_set() and
+                    self.heartbeat_ack_received.is_set()):
+                logger.error("Server didn't return ACK! closing websocket...")
+                self.websocket.close(status=STATUS_ABNORMAL_CLOSED)
+            self.heartbeat_ack_received.clear()
 
-            time.sleep(sendtime+self.heartbeat_interval - time.perf_counter())
-            self.heartbeat_seq += 1
+    def _on_message(self, ws, msg):
+        """
+        Handles messages sent by discord server.
+        """
+        payload = json.loads(msg)
+        op = payload['op']
+        data = payload['d']
+        logger.debug(payload)
 
-        print("Socket disconnected, stopping heartbeat...")
+        if op == 10:
+            self.heartbeat_interval = data['heartbeat_interval']
+            self.is_connected.set()
+        elif op == 9:
+            if not data:
+                self.is_restart_required.set()
+            self.got_respond.set()
+            self.websocket.close()
+        elif op == 11:
+            logger.debug("Received Heartbeat ACK!")
+            self.heartbeat_ack_received.set()
+        elif op == 0:
+            if self.sequence is not None and self.sequence+1 != payload['s']:
+                self.websocket.close()
+            self.sequence = payload['s']
+            event = payload['t']
 
-    def _on_message(self, ws, message):
-        data = json.loads(message)
+            if event == "READY":
+                self.ready_data = data
+                self.user = User(data['user'], self)
+                self.guilds = {
+                    guild['id']: False for guild in data['guilds']}
+                self.session_id = data['session_id']
+                self.got_respond.set()
+                self.is_ready.set()
 
-        if not self.is_connected.is_set():
-            if data['op'] == 10:
-                self.heartbeat_interval = data['d']['heartbeat_interval']/1000
-                self.is_connected.set()
-            else:
-                raise RuntimeError("Got unexpected response from the server")
-        else:
-            if data['op'] == 11:
-                if not self.heartbeat_ack_recieved.is_set():
-                    self.heartbeat_ack_recieved.set()
+            elif event == "RESUMED":
+                self.got_respond.set()
+                self.is_ready.set()
+
+            elif event == "CHANNEL_CREATE":
+                channel = Channel(data, self)
+                channel.guild.channels[channel.id] = channel
+
+            elif event == "CHANNEL_UPDATE":
+                if data.get("guild_id") is not None:
+                    guild = self.guilds.get(data['guild_id'])
+                    channel = guild.channels.get(data['id'])
+                    for key, val in zip(data.keys(), data.values()):
+                        setattr(channel, key, val)
+
+            elif event == "CHANNEL_DELETE":
+                guild = self.guilds.get(data['guild_id'])
+                del guild.channels[data['id']]
+
+            elif event == "CHANNEL_PINS_UPDATE":
+                if data.get("guild_id") is not None:
+                    guild = self.guilds[data['guild_id']]
+                    channel = guild.channels[data['channel_id']]
+                    channel.last_pin_timestamp = data['last_pin_timestamp']
+
+            elif event == "GUILD_CREATE":
+                try:
+                    guild = Guild(data, self)
+                    self.guilds[guild.id] = guild
+                except Exception:
+                    print_exc()
+
+            elif event == "GUILD_UPDATE":
+                guild = self.guilds.get(data['id'])
+                for key, val in zip(data.keys(), data.values()):
+                    setattr(guild, key, val)
+
+            elif event == "GUILD_DELETE":
+                if data.get('unavailable'):
+                    self.guilds[data['id']] = False
                 else:
-                    raise RuntimeError(
-                        "Heartbeat ACK received without corresponding request")
-            elif data['op'] == 0:
-                self.seq = data['s']
+                    del self.guilds[data['ID']]
 
-                if data['t'] == "READY":
-                    self.session_id = data['d']['session_id']
-                    self.ready_data = data['d']
-                    self.is_ready.set()
+            elif event == "GUILD_MEMBER_ADD":
+                member = Member(data, self)
+                guild = self.guilds.get(member.guild_id)
+                guild.members[member.user.id] = member
 
-                elif data['t'] == "RESUMED":
-                    self.is_ready.set()
+            elif event == "GUILD_MEMBER_REMOVE":
+                guild = self.guilds.get(data['guild_id'])
+                del guild.members[data['user']['id']]
 
-                elif data['t'] in["VOICE_SERVER_UPDATE", "VOICE_STATE_UPDATE"]:
-                    self.voice_queue[str(data['d']['guild_id'])].put(data)
+            elif event == "GUILD_MEMBER_UPDATE":
+                data['user'] = User(data['user'], self)
+                guild = self.guilds.get(data['guild_id'])
+                member = guild.members.get(data['user'].id)
+                for key, val in zip(data.keys(), data.values()):
+                    setattr(member, key, val)
 
-                else:
-                    if data['t'] == "GUILD_CREATE":
-                        self.guild_list.append(data['d'])
-                    dat = data['d']
-                    typ = data['t']
-                    event = (typ, self.event_handler(typ, dat))
-                    self.event_queue.put(event)
+            elif event in ["VOICE_SERVER_UPDATE", "VOICE_STATE_UPDATE"]:
+                try:
+                    queue = self.voice_queue.get(data['guild_id'])
+                    queue.put(payload)
+                except KeyError:
+                    pass
+
+            self.event_handler.handler(event, data, msg)

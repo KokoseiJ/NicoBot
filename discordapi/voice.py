@@ -1,7 +1,10 @@
-# NicoBot - Nicovideo player bot for discord, written from the scratch
-# Copyright (C) 2020 Wonjun Jung (Kokosei J)
 #
-#    This program is free software: you can redistribute it and/or modify
+# NicoBot is Nicovideo Player bot for Discord, written from the scratch.
+# This file is part of NicoBot.
+#
+# Copyright (C) 2020 Wonjun Jung (KokoseiJ)
+#
+#    Nicobot is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation, either version 3 of the License, or
 #    (at your option) any later version.
@@ -15,7 +18,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
-from discordapi.const import VOICE_API_VER, GATEWAY_CONNECT_TIMEOUT
+from discordapi.const import VOICE_VER, GATEWAY_CONNECT_TIMEOUT
 
 import json
 import time
@@ -74,7 +77,7 @@ class OggParser:
 class VoiceClient:
     def __init__(self, api_endpoint, server_id, user_id, session_id, token):
         if not api_endpoint.startswith("wss://"):
-            api_endpoint = f"wss://{api_endpoint}?v={VOICE_API_VER}"
+            api_endpoint = f"wss://{api_endpoint}?v={VOICE_VER}"
         self.endpoint = api_endpoint
         self.server_id = server_id
         self.user_id = user_id
