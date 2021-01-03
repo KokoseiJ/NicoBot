@@ -21,6 +21,7 @@
 from .user import User
 from .channel import Channel
 from .guild import Guild, Member
+from .exception import DiscordError
 from .event_handler import GeneratorEventHandler
 from .const import GATEWAY_URL, INTENTS_DEFAULT,\
                              LIB_NAME
@@ -29,11 +30,12 @@ import sys
 import json
 import time
 import logging
+from queue import Queue, Empty
 from ssl import SSLError
 from sys import platform
 from traceback import print_exc
-from websocket import WebSocketApp, STATUS_ABNORMAL_CLOSED
 from threading import Thread, Event
+from websocket import WebSocketApp, STATUS_ABNORMAL_CLOSED
 from websocket._exceptions import WebSocketConnectionClosedException
 
 logger = logging.getLogger(LIB_NAME)
@@ -88,6 +90,10 @@ class DiscordGateway:
                 Session ID present in ready_data.
             application:
                 application object present in ready_data.
+            voice_queue:
+                dict used to receive Voice connection data.
+            voices:
+                dict that will store Voice clients.
             retry_count:
                 Variable to count connection retries.
             run_thread:
@@ -139,6 +145,7 @@ class DiscordGateway:
         self.guilds = None
         self.session_id = None
         self.application = None
+        self.voice_queue = dict()
 
         self.retry_count = 0
 
@@ -195,6 +202,10 @@ class DiscordGateway:
 
         logger.info("Connection established!")
 
+    def voice_connect(self, guild_id, channel_id, mute=False, deaf=False):
+        token, endpoint, session_id = self._voice_connect(
+            guild_id, channel_id, mute, deaf)
+
     def disconnect(self):
         """
         Sets is_stop_requested, and kills the websocket.
@@ -202,6 +213,48 @@ class DiscordGateway:
         logger.info("Setting is_stop_requested and killing websocket...")
         self.is_stop_requested.set()
         self.websocket.close()
+
+    def _voice_connect(self, guild_id, channel_id, mute=False, deaf=False):
+        if self.voice_queue.get(guild_id) is not None:
+            raise DiscordError(
+                "Client is already connecting to the voice channel.")
+        else:
+            guild = self.guilds.get(guild_id)
+            if guild is None:
+                raise DiscordError("Guild doesn't exist.")
+            elif channel_id not in guild.channels.keys():
+                raise DiscordError("Channel doesn't exist in the guild.")
+            elif guild.channels.get(channel_id).type != 2:
+                raise DiscordError("Channel is not a voice channel.")
+
+        self.voice_queue[guild_id] = Queue()
+
+        token = None
+        endpoint = None
+        session_id = None
+
+        payload = {
+            "op": 4,
+            "d": {
+                "guild_id": guild_id,
+                "channel_id": channel_id,
+                "self_mute": mute,
+                "self_deaf": deaf
+            }
+        }
+        self.websocket.send(json.dumps(payload))
+        while not (token and endpoint and session_id):
+            try:
+                data = self.voice_queue[guild_id].get(timeout=10)
+            except Empty:
+                del self.voice_queue[guild_id]
+                raise DiscordError("Gateway didn't respond with needed info!")
+            if data['t'] == "VOICE_SERVER_UPDATE":
+                token = data['d']['token']
+                endpoint = data['d']['endpoint']
+            elif data['t'] == "VOICE_STATE_UPDATE":
+                session_id = data['d']['session_id']
+        return token, endpoint, session_id
 
     def _connect(self):
         """
@@ -437,5 +490,12 @@ class DiscordGateway:
                 member = guild.members.get(data['user'].id)
                 for key, val in zip(data.keys(), data.values()):
                     setattr(member, key, val)
+
+            elif event in ["VOICE_SERVER_UPDATE", "VOICE_STATE_UPDATE"]:
+                try:
+                    queue = self.voice_queue.get(data['guild_id'])
+                    queue.put(payload)
+                except KeyError:
+                    pass
 
             self.event_handler.handler(event, data, msg)

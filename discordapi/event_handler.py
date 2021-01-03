@@ -21,7 +21,6 @@
 from .message import Message
 
 from queue import Queue
-from traceback import print_exc
 
 
 class EventHandler:

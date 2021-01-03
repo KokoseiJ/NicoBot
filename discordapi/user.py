@@ -30,4 +30,4 @@ class User(JSONObject):
     def __init__(self, json, client):
         super().__init__(json, KEY_LIST)
         self.client = client
-        self.avatar = f"{IMAGE_URL}{self.id}/{self.avatar}.{{}}"
+        self.avatar = f"{IMAGE_URL}avatars/{self.id}/{self.avatar}.{{}}"

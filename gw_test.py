@@ -1,5 +1,6 @@
 from discordapi.client import DiscordClient as Client
 
+import json
 import logging
 
 logger = logging.getLogger("NicoBot")
