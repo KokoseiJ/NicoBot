@@ -1,10 +1,8 @@
-# DiscordAPI
-Synchronous Discord API wrapper for Python, written from the scratch.
+# Nicobot
+Music bot that plays music from Nicovideo, written from the scratch, without using Discord.py.
 
-## What is this?
-This library is a wrapper for Discord Bot API, aimed to be easy and straightforwarded to use, as well as flexible enough to play around with. also It is *not* using coroutine- Every concurrent things are done with threads. Which indeed causes a performance degrade, but is useful for newcomers, simple bots, or even maintaining your bot account with python interpreter. We have an event handling method specifically made for that purpose.
-
-This library is designed to provide flexible API wrapper- almost everything is done on JSON internally, and It lets you use JSON directly too. Handlers are modifiable, which means you can make your own handler on demand and use it. I am also planning to offer varities of handlers, with each having its own purpose. you can pick one, run it, vroom. bot is running!
+## What is this bot?
+Just like its name, It plays songs from [Nicovideo](https://nicovideo.jp) server. Streaming-related code is mostly from [`nico.py` module from my previous bot](https://github.com/KokoseiJ/DiscordBot/blob/master/modules/nico.py), while Discord-side API wrapper was completely written from the scratch.
 
 It currently uses `urllib` to communicate with their HTTP endpoints, `websocket-client` to communicate with Gateway. 
 Since It doesn't use coroutine on purpose, It currently uses threading library to parallelly run websockets and heartbeats.
