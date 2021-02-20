@@ -22,7 +22,7 @@ LIB_NAME = "NicoBot"
 LIB_URL = "https://github.com/KokoseiJ/NicoBot"
 LIB_VER = "alpha1"
 
-GATEWAY_VER = 6
+GATEWAY_VER = 8
 GATEWAY_URL = f"wss://gateway.discord.gg/?v={GATEWAY_VER}&encoding=json"
 
 INTENTS_DEFAULT = 32509

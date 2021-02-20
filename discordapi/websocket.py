@@ -21,9 +21,10 @@
 import os
 import json
 
+from ssl import SSLError
 from select import select
-from websocket import WebSocket
 from threading import Thread, Lock
+from websocket import WebSocket, WebSocketException
 
 
 class SelectableEvent:
@@ -63,7 +64,7 @@ class SelectableEvent:
         """
         Reads a byte from the pipe to reset.
         """
-        if self.isSet():
+        if self.is_set():
             os.read(self._read_fd, 1)
 
     def set(self):
@@ -115,30 +116,36 @@ class WebSocketClient:
 
     Attributes:
         url: URL address of target websocket server.
+        prefix: Thread name prefix.
         sock: Internal socket.
         connection_thread: Thread that runs `self.connect`.
+        dispatcher_thread: Thread that dispatches events.
         heartbeat_thread: Thread that handles Heartbeat.
         kill_event: Event that determines if thread should be killed or not.
         send_lock: Lock object that ensures threadsafety while sending message.
     """
-    def __init__(self, url):
+    def __init__(self, url, prefix=None):
         """
         Initializes WebSocketClient.
 
         Args:
             url:
                 URL address of target websocket server.
+            prefix:
+                Thread name prefix.
         """
         self.url = url
         self.sock = None
+        self.prefix = "" if not isinstance(prefix, str) else f"{prefix}_"
 
         self.connection_thread = None
+        self.dispatcher_thread = None
         self.heartbeat_thread = None
 
         self.kill_event = SelectableEvent()
         self.send_lock = Lock()
 
-    def _handle(self, sock, handler):
+    def _dispatcher(self, sock, handler):
         """
         Handler that dispatches Websocket events.
 
@@ -153,11 +160,17 @@ class WebSocketClient:
         while True:
             readable, _, _ = select((sock.sock,), (), ())
             if readable:
-                data = sock.recv()
-                if not data:
+                try:
+                    data = sock.recv()
+                    if not data:
+                        return
+                except WebSocketException:
                     return
-                data = json.loads(data)
-                handler(data)
+                try:
+                    data = json.loads(data)
+                    handler(data)
+                except Exception:
+                    continue
 
     def _send(self, data):
         """
@@ -171,9 +184,13 @@ class WebSocketClient:
         Returns:
             Length of sent bytes.
         """
-        self.send_lock.acquire()
-        rtnval = self.sock.send(data)
-        self.send_lock.release()
+        try:
+            self.send_lock.acquire()
+            rtnval = self.sock.send(data)
+            self.send_lock.release()
+        except SSLError:
+            self.send_lock.release()
+            self._send(data)
         return rtnval
 
     def clean(self):
@@ -215,16 +232,18 @@ class WebSocketClient:
         if self.sock is not None:
             raise RuntimeError("Websocket has been already opened.")
 
+        self.kill_event.clear()
         connected = False
         while not self.kill_event.is_set():
             self.sock = WebSocket()
             self.sock.connect(self.url)
+            self.run_dispatcher()
             if not connected:
                 self.on_connect(self.sock)
                 connected = True
             else:
                 self.on_reconnect(self.sock)
-            self._handle(self.sock, self.on_message)
+            self.dispatcher_thread.join()
             self.clean()
 
     def connect_threaded(self):
@@ -237,10 +256,35 @@ class WebSocketClient:
 
         self.connection_thread = StoppableThread(
             target=self.connect,
-            name="run_thread"
+            name=f"{self.prefix}run_thread"
         )
         self.connection_thread.start()
         return self.connection_thread
+
+    def run_dispatcher(self, sock=None, handler=None):
+        """
+        Starts the new thread that runs `self._dispatcher` method.
+
+        Args:
+            sock:
+                websocket object to be used.
+                Default value is `self.sock`.
+            handler:
+                Handler to be called when event happens.
+                Default value is `self.on_message`.
+        """
+        if sock is None:
+            sock = self.sock
+        if handler is None:
+            handler = self.on_message
+
+        self.dispatcher_thread = StoppableThread(
+            target=self._dispatcher,
+            args=(sock, handler),
+            name=f"{self.prefix}dispatcher_thread"
+        )
+        self.dispatcher_thread.start()
+        return self.dispatcher_thread
 
     def run_heartbeat(self):
         """
@@ -251,7 +295,7 @@ class WebSocketClient:
         """
         self.heartbeat_thread = StoppableThread(
             target=self.heartbeat,
-            name="heatbeat_thread"
+            name=f"{self.prefix}heatbeat_thread"
         )
         self.heartbeat_thread.start()
         return self.heartbeat_thread

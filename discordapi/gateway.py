@@ -35,25 +35,43 @@ class DiscordGateway(WebSocketClient):
     Attributes:
         token: Discord token to be used when connecting.
         intents: Intents value to be sent. default value is 32509.
-        sequence: sequence number received from the server.
         heartbeat_interval: Heartbeat interval received from the server.
+        ready_data: Ready data received from the server.
+        sequence: sequence number received from the server.
+        heartbeat_ready: Event that indicates if heartbeat_interval has been
+                         received.
+        heartbeat_ack: Event that indicates if the heartbeat ACK has been
+                       receieved.
+        is_ready: Indicates if Ready data has bee acquired.
     """
     def __init__(self, token, intents=INTENTS_DEFAULT):
         super().__init__(GATEWAY_URL)
         self.token = token
         self.intents = intents
 
+        self.heartbeat_interval = None
+        self.ready_data = None
         self.sequence = 0
+
+        self.heartbeat_ready = SelectableEvent()
+        self.heartbeat_ack = SelectableEvent()
+        self.is_ready = SelectableEvent()
+
+    def clean(self):
+        super().clean()
+        self.is_ready.clear()
+        self.heartbeat_ready.clear()
+        self.heartbeat_ack.clear()
         self.heartbeat_interval = None
 
-        self.heartbeat_ack = SelectableEvent()
+    def connect_threaded(self):
+        super().connect_threaded()
+        self.is_ready.wait()
+        return self.connection_thread
 
     def on_connect(self, ws):
-        raw = ws.recv()
-        data = json.loads(raw)
-        if data['op'] != 10:
-            raise RuntimeError(f"Unexpected response.\npayload: {raw}")
-        self.heartbeat_interval = data['d']['heartbeat_interval'] / 1000
+        self.sequence = 0
+        self.heartbeat_ready.wait()
         self.run_heartbeat()
         ws.send(json.dumps({
             "op": 2,
@@ -67,13 +85,45 @@ class DiscordGateway(WebSocketClient):
                 }
             }
         }))
-        print(ws.recv())
-        print(ws.recv())
-        self.close()
+
+    def on_reconnect(self, ws):
+        if not self.ready_data:
+            return self.on_connect(ws)
+        self.heartbeat_ready.wait()
+        self.run_heartbeat()
+        ws.send(json.dumps({
+            "op": 6,
+            "d": {
+                "token": self.token,
+                "session_id": self.ready_data['session_id'],
+                "seq": self.sequence
+            }
+        }))
+
+    def on_message(self, data):
+        if data['op'] == 10:
+            self.heartbeat_interval = data['d']['heartbeat_interval']/1000
+            self.heartbeat_ready.set()
+        elif data['op'] == 9:
+            if not data['d']:
+                self.ready_data = None
+            self.close(reconnect=True)
+        elif data['op'] == 11:
+            self.heartbeat_ack.set()
+        elif data['op'] == 0:
+            _type = data['t']
+            event = data['d']
+            if _type == "READY":
+                self.ready_data = event
+                self.is_ready.set()
+            elif _type == "RESUMED":
+                self.is_ready.set()
 
     def heartbeat(self):
         while True:
             limit = time.perf_counter() + self.heartbeat_interval
+            if not self.sock.connected:
+                return
             self.send({
                 "op": 1,
                 "d": self.sequence if self.sequence else None
@@ -86,4 +136,5 @@ class DiscordGateway(WebSocketClient):
             elif not readable:
                 self.close(status=STATUS_ABNORMAL_CLOSED)
                 return
+            self.heartbeat_ack.clear()
             time.sleep(limit - time.perf_counter())
