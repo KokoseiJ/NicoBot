@@ -18,13 +18,19 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
+from .const import LIB_NAME
+
 import os
 import json
+import logging
 
 from ssl import SSLError
 from select import select
 from threading import Thread, Lock
 from websocket import WebSocket, WebSocketException
+
+
+logger = logging.getLogger(LIB_NAME)
 
 
 class SelectableEvent:
@@ -293,6 +299,7 @@ class WebSocketClient:
         Returns:
             Thread object which heartbeat method is running.
         """
+        logger.debug("Starting heartbeat thread...")
         self.heartbeat_thread = StoppableThread(
             target=self.heartbeat,
             name=f"{self.prefix}heatbeat_thread"
@@ -309,6 +316,7 @@ class WebSocketClient:
             raise RuntimeError("Websocket has not been connected yet!")
         if isinstance(data, dict):
             data = json.dumps(data)
+        logger.debug(f"Sending data {data} via websocket.")
         return self._send(data)
 
     def on_connect(self, ws):

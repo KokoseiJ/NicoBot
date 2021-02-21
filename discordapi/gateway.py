@@ -23,9 +23,14 @@ from .websocket import WebSocketClient, SelectableEvent
 
 import json
 import time
+import logging
+
 from sys import platform
 from select import select
 from websocket import STATUS_ABNORMAL_CLOSED
+
+
+logger = logging.getLogger(LIB_NAME)
 
 
 class DiscordGateway(WebSocketClient):
@@ -44,6 +49,19 @@ class DiscordGateway(WebSocketClient):
                        receieved.
         is_ready: Indicates if Ready data has bee acquired.
     """
+
+    DISPATCH = 0
+    HEARTBEAT = 1
+    IDENTIFY = 2
+    PRESENCE_UPDATE = 3
+    VOICE_STATE_UPDATE = 4
+    RESUME = 6
+    RECONNECT = 7
+    REQUEST_GUILD_MEMBERS = 8
+    INVALID_SESSION = 9
+    HELLO = 10
+    HEARTBEAT_ACK = 11
+
     def __init__(self, token, intents=INTENTS_DEFAULT):
         super().__init__(GATEWAY_URL)
         self.token = token
@@ -73,8 +91,9 @@ class DiscordGateway(WebSocketClient):
         self.sequence = 0
         self.heartbeat_ready.wait()
         self.run_heartbeat()
+        logger.debug("Sending IDENTIFY event...")
         ws.send(json.dumps({
-            "op": 2,
+            "op": self.IDENTIFY,
             "d": {
                 "token": self.token,
                 "intents": self.intents,
@@ -88,11 +107,14 @@ class DiscordGateway(WebSocketClient):
 
     def on_reconnect(self, ws):
         if not self.ready_data:
+            logging.debug("Connection was not RESUMEable, reconnecting...")
             return self.on_connect(ws)
         self.heartbeat_ready.wait()
         self.run_heartbeat()
+        logger.debug("Sending RESUME event with session id "
+                     f"{self.ready_data['session_id']}...")
         ws.send(json.dumps({
-            "op": 6,
+            "op": self.RESUME,
             "d": {
                 "token": self.token,
                 "session_id": self.ready_data['session_id'],
@@ -101,40 +123,58 @@ class DiscordGateway(WebSocketClient):
         }))
 
     def on_message(self, data):
-        if data['op'] == 10:
-            self.heartbeat_interval = data['d']['heartbeat_interval']/1000
-            self.heartbeat_ready.set()
-        elif data['op'] == 9:
-            if not data['d']:
-                self.ready_data = None
-            self.close(reconnect=True)
-        elif data['op'] == 11:
-            self.heartbeat_ack.set()
-        elif data['op'] == 0:
-            _type = data['t']
-            event = data['d']
+        logger.debug(f"Client received data {data}")
+        if data['s'] is not None:
+            self.sequence = data['s']
+        op = data['op']
+        _type = data['t']
+        data = data['d']
+
+        if op == self.DISPATCH:
             if _type == "READY":
-                self.ready_data = event
+                self.ready_data = data
                 self.is_ready.set()
             elif _type == "RESUMED":
                 self.is_ready.set()
+        else:
+            if op == self.RECONNECT:
+                self.close(reconnect=True)
+            elif op == self.HELLO:
+                self.heartbeat_interval = data['heartbeat_interval']/1000
+                self.heartbeat_ready.set()
+            elif op == self.INVALID_SESSION:
+                if not data:
+                    self.ready_data = None
+                self.close(reconnect=True)
+            elif op == self.HEARTBEAT_ACK:
+                self.heartbeat_ack.set()
 
     def heartbeat(self):
         while True:
             limit = time.perf_counter() + self.heartbeat_interval
             if not self.sock.connected:
+                logger.debug("Socket disconnected, exiting heartbeat...")
                 return
+            seq = self.sequence if self.sequence else None
+            logger.debug(f"Sending heartbeat with seq {seq}...")
             self.send({
-                "op": 1,
-                "d": self.sequence if self.sequence else None
+                "op": self.HEARTBEAT,
+                "d": seq
             })
 
             rl = (self.heartbeat_thread._is_stopped, self.heartbeat_ack)
             readable, _, _ = select(rl, (), (), self.heartbeat_interval)
             if self.heartbeat_thread._is_stopped in readable:
+                logger.debug("Heartbeat stop requested, exiting heartbeat...")
+                return
+            elif self.heartbeat_ack not in readable:
+                logger.debug("Didn't receive Heartbeat ACK within "
+                             f"{self.heartbeat_interval} seconds. "
+                             "Reconnecting socket...")
+                self.close(reconnect=True, status=STATUS_ABNORMAL_CLOSED)
                 return
             elif not readable:
-                self.close(status=STATUS_ABNORMAL_CLOSED)
+                logger.debug("Socket disconnected, exiting heartbeat...")
                 return
             self.heartbeat_ack.clear()
             time.sleep(limit - time.perf_counter())
