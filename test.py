@@ -1,3 +1,4 @@
+from discordapi.handler import Handler
 from discordapi.gateway import DiscordGateway
 
 import sys
@@ -9,11 +10,23 @@ logger = logging.getLogger("NicoBot")
 logger.setLevel("DEBUG")
 
 handler = StreamHandler(sys.stdout)
-handler.setLevel("DEBUG")
+handler.setLevel("INFO")
 
-fmt = logging.Formatter("[%(levelname)s]|%(asctime)s|%(threadName)s|%(funcName)s|%(message)s")
+fmt = logging.Formatter("[%(levelname)s]|%(asctime)s|%(threadName)s|"
+                        "%(funcName)s|: %(message)s")
 handler.setFormatter(fmt)
 logger.addHandler(handler)
 
-gw = DiscordGateway(open("token").read())
-gw.connect()
+
+class TestHandler(Handler):
+    def on_message_create(self, event):
+        logger.info(f"{event['author']['username']}#"
+                    f"{event['author']['discriminator']}: {event['content']}")
+
+
+gw = DiscordGateway(open("token").read(), TestHandler)
+
+try:
+    gw.connect()
+except KeyboardInterrupt:
+    gw.close()

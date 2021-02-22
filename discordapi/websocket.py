@@ -18,6 +18,8 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
+__all__ = ["WebSocketClient"]
+
 from .const import LIB_NAME
 
 import os
@@ -28,7 +30,6 @@ from ssl import SSLError
 from select import select
 from threading import Thread, Lock
 from websocket import WebSocket, WebSocketException
-
 
 logger = logging.getLogger(LIB_NAME)
 
@@ -161,9 +162,9 @@ class WebSocketClient:
             handler:
                 Handler which will handle events.
         """
-        if not sock.connected:
-            return
         while True:
+            if not sock.connected:
+                return
             readable, _, _ = select((sock.sock,), (), ())
             if readable:
                 try:

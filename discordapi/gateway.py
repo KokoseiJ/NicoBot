@@ -18,8 +18,11 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
-from .const import INTENTS_DEFAULT, GATEWAY_URL, LIB_NAME
+__all__ = ["DiscordGateway"]
+
 from .websocket import WebSocketClient, SelectableEvent
+from .const import INTENTS_DEFAULT, GATEWAY_URL, LIB_NAME
+from .handler import Handler
 
 import json
 import time
@@ -98,6 +101,16 @@ class DiscordGateway(WebSocketClient):
         super().connect_threaded()
         self.is_ready.wait()
         return self.connection_thread
+
+    def set_handler(self, handler):
+        if isinstance(handler, Handler):
+            self.handler = handler
+        elif issubclass(handler, Handler):
+            self.handler = handler()
+        else:
+            raise RuntimeError("Inappropriate Handler object.")
+
+        self.handler._set_client(self)
 
     def on_connect(self, ws):
         self.sequence = 0
