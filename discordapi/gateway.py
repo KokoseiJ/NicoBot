@@ -38,11 +38,15 @@ class DiscordGateway(WebSocketClient):
     Client used to connect to Discord main gateway.
 
     Attributes:
+        handler: Event handler object used to handle event dispatch.
         token: Discord token to be used when connecting.
         intents: Intents value to be sent. default value is 32509.
         heartbeat_interval: Heartbeat interval received from the server.
-        ready_data: Ready data received from the server.
         sequence: sequence number received from the server.
+        user: User object representing the bot.
+        guilds: List of guild objects the bot is in.
+        session_id: ID of this session
+        application: Application object representing the bot.
         heartbeat_ready: Event that indicates if heartbeat_interval has been
                          received.
         heartbeat_ack: Event that indicates if the heartbeat ACK has been
@@ -62,18 +66,26 @@ class DiscordGateway(WebSocketClient):
     HELLO = 10
     HEARTBEAT_ACK = 11
 
-    def __init__(self, token, intents=INTENTS_DEFAULT):
+    def __init__(self, token, handler, intents=INTENTS_DEFAULT):
         super().__init__(GATEWAY_URL)
+        self.handler = None
         self.token = token
         self.intents = intents
 
         self.heartbeat_interval = None
-        self.ready_data = None
         self.sequence = 0
+
+        self.user = None
+        self.guilds = None
+        self.session_id = None
+        self.application = None
 
         self.heartbeat_ready = SelectableEvent()
         self.heartbeat_ack = SelectableEvent()
         self.is_ready = SelectableEvent()
+
+        if handler is not None:
+            self.set_handler(handler)
 
     def clean(self):
         super().clean()
@@ -106,18 +118,18 @@ class DiscordGateway(WebSocketClient):
         }))
 
     def on_reconnect(self, ws):
-        if not self.ready_data:
+        if not self.session_id:
             logging.debug("Connection was not RESUMEable, reconnecting...")
             return self.on_connect(ws)
         self.heartbeat_ready.wait()
         self.run_heartbeat()
         logger.debug("Sending RESUME event with session id "
-                     f"{self.ready_data['session_id']}...")
+                     f"{self.session_id}...")
         ws.send(json.dumps({
             "op": self.RESUME,
             "d": {
                 "token": self.token,
-                "session_id": self.ready_data['session_id'],
+                "session_id": self.session_id,
                 "seq": self.sequence
             }
         }))
@@ -132,20 +144,30 @@ class DiscordGateway(WebSocketClient):
 
         if op == self.DISPATCH:
             if _type == "READY":
-                self.ready_data = data
+                # self.ready_data = data
+                self.user = data['user']
+                self.guilds = data['guilds']
+                self.session_id = data['session_id']
+                self.application = data['application']
+
                 self.is_ready.set()
             elif _type == "RESUMED":
                 self.is_ready.set()
+
+            self.handler.dispatch(_type, data)
         else:
             if op == self.RECONNECT:
                 self.close(reconnect=True)
+
             elif op == self.HELLO:
                 self.heartbeat_interval = data['heartbeat_interval']/1000
                 self.heartbeat_ready.set()
+
             elif op == self.INVALID_SESSION:
                 if not data:
-                    self.ready_data = None
+                    self.session_id = None
                 self.close(reconnect=True)
+
             elif op == self.HEARTBEAT_ACK:
                 self.heartbeat_ack.set()
 
