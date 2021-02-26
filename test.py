@@ -27,7 +27,8 @@ class TestHandler(Handler):
                 try:
                     data = eval(event['content'].split(" ", 1)[-1])
                     data = str(data)
-                except:
+                except Exception as e:
+                    logger.error("Error!", exc_info=e)
                     data = "Error!"
                 print(data)
                 data = self.client._request(

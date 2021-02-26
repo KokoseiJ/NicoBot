@@ -27,6 +27,7 @@ from .handler import Handler
 import json
 import time
 import logging
+import threading
 
 from sys import platform
 from select import select
@@ -186,6 +187,7 @@ class DiscordGateway(WebSocketClient):
 
     def heartbeat(self):
         def wait_while_checking_events(timeout):
+            timeout = int(timeout)
             rl = (self.heartbeat_thread.is_stopped,
                   self.heartbeat_ack,
                   self.kill_event)
@@ -194,10 +196,8 @@ class DiscordGateway(WebSocketClient):
 
             if self.heartbeat_thread.is_stopped in readable:
                 return 1
-
             elif self.heartbeat_ack not in readable:
                 return 2
-
             elif not readable:
                 return 3
             return False
@@ -216,7 +216,8 @@ class DiscordGateway(WebSocketClient):
             op = wait_while_checking_events(self.heartbeat_interval)
             if op:
                 if op == 1:
-                    logger.debug("Heartbeat stop requested, exiting heartbeat...")
+                    logger.debug(
+                        "Heartbeat stop requested, exiting heartbeat...")
                 elif op == 2:
                     logger.debug("Didn't receive Heartbeat ACK within "
                                  f"{self.heartbeat_interval} seconds. "
@@ -227,7 +228,8 @@ class DiscordGateway(WebSocketClient):
                 return
             self.heartbeat_ack.clear()
             op = wait_while_checking_events(limit - time.perf_counter())
-            if op:
+            print(op)
+            if op and op != 2:
                 if op == 1:
                     logger.debug("Heartbeat stop requested, exiting heartbeat...")
                 elif op == 3:

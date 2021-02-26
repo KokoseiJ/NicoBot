@@ -25,6 +25,7 @@ from .const import LIB_NAME
 import os
 import json
 import logging
+import threading
 
 from ssl import SSLError
 from select import select
@@ -32,6 +33,14 @@ from threading import Thread, Lock
 from websocket import WebSocket, WebSocketException
 
 logger = logging.getLogger(LIB_NAME)
+
+
+def excepthook(args):
+    logger.debug(type(args))
+    logger.error("An error has been occured!", exc_info=args)
+
+
+threading.excepthook = excepthook
 
 
 class SelectableEvent:
@@ -191,8 +200,12 @@ class WebSocketClient:
         Returns:
             Length of sent bytes.
         """
-        with self.send_lock:
-            rtnval = self.sock.send(data)
+        try:
+            with self.send_lock:
+                rtnval = self.sock.send(data)
+        except SSLError as e:
+            logger.error("SSLError!", exc_info=e)
+            return self._send(data)
         return rtnval
 
     def clean(self):
