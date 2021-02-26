@@ -92,6 +92,9 @@ class DiscordGateway(WebSocketClient):
             self.set_handler(handler)
 
     def clean(self):
+        """
+        Cleans flag status.
+        """
         super().clean()
         self.is_ready.clear()
         self.heartbeat_ready.clear()
@@ -99,11 +102,31 @@ class DiscordGateway(WebSocketClient):
         self.heartbeat_interval = None
 
     def connect_threaded(self):
+        """
+        Wait until client gets ready so user could work on it right away.
+        """
         super().connect_threaded()
         self.is_ready.wait()
         return self.connection_thread
 
     def set_handler(self, handler):
+        """
+        Sets the event handler.
+
+        Args:
+            handler:
+                Handler object to be used.
+                It could be either subclass of `handler.Handler` or instance of
+                it. If it's neither of them, RuntimeError will be raised.
+                If it is a subclass, It will create an instance. else, provided
+                instance will be used as is. regardless, `_set_client` method
+                will be called.
+
+        Raises:
+            RuntimeError:
+                Gets raised when handler is not a subclass or an instance of
+                `handler.Handler` class.
+        """
         if isinstance(handler, Handler):
             self.handler = handler
         elif issubclass(handler, Handler):
@@ -114,6 +137,11 @@ class DiscordGateway(WebSocketClient):
         self.handler._set_client(self)
 
     def on_connect(self, ws):
+        """
+        Identifying sequence when first connecting to the gateway.
+        This function resets `self.sequence` value to 0, starts the heartbeat
+        and sends IDENTIFY event.
+        """
         self.sequence = 0
         self.heartbeat_ready.wait()
         self.run_heartbeat()
@@ -132,7 +160,12 @@ class DiscordGateway(WebSocketClient):
         }))
 
     def on_reconnect(self, ws):
-        if not self.session_id:
+        """
+        Resuming sequence when attempting to reconnect after connection lose.
+        This function calls `self.on_connect` if `self.session_id` is None,
+        Starts the heartbeat and sends RESUME event.
+        """
+        if self.session_id is None:
             logging.debug("Connection was not RESUMEable, reconnecting...")
             return self.on_connect(ws)
         self.heartbeat_ready.wait()
@@ -149,6 +182,10 @@ class DiscordGateway(WebSocketClient):
         }))
 
     def on_message(self, data):
+        """
+        This function handles Gateway dispatched events, before it gets handed
+        to `self.handler.dispatch` function.
+        """
         logger.debug(f"Client received data {data}")
         if data['s'] is not None:
             self.sequence = data['s']
@@ -186,7 +223,30 @@ class DiscordGateway(WebSocketClient):
                 self.heartbeat_ack.set()
 
     def heartbeat(self):
+        """
+        This function runs the heartbeat event.
+        It will stop when either `self.heartbeat_thread.is_stopped` event gets
+        set or `self.kill_event` gets set.
+        """
         def wait_while_checking_events(timeout, ack_check=True):
+            """
+            Waits until either of flags is set or it reaches timeout.
+            It uses select to wait for 3 events simultaniously.
+            This function also takes the appopriate action for abnormal cases,
+            such as logging or closing the sockets.
+
+            Args:
+                timeout: Time to wait until it stops waiting and returns.
+                ack_check: Determines if it should check if client received
+                           Heartbeat ACK event or not. Default value is True.
+
+            Returns:
+                False if nothing is wrong.
+                If `self.heartbeat_thread.stop()` has been called,
+                It returns 1.
+                If ack_check is true and self.heartbeat_ack was not set,
+                It returns 2.
+            """
             timeout = int(timeout)
             rl = (self.heartbeat_thread.is_stopped,
                   self.heartbeat_ack,
@@ -203,9 +263,6 @@ class DiscordGateway(WebSocketClient):
                              "Reconnecting socket...")
                 self.close(reconnect=True, status=STATUS_ABNORMAL_CLOSED)
                 return 2
-            elif not readable:
-                logger.debug("Socket disconnected, exiting heartbeat...")
-                return 3
 
             return False
 

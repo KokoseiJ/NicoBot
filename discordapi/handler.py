@@ -24,13 +24,33 @@ from queue import Queue
 
 
 class Handler:
+    """
+    Base Handler class.
+    Subclass of this has to be used to handle events dispatched by Discord
+    gateway.
+
+    Attributes:
+        client: The client which is using this handler right now.
+    """
     def __init__(self):
         self.client = None
 
     def _set_client(self, client):
+        """
+        Setter for DiscordGateway Class to set `self.client` attribute value.
+        It gets called whenever you assign this handler to DiscordGateway,
+        DiscordClient or any other subclasses.
+        """
         self.client = client
 
     def dispatch(self, type, event):
+        """
+        Dispatches the event to the appropriate function.
+        The default behavior is to find the method in this class which has a
+        name of "on_{event_type_lowercase}", call the method with `event` as
+        its only argument, and run `on_error` function if an exception occurs
+        and the function is present.
+        """
         funcname = f"on_{type.lower()}"
         if not hasattr(self, funcname):
             return
@@ -42,13 +62,30 @@ class Handler:
 
 
 class IterHandler(Handler):
+    """
+    Iterable handler which allows user to easily access dispatched events using
+    iterator. This was intended to be used inside interactive shell, but you
+    can use this handler to write a simple script without writing functions.
+
+    Attributes:
+        queue: A queue which will store dispatched events.
+    """
     def __init__(self):
         super().__init__()
         self.queue = Queue()
 
     def dispatch(self, type, event):
+        """
+        Puts the dispatched event to `self.queue`. The format is (type, event).
+        """
         self.queue.put((type, event))
 
     def iter(self):
+        """
+        Yields the dispatched event until the client disconnects.
+
+        Returns:
+            a tuple which has a following format: (type, event).
+        """
         while not self.client.kill_event.is_set():
             yield self.queue.get()

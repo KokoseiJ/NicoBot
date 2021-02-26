@@ -19,11 +19,14 @@ logger.addHandler(handler)
 
 
 class TestHandler(Handler):
+    """
+    Simple and dirty code to test the handler system... Nothing to see here!
+    """
     def on_message_create(self, event):
         logger.info(f"{event['author']['username']}#"
                     f"{event['author']['discriminator']}: {event['content']}")
         if event['content'].startswith("!eval"):
-            if event['author']['username'] == "KokoseiJ":
+            if event['author']['id'] == "378898017249525771":
                 try:
                     data = eval(event['content'].split(" ", 1)[-1])
                     data = str(data)

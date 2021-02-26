@@ -28,6 +28,18 @@ from urllib.request import Request, urlopen
 
 
 class DiscordClient(DiscordGateway):
+    """
+    Client which implements HTTP API requests. In most circumstances, You will
+    want to use this class instead of DiscordGateway.
+
+    Attributes:
+        headers:
+            indicates default headers to be sent when it sends an API request.
+            This includes User-Agent, and Authorization headers.
+            User-Agent has a value of f"{LIB_NAME} ({LIB_URL}, {LIB_VER})", as
+            the official reference states. Values are from `discordapi.const`
+            module.
+    """
     def __init__(self, token, handler, intents=INTENTS_DEFAULT):
         super().__init__(token, handler, intents)
         self.headers = {
@@ -37,6 +49,38 @@ class DiscordClient(DiscordGateway):
 
     def _request(self, endpoint, data=None, method=None, content_type=None,
                  headers={}):
+        """
+        Sends a request to API.
+
+        Args:
+            endpoint:
+                An endpoint to send a request to.
+                It shouldn't have a `/` in front of it. otherwise It would
+                replace the entire URL path, resulting in an error.
+            data:
+                A data to be sent. It could be either None, dict, str or any
+                other formats that urllib.request.Request accepts.
+            method:
+                A method to be used while sending a request.
+                Default value is "GET", if data is not specified. if data has
+                been specified, It gets set to "POST". to override this, you'll
+                have to specify the method you'd like to use when calling the
+                function.
+            content_type:
+                A content_type to be sent.
+                Default value is "application/json" if the type of `data` is
+                `dict`. else, It gets set to "text/plain." You can specify the
+                value you'd like to use to override this, too.
+            headers:
+                Headers to be sent if you need to specify additional headers.
+                Beware that "Content-Type", and other values specified in
+                `self.headers` will be overrided.
+
+        Returns:
+            a tuple with a format of `(data, status, res)`, where `data` is
+            `dict`, `status` is `int` and `res` is either `HTTPResponse` or
+            `HTTPError` object depending on what was the status code.
+        """
         if method is None:
             method = "POST" if data else "GET"
         if content_type is None:
@@ -48,7 +92,6 @@ class DiscordClient(DiscordGateway):
             data = json.dumps(data)
         if isinstance(data, str):
             data = data.encode()
-        print(data)
         headers.update({"Content-Type": content_type})
         headers.update(self.headers)
 
