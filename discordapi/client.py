@@ -18,6 +18,8 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
+__all__ = ["DiscordClient"]
+
 from .gateway import DiscordGateway
 from .const import INTENTS_DEFAULT, LIB_NAME, LIB_URL, LIB_VER, API_URL
 
