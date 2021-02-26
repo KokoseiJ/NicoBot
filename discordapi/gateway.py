@@ -69,8 +69,8 @@ class DiscordGateway(WebSocketClient):
     HELLO = 10
     HEARTBEAT_ACK = 11
 
-    def __init__(self, token, handler, intents=INTENTS_DEFAULT):
-        super().__init__(GATEWAY_URL)
+    def __init__(self, token, handler, intents=INTENTS_DEFAULT, prefix="main"):
+        super().__init__(url=GATEWAY_URL, prefix=prefix)
         self.handler = None
         self.token = token
         self.intents = intents
@@ -185,6 +185,23 @@ class DiscordGateway(WebSocketClient):
                 self.heartbeat_ack.set()
 
     def heartbeat(self):
+        def wait_while_checking_events(timeout):
+            rl = (self.heartbeat_thread.is_stopped,
+                  self.heartbeat_ack,
+                  self.kill_event)
+
+            readable, _, _ = select(rl, (), (), timeout)
+
+            if self.heartbeat_thread.is_stopped in readable:
+                return 1
+
+            elif self.heartbeat_ack not in readable:
+                return 2
+
+            elif not readable:
+                return 3
+            return False
+
         while True:
             limit = time.perf_counter() + self.heartbeat_interval
             if not self.sock.connected:
@@ -196,20 +213,23 @@ class DiscordGateway(WebSocketClient):
                 "op": self.HEARTBEAT,
                 "d": seq
             })
-
-            rl = (self.heartbeat_thread._is_stopped, self.heartbeat_ack)
-            readable, _, _ = select(rl, (), (), self.heartbeat_interval)
-            if self.heartbeat_thread._is_stopped in readable:
-                logger.debug("Heartbeat stop requested, exiting heartbeat...")
-                return
-            elif self.heartbeat_ack not in readable:
-                logger.debug("Didn't receive Heartbeat ACK within "
-                             f"{self.heartbeat_interval} seconds. "
-                             "Reconnecting socket...")
-                self.close(reconnect=True, status=STATUS_ABNORMAL_CLOSED)
-                return
-            elif not readable:
-                logger.debug("Socket disconnected, exiting heartbeat...")
+            op = wait_while_checking_events(self.heartbeat_interval)
+            if op:
+                if op == 1:
+                    logger.debug("Heartbeat stop requested, exiting heartbeat...")
+                elif op == 2:
+                    logger.debug("Didn't receive Heartbeat ACK within "
+                                 f"{self.heartbeat_interval} seconds. "
+                                 "Reconnecting socket...")
+                    self.close(reconnect=True, status=STATUS_ABNORMAL_CLOSED)
+                elif op == 3:
+                    logger.debug("Socket disconnected, exiting heartbeat...")
                 return
             self.heartbeat_ack.clear()
-            time.sleep(limit - time.perf_counter())
+            op = wait_while_checking_events(limit - time.perf_counter())
+            if op:
+                if op == 1:
+                    logger.debug("Heartbeat stop requested, exiting heartbeat...")
+                elif op == 3:
+                    logger.debug("Socket disconnected, exiting heartbeat...")
+                return

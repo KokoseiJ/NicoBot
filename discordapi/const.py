@@ -25,4 +25,7 @@ LIB_VER = "alpha1"
 GATEWAY_VER = 8
 GATEWAY_URL = f"wss://gateway.discord.gg/?v={GATEWAY_VER}&encoding=json"
 
+API_VER = 8
+API_URL = f"https://discord.com/api/v{API_VER}/"
+
 INTENTS_DEFAULT = 32509

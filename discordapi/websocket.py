@@ -102,19 +102,19 @@ class StoppableThread(Thread):
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._is_stopped = SelectableEvent()
+        self.is_stopped = SelectableEvent()
 
     def stop(self):
         """
         Stops the thread.
         """
-        self._is_stopped.set()
+        self.is_stopped.set()
 
     def stopped(self):
         """
         Checks if _is_stopped flag is set.
         """
-        return self._is_stopped.is_set()
+        return self.is_stopped.is_set()
 
 
 class WebSocketClient:
@@ -164,15 +164,15 @@ class WebSocketClient:
         """
         while True:
             if not sock.connected:
-                return
+                break
             readable, _, _ = select((sock.sock,), (), ())
             if readable:
                 try:
                     data = sock.recv()
                     if not data:
-                        return
+                        break
                 except WebSocketException:
-                    return
+                    break
                 try:
                     data = json.loads(data)
                     handler(data)
@@ -191,13 +191,8 @@ class WebSocketClient:
         Returns:
             Length of sent bytes.
         """
-        try:
-            self.send_lock.acquire()
+        with self.send_lock:
             rtnval = self.sock.send(data)
-            self.send_lock.release()
-        except SSLError:
-            self.send_lock.release()
-            self._send(data)
         return rtnval
 
     def clean(self):
@@ -225,6 +220,7 @@ class WebSocketClient:
         if self.sock is None:
             raise RuntimeError("Websocket has not been connected yet!")
         self.sock.close(*args, **kwargs)
+        logger.debug("Closing websocket...")
         reconn = kwargs.get("reconnect", False)
         if not reconn:
             self.kill_event.set()
@@ -251,7 +247,9 @@ class WebSocketClient:
             else:
                 self.on_reconnect(self.sock)
             self.dispatcher_thread.join()
+            logger.debug("Websocket has been disconnected!")
             self.clean()
+        logger.debug("kill_event set, killing threads...")
 
     def connect_threaded(self):
         """
