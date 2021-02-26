@@ -37,6 +37,14 @@ from websocket import STATUS_ABNORMAL_CLOSED
 logger = logging.getLogger(LIB_NAME)
 
 
+def excepthook(args):
+    logger.debug(type(args))
+    logger.error("An error has been occured!", exc_info=args)
+
+
+threading.excepthook = excepthook
+
+
 class DiscordGateway(WebSocketClient):
     """
     Client used to connect to Discord main gateway.
