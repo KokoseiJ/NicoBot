@@ -45,6 +45,19 @@ class TestHandler(Handler):
                         }
                 )
                 print(data)
+        elif event['content'].startswith("!echo "):
+            if event['author']['id'] == "378898017249525771":
+                meow = event['content'].split(" ", 1)[-1]
+                data = self.client._request(
+                    f"channels/{event['channel_id']}/messages",
+                    {
+                        "content": meow,
+                        "tts": False,
+                        "embed": None,
+                        "allowed_mentions": None
+                        }
+                )
+                print(data)
 
 
 gw = DiscordClient(open("token").read(), TestHandler)

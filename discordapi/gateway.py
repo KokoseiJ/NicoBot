@@ -237,24 +237,6 @@ class DiscordGateway(WebSocketClient):
         set or `self.kill_event` gets set.
         """
         def wait_while_checking_events(timeout, ack_check=True):
-            """
-            Waits until either of flags is set or it reaches timeout.
-            It uses select to wait for 3 events simultaniously.
-            This function also takes the appopriate action for abnormal cases,
-            such as logging or closing the sockets.
-
-            Args:
-                timeout: Time to wait until it stops waiting and returns.
-                ack_check: Determines if it should check if client received
-                           Heartbeat ACK event or not. Default value is True.
-
-            Returns:
-                False if nothing is wrong.
-                If `self.heartbeat_thread.stop()` has been called,
-                It returns 1.
-                If ack_check is true and self.heartbeat_ack was not set,
-                It returns 2.
-            """
             timeout = int(timeout)
             rl = (self.heartbeat_thread.is_stopped,
                   self.heartbeat_ack,

@@ -20,7 +20,9 @@
 
 __all__ = ["DiscordClient"]
 
+from .channel import Channel
 from .gateway import DiscordGateway
+from .exceptions import DiscordHTTPError
 from .const import INTENTS_DEFAULT, LIB_NAME, LIB_URL, LIB_VER, API_URL
 
 import json
@@ -117,3 +119,10 @@ class DiscordClient(DiscordGateway):
             rtndata = None
 
         return rtndata, status, res
+
+    def get_channel(self, id):
+        data, status, res = self._request(f"channels/{id}")
+        if status == 200:
+            return Channel(data)
+        else:
+            raise DiscordHTTPError(data, status, res)
