@@ -1,10 +1,13 @@
+from .util import SelectableEvent
 from .websocket import WebSocketThread
 from .const import LIB_NAME, GATEWAY_URL
-from .util import SelectableEvent
 
 import sys
+import time
+import random
 import logging
 from select import select
+from websocket import STATUS_ABNORMAL_CLOSED
 
 logger = logging.getLogger(LIB_NAME)
 
@@ -24,13 +27,13 @@ class DiscordGateway(WebSocketThread):
 
     def __init__(self, token, handler, intents=32509, name="main"):
         # 32509 is an intent value that omits flags that require verification
-        super(WebSocketThread, self).__init__(
+        super(DiscordGateway, self).__init__(
             GATEWAY_URL,
             self._dispatcher,
             name
         )
         self.token = token
-        self.handler = handler
+        self.event_handler = handler
         self.intents = intents
 
         self.seq = 0
@@ -39,13 +42,18 @@ class DiscordGateway(WebSocketThread):
         self.heartbeat_ack = SelectableEvent()
         self.is_reconnect = False
 
+        self.user = None
+        self.guilds = None
+        self.session_id = None
+        self.application = None
+
     def init_connection(self):
         self.is_heartbeat_ready.wait()
         if not self.is_reconnect:
             self.send_identify()
             self.is_reconnect = True
         else:
-            pass
+            self.send_resume()
 
     def send_identify(self):
         data = self._get_payload(
@@ -60,22 +68,42 @@ class DiscordGateway(WebSocketThread):
         )
         self.send(data)
 
+    def send_resume(self):
+        data = self._get_payload(
+            self.RESUME,
+            token=self.token,
+            session_id=self.session_id,
+            seq=self.seq
+        )
+        self.send(data)
+
     def do_heartbeat(self):
+        self.is_heartbeat_ready.wait()
+
         stop_flag = self.heartbeat_thread.stop_flag
         wait_time = self.heartbeat_interval
-        rl, _, _ = select((self.is_heartbeat_ready, stop_flag), (), ())
+        select((self.is_heartbeat_ready, stop_flag), (), ())
 
-        while not stop_flag.is_set():
+        while not stop_flag.is_set() and self.is_heartbeat_ready.is_set():
+            logger.debug("Sending heartbeat...")
+            sendtime = time.time()
             self.send_heartbeat()
 
+            deadline = sendtime + wait_time
             selectlist = (stop_flag, self.heartbeat_ack)
-            rl, _, _ = select(selectlist, (), (), wait_time)
+            rl, _, _ = select(selectlist, (), (), deadline - time.time())
 
             if stop_flag in rl:
-                return
+                break
             elif self.heartbeat_ack not in rl:
                 logger.error("No HEARTBEAT_ACK received within time!")
-                self.ws.close()
+                self.ws.close(STATUS_ABNORMAL_CLOSED)
+
+            rl, _, _ = select((stop_flag,), (), (), deadline - time.time())
+            if stop_flag in rl:
+                break
+
+        logger.debug("Terminating heartbeat thread...")
 
     def send_heartbeat(self):
         data = self._get_payload(
@@ -84,7 +112,7 @@ class DiscordGateway(WebSocketThread):
         )
         self.send(data)
 
-    def _get_payload(op, d=None, **data):
+    def _get_payload(self, op, d=None, **data):
         return {
             "op": op,
             "d": data if d is None else d
@@ -109,11 +137,17 @@ class DiscordGateway(WebSocketThread):
                 self.ready_to_run.set()
             elif event == "RESUMED":
                 self.ready_to_run.set()
-            self.handler.handle(event, payload)
+            self.event_handler(event, payload)
+
+        elif op == self.INVALID_SESSION:
+            self.is_reconnect = payload
+            time.sleep(random.randint(1, 5))
+            self.sock.close()
 
         elif op == self.HELLO:
             self.heartbeat_interval = payload['heartbeat_interval'] / 1000
             self.is_heartbeat_ready.set()
 
         elif op == self.HEARTBEAT_ACK:
+            logging.debug("Received Heartbeat ACK!")
             self.heartbeat_ack.set()

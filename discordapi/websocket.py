@@ -5,7 +5,7 @@ import json
 import select
 import logging
 from ssl import SSLError
-from websocket import WebSocket
+from websocket import WebSocket, WebSocketConnectionClosedException
 
 
 logger = logging.getLogger(LIB_NAME)
@@ -13,7 +13,7 @@ logger = logging.getLogger(LIB_NAME)
 
 class WebSocketThread(StoppableThread):
     def __init__(self, url, handler, name):
-        super(StoppableThread, self).__init__()
+        super(WebSocketThread, self).__init__()
 
         self.url = url
         self.sock = None
@@ -32,6 +32,7 @@ class WebSocketThread(StoppableThread):
         self.run_heartbeat()
 
         while not self.stop_flag.is_set():
+            logger.debug("Connecting to Gateway...")
             try:
                 self.sock.connect(self.url)
             except Exception:
@@ -41,15 +42,20 @@ class WebSocketThread(StoppableThread):
 
             self._event_loop()
 
+            logger.warning("Gateway connection is lost!")
+
             self.ready_to_run.clear()
             try:
                 self.cleanup()
             except Exception:
                 logger.exception("Exception occured while cleaning up.")
 
+        logger.debug("Stopping thread...")
+
         self.heartbeat_thread.stop()
 
     def run_heartbeat(self):
+        logger.debug("Starting heartbeat thread.")
         self.heartbeat_thread = StoppableThread(
             target=self.do_heartbeat,
             name=f"{self.name}_heartbeat"
@@ -57,6 +63,7 @@ class WebSocketThread(StoppableThread):
         self.heartbeat_thread.start()
 
     def run_init_connection(self):
+        logger.debug("Starting init thread.")
         self.init_thread = StoppableThread(
             target=self.init_connection,
             name=f"{self.name}_init"
@@ -64,17 +71,19 @@ class WebSocketThread(StoppableThread):
         self.init_thread.start()
 
     def _event_loop(self):
-        while self.sock.is_connected():
+        while self.sock.connected:
             rl, _, _ = select.select((self.sock.sock,), (), ())
             if self.sock.sock not in rl:
                 continue
             try:
                 data = self.sock.recv()
-                if data is None:
-                    break
+                if not data:
+                    continue
                 parsed_data = json.loads(data)
             except json.JSONDecodeError:
                 logger.error(f"Gateway returned invalid JSON data:\n{data}")
+            except WebSocketConnectionClosedException:
+                break
             except Exception:
                 logger.exception(
                     "Exception occured while receiving data from the gateway.")
@@ -98,9 +107,9 @@ class WebSocketThread(StoppableThread):
     def is_ready(self):
         return self.ready_to_run.is_set()
 
-    def stop(self):
-        super(StoppableThread, self).stop()
-        self.sock.close()
+    def stop(self, status=1000):
+        super(WebSocketThread, self).stop()
+        self.sock.close(status=status)
 
     def init_connection(self):
         raise NotImplementedError()

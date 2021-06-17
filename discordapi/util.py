@@ -5,8 +5,8 @@ from threading import Thread
 
 class StoppableThread(Thread):
     def __init__(self, *args, **kwargs):
+        super(StoppableThread, self).__init__(*args, **kwargs)
         self.stop_flag = SelectableEvent()
-        super(Thread, self).__init__(*args, **kwargs)
 
     def stop(self):
         self.stop_flag.set()
