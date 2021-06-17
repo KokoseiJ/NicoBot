@@ -149,5 +149,5 @@ class DiscordGateway(WebSocketThread):
             self.is_heartbeat_ready.set()
 
         elif op == self.HEARTBEAT_ACK:
-            logging.debug("Received Heartbeat ACK!")
+            logger.debug("Received Heartbeat ACK!")
             self.heartbeat_ack.set()
