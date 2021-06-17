@@ -64,6 +64,12 @@ class DiscordGateway(WebSocketThread):
                 "$os": sys.platform,
                 "$browser": LIB_NAME,
                 "$device": LIB_NAME
+            },
+            presence={
+                "activities": [{
+                    "name": "Henceforth",
+                    "type": 2
+                }]
             }
         )
         self.send(data)

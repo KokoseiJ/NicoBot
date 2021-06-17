@@ -30,12 +30,13 @@ gw = DiscordGateway(
 gw.start()
 
 
-try:
-    gw.join()
-except KeyboardInterrupt:
-    print("OUCH THAT HURTS")
-finally:
-    gw.stop()
-    gw.join()
+if __name__ == "__main__":
+    try:
+        gw.join()
+    except KeyboardInterrupt:
+        print("OUCH THAT HURTS")
+    finally:
+        gw.stop()
+        gw.join()
 
-print("exiting")
+    print("exiting")
