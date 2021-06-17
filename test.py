@@ -1,7 +1,9 @@
 from discordapi.const import LIB_NAME
 from discordapi.gateway import DiscordGateway
 
+import sys
 import logging
+from logging import StreamHandler
 
 
 def dummy_handler(*args, **kwargs):
@@ -10,16 +12,15 @@ def dummy_handler(*args, **kwargs):
 
 
 logger = logging.getLogger(LIB_NAME)
-logger.setLevel(logging.DEBUG)
+logger.setLevel("DEBUG")
 
-ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
+handler = StreamHandler(sys.stdout)
+handler.setLevel("DEBUG")
 
-ch.setFormatter(
-    logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-)
-
-logger.addHandler(ch)
+fmt = logging.Formatter("[%(levelname)s]|%(asctime)s|%(threadName)s|"
+                        "%(funcName)s|: %(message)s")
+handler.setFormatter(fmt)
+logger.addHandler(handler)
 
 gw = DiscordGateway(
     open("token").read(),
