@@ -2,6 +2,8 @@ from .const import LIB_NAME
 from .util import StoppableThread, SelectableEvent
 
 import json
+import time
+import random
 import select
 import logging
 from ssl import SSLError
@@ -49,6 +51,8 @@ class WebSocketThread(StoppableThread):
                 self.cleanup()
             except Exception:
                 logger.exception("Exception occured while cleaning up.")
+
+            time.sleep(random.randint(1, 5))
 
         logger.debug("Stopping thread...")
 

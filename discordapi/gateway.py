@@ -147,7 +147,6 @@ class DiscordGateway(WebSocketThread):
 
         elif op == self.INVALID_SESSION:
             self.is_reconnect = payload
-            time.sleep(random.randint(1, 5))
             self.sock.close()
 
         elif op == self.HELLO:
