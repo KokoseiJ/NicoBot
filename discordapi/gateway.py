@@ -90,7 +90,7 @@ class DiscordGateway(WebSocketThread):
         wait_time = self.heartbeat_interval
         select((self.is_heartbeat_ready, stop_flag), (), ())
 
-        while not stop_flag.is_set() and self.is_heartbeat_ready.is_set():
+        while not stop_flag.is_set() and self.is_heartbeat_ready.wait():
             logger.debug("Sending heartbeat...")
             sendtime = time.time()
             self.send_heartbeat()
@@ -125,7 +125,7 @@ class DiscordGateway(WebSocketThread):
         }
 
     def cleanup(self):
-        pass
+        self.is_heartbeat_ready.clear()
 
     def _dispatcher(self, data):
         op = data['op']

@@ -6,4 +6,4 @@ GATEWAY_VER = 9
 GATEWAY_URL = f"wss://gateway.discord.gg/?v={GATEWAY_VER}&encoding=json"
 
 API_VER = 9
-API_URL = f"https://discord.com/api/v{API_VER}"
+API_URL = f"https://discord.com/api/v{API_VER}/"
