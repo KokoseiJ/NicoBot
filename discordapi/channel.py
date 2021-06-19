@@ -151,13 +151,33 @@ class Channel(DictObject):
             "POST", f"/channels/{self.id}/messages/bulk-delete", postdata
         )
 
-    def crosspost(self, message):
+    def typing(self):
+        self.client.send_request(
+            "POST" f"/channels/{self.id}/typing"
+        )
+
+    def get_pinned_messages(self):
+        messages = self.client.send_request(
+            "GET", f"/channels/{self.id}/pins"
+        )
+
+        return [Message(message) for message in messages]
+
+    def pin_message(self, message):
         if isinstance(message, Message):
             message = message.id
-        rtnmsg = self.client.send_request(
-            "POST", f"/channels/{self.id}/messages/{message}/crosspost"
+
+        self.client.send_request(
+            "PUT", f"/channels/{self.id}/pins/{message}"
         )
-        return Message(rtnmsg)
+
+    def unpin_message(self, message):
+        if isinstance(message, Message):
+            message = message.id
+
+        self.client.send_request(
+            "DELETE", f"/channels/{self.id}/pins/{message}"
+        )
 
     def react(self, message, emoji, urlencoded=False):
         if isinstance(message, Message):
@@ -258,7 +278,12 @@ class GuildChannel(Channel):
             "PUT", f"/channels/{self.id}/permissions/{id}", putdata
         )
 
-    def get_invite(self):
+    def remove_permission(self, id):
+        self.client.send_request(
+            "DELETE", f"/channels/{self.id}/permissions/{id}"
+        )
+
+    def get_invites(self):
         invites = self.client.send_request(
             "POST", f"/channels/{self.id}/invites"
         )
@@ -295,6 +320,19 @@ class GuildTextChannel(GuildChannel):
         }
 
         return super(GuildTextChannel, self).modify(postdata)
+
+    def crosspost(self, message):
+        if isinstance(message, Message):
+            message = message.id
+        rtnmsg = self.client.send_request(
+            "POST", f"/channels/{self.id}/messages/{message}/crosspost"
+        )
+        return Message(rtnmsg)
+
+    def follow_news_channel(self, id):
+        return self.client.send_request(
+            "POST", f"/channels/{self.id}/followers"
+        )
 
 
 class GuildVoiceChannel(GuildChannel):
