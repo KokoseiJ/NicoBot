@@ -153,7 +153,7 @@ class Channel(DictObject):
 
     def typing(self):
         self.client.send_request(
-            "POST" f"/channels/{self.id}/typing"
+            "POST", f"/channels/{self.id}/typing"
         )
 
     def get_pinned_messages(self):
