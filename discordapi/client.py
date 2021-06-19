@@ -51,11 +51,12 @@ class DiscordClient(DiscordGateway):
             req_headers.update(headers)
 
         req = Request(url, data, req_headers, method=method)
+
+        exc = False
         try:
             res = urlopen(req)
         except HTTPError as e:
-            if raise_at_exc:
-                raise e
+            exc = True
             res = e
 
         try:
@@ -64,10 +65,15 @@ class DiscordClient(DiscordGateway):
             code = res.getstatus()
 
         rawdata = res.read()
-        resdata = json.loads(rawdata)
+        if not rawdata:
+            resdata = None
+        else:
+            resdata = json.loads(rawdata)
 
         if raise_at_exc:
-            if expected_code is not None and code != expected_code:
-                raise DiscordHTTPError(resdata['code'], resdata['message'])
+            if (expected_code is not None and code != expected_code) or exc:
+                raise DiscordHTTPError(
+                    resdata['code'], resdata['message'], res
+                )
 
         return resdata
