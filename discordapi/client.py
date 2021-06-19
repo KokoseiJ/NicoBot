@@ -38,13 +38,19 @@ class DiscordClient(DiscordGateway):
         return get_channel(self, channel_obj)
 
     def send_request(self, method, route, data=None, expected_code=None,
-                     raise_at_exc=True, baseurl=API_URL):
+                     raise_at_exc=True, baseurl=API_URL, headers=None):
         url = construct_url(API_URL, route)
+
         if isinstance(data, dict):
             data = json.dumps(data)
         if isinstance(data, str):
             data = data.encode()
-        req = Request(url, data, self.headers, method=method)
+
+        req_headers = self.headers
+        if headers is not None:
+            req_headers.update(headers)
+
+        req = Request(url, data, req_headers, method=method)
         try:
             res = urlopen(req)
         except HTTPError as e:
