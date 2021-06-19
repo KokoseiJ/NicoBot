@@ -50,6 +50,12 @@ class Channel(DictObject):
         self.client = client
 
     def modify(self, postdata):
+        postdata = {
+            key: value
+            for key, value in postdata.items()
+            if value is not None
+        }
+
         channel_obj = self.client.send_request(
             "PATCH", f"/channels/{self.id}", postdata
         )
@@ -241,7 +247,7 @@ class GroupDMChannel(DMChannel):
 
 
 class GuildChannel(Channel):
-    def edit_channel(self, id, allow, deny, type):
+    def edit_permission(self, id, allow=None, deny=None, type=None):
         putdata = {
             "allow": allow,
             "deny": deny,
