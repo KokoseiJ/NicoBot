@@ -68,7 +68,7 @@ class Channel(DictObject):
         self.client.send_request("DELETE", f"/channels/{self.id}")
 
     def get_messages(self, limit=None, around=None, before=None, after=None):
-        getdata = {
+        postdata = {
             "limit": limit,
             "around": around,
             "before": before,
@@ -76,7 +76,7 @@ class Channel(DictObject):
         }
 
         messages = self.client.send_request(
-            "GET", f"/channels/{self.id}/messages", getdata
+            "GET", f"/channels/{self.id}/messages", postdata
         )
 
         return [Message(message) for message in messages]
@@ -221,13 +221,13 @@ class Channel(DictObject):
         if not urlencoded:
             emoji = urlencode(emoji)
 
-        getdata = {
+        postdata = {
             "after": after,
             "urlencoded": urlencoded
         }
 
         users = self.client.send_request(
-            "GET", f"/channels/{self.id}/messages/{message}/reactions", getdata
+            "GET", f"/channels/{self.id}/messages/{message}/reactions", postdata
         )
 
         return [User(user) for user in users]
@@ -277,14 +277,14 @@ class GuildChannel(Channel):
         self.parent = self.guild.channels.get(self.parent_id)
 
     def edit_permission(self, id, allow=None, deny=None, type=None):
-        putdata = {
+        postdata = {
             "allow": allow,
             "deny": deny,
             "type": type
         }
 
         self.client.send_request(
-            "PUT", f"/channels/{self.id}/permissions/{id}", putdata
+            "PUT", f"/channels/{self.id}/permissions/{id}", postdata
         )
 
     def remove_permission(self, id):

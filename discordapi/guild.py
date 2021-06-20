@@ -50,7 +50,7 @@ class Guild(DictObject):
 
             icon = base64.b64encode(icon).decode()
 
-        patchdata = {
+        postdata = {
             "name": name,
             "region": region,
             "verification_level": verification_level,
@@ -73,7 +73,7 @@ class Guild(DictObject):
         }
 
         guild = self.client.send_request(
-            "PATCH", f"/guilds/{self.id}", patchdata
+            "PATCH", f"/guilds/{self.id}", postdata
         )
 
         self.__init__(self.client, guild)
@@ -287,7 +287,7 @@ class Guild(DictObject):
         }
 
         role = self.client.send_request(
-            "PATCH", f"/guilds/{self.id}/roles/{role}"
+            "PATCH", f"/guilds/{self.id}/roles/{role}", postdata
         )
 
     def delete_role(self, role):
@@ -306,6 +306,8 @@ class Guild(DictObject):
         invites = self.client.send_request(
             "GET", f"/guilds/{self.id}/invites"
         )
+
+        return invites
 
 
 class Member(DictObject):
