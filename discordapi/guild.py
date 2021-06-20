@@ -1,6 +1,8 @@
+from .user import User
+from .member import Member
 from .channel import get_channel
 from .dictobject import DictObject
-from .client import DiscordHTTPError
+from .exceptions import DiscordHTTPError
 
 import base64
 from io import BytesIO
@@ -21,14 +23,17 @@ KEYLIST = ["id", "name", "icon", "icon_hash?", "splash", "discovery_splash",
            "welcome_screen", "nsfw_level", "stage_instances"]
 
 
-MEMBER_KEYLIST = ["user", "nick", "roles", "joined_at", "premium_since",
-                  "deaf", "mute", "pending", "permissions"]
-
-
 class Guild(DictObject):
     def __init__(self, client, data):
         super(Guild, self).__init__(data, KEYLIST)
         self.client = client
+
+        self.members = [
+            Member(client, self, member) for member in self.members
+        ]
+        self.channels = [
+            get_channel(client, channel) for channel in self.channels
+        ]
 
     def get_preview(self):
         return self.client.get_guild_preiew(self.id)
@@ -85,6 +90,9 @@ class Guild(DictObject):
             "DELETE", f"/guilds/{self.id}"
         )
 
+    def leave(self):
+        return self.client.user.leave_guild(self)
+
     def get_channels(self):
         if self.channels is not None:
             return self.channels
@@ -135,21 +143,36 @@ class Guild(DictObject):
 
         return Member(member)
 
-    def list_members(self):
+    def list_members(self, limit=None, after=None):
+        postdata = {
+            "limit": limit,
+            "after": after
+        }
+
+        endpoint = f"/guilds/{self.id}/members?"
+        for key, val in postdata.items():
+            endpoint += f"{key}={val}&"
+        endpoint = endpoint[:-1]
+
         members = self.client.send_request(
-            "GET", f"/guilds/{self.id}/members"
+            "GET", endpoint
         )
 
         return [Member(member) for member in members]
 
     def search_members(self, query=None, limit=1):
-        getdata = {
+        postdata = {
             "query": query,
             "limit": limit
         }
 
+        endpoint = f"/guilds/{self.id}/members/search?"
+        for key, val in postdata.items():
+            endpoint += f"{key}={val}&"
+        endpoint = endpoint[:-1]
+
         members = self.client.send_request(
-            "GET", f"/guilds/{self.id}/members/search", getdata
+            "GET", endpoint
         )
 
         return [Member(member) for member in members]
@@ -308,10 +331,3 @@ class Guild(DictObject):
         )
 
         return invites
-
-
-class Member(DictObject):
-    def __init__(self, client, guild, data):
-        super(Member, self).__init__(data, MEMBER_KEYLIST)
-        self.client = client
-        self.guild = guild

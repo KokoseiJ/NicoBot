@@ -1,5 +1,6 @@
 from .guild import Guild
 from .gateway import DiscordGateway
+from .exceptions import DiscordHTTPError
 from .channel import get_channel, Channel
 from .const import API_URL, LIB_NAME, LIB_VER, LIB_URL
 
@@ -15,15 +16,6 @@ def construct_url(baseurl, endpoint):
         endpoint = endpoint[1:]
 
     return urljoin(baseurl, endpoint)
-
-
-class DiscordHTTPError(Exception):
-    def __init__(self, code, message, response):
-        self.code = code
-        self.message = message
-        self.response = response
-
-        self.args = (f"{code}: {message}",)
 
 
 class DiscordClient(DiscordGateway):
@@ -75,18 +67,14 @@ class DiscordClient(DiscordGateway):
             "POST", "/guilds", postdata
         )
 
-        return Guild(guild)
+        return Guild(self, guild)
 
-    def get_guild(self, id, with_counts=None):
-        getdata = {
-            "with_counts": with_counts
-        }
-
+    def get_guild(self, id, with_counts=False):
         guild = self.send_request(
-            "GET", f"/guilds/{id}", getdata
+            "GET", f"/guilds/{id}?with_counts={str(with_counts).lower()}"
         )
 
-        return Guild(guild)
+        return Guild(self, guild)
 
     def get_guild_preview(self, id):
         preview = self.send_request(
@@ -123,6 +111,7 @@ class DiscordClient(DiscordGateway):
             code = res.getstatus()
 
         rawdata = res.read()
+        print(rawdata)
         if not rawdata:
             resdata = None
         else:

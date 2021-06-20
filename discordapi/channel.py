@@ -50,6 +50,7 @@ class Channel(DictObject):
         self.client = client
 
     def modify(self, postdata):
+        # TODO: remove this part when EMPTY obj is implemented
         postdata = {
             key: value
             for key, value in postdata.items()
@@ -68,15 +69,21 @@ class Channel(DictObject):
         self.client.send_request("DELETE", f"/channels/{self.id}")
 
     def get_messages(self, limit=None, around=None, before=None, after=None):
+        endpoint = f"/channels/{self.id}/messages?"
         postdata = {
-            "limit": limit,
             "around": around,
             "before": before,
-            "after": after
+            "after": after,
+            "limit": limit
         }
 
+        for key, val in postdata.items():
+            endpoint += f"{key}={val}&"
+
+        endpoint = endpoint[:-1]
+
         messages = self.client.send_request(
-            "GET", f"/channels/{self.id}/messages", postdata
+            "GET", endpoint
         )
 
         return [Message(message) for message in messages]
@@ -223,11 +230,18 @@ class Channel(DictObject):
 
         postdata = {
             "after": after,
-            "urlencoded": urlencoded
+            "limit": limit
         }
 
+        endpoint = f"/channels/{self.id}/messages/{message}/reactions?"
+
+        for key, val in postdata.items():
+            endpoint += f"{key}={val}&"
+
+        endpoint = endpoint[:-1]
+
         users = self.client.send_request(
-            "GET", f"/channels/{self.id}/messages/{message}/reactions", postdata
+            "GET", endpoint
         )
 
         return [User(user) for user in users]
@@ -245,14 +259,12 @@ class Channel(DictObject):
 
 
 class DMChannel(Channel):
-    pass
-
-
-class GroupDMChannel(DMChannel):
     def __init__(self, client, data):
         super(DMChannel, self).__init__(client, data)
         self.recipients = [User(client, user) for user in self.recipients]
 
+
+class GroupDMChannel(DMChannel):
     def modify(self, name=None, icon=None):
         if isinstance(icon, str):
             with open(icon, "rb") as f:
