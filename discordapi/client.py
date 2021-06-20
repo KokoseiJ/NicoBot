@@ -1,3 +1,4 @@
+from .user import User
 from .guild import Guild
 from .gateway import DiscordGateway
 from .exceptions import DiscordHTTPError
@@ -27,6 +28,10 @@ class DiscordClient(DiscordGateway):
             "Authorization": f"Bot {self.token}",
             "Content-Type": "application/json"
         }
+
+    def get_user(self, id):
+        user_obj = self.send_request("GET", f"/users/{id}")
+        return User(user_obj)
 
     def get_channel(self, id):
         channel_obj = self.send_request("GET", f"/channels/{id}")

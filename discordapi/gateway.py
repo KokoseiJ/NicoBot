@@ -1,10 +1,10 @@
+from .user import BotUser
 from .util import SelectableEvent
 from .websocket import WebSocketThread
 from .const import LIB_NAME, GATEWAY_URL
 
 import sys
 import time
-import random
 import logging
 from select import select
 from websocket import STATUS_ABNORMAL_CLOSED
@@ -136,7 +136,7 @@ class DiscordGateway(WebSocketThread):
         if op == self.DISPATCH:
             self.seq = seq
             if event == "READY":
-                self.user = payload['user']
+                self.user = BotUser(payload['user'])
                 self.guilds = payload['guilds']
                 self.session_id = payload['session_id']
                 self.application = payload['application']

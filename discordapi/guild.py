@@ -177,8 +177,8 @@ class Guild(DictObject):
 
         return [Member(member) for member in members]
 
-    def modify_member(self, member, nick=None, roles=None, mute=None, deaf=None,
-                      channel_id=None):
+    def modify_member(self, member, nick=None, roles=None, mute=None,
+                      deaf=None, channel_id=None):
         if isinstance(member, Member):
             member = member.id
         postdata = {
@@ -220,7 +220,7 @@ class Guild(DictObject):
             "DELETE", f"/guilds/{self.id}/members/{member}/roles/{role}"
         )
 
-    def kick_member(self, member):
+    def kick(self, member):
         if isinstance(member, Member):
             member = member.id
 

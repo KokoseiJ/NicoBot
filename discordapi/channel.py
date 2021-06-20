@@ -95,9 +95,9 @@ class Channel(DictObject):
 
         return Message(message)
 
-    def send_message(self, content=None, tts=None, file=None, embeds=None,
-                     allowed_mentions=None, message_reference=None,
-                     components=None):
+    def send(self, content=None, tts=None, file=None, embeds=None,
+             allowed_mentions=None, message_reference=None,
+             components=None):
         # TODO: implement multipart/form-data
         postdata = {
             "content": content,
@@ -246,7 +246,16 @@ class Channel(DictObject):
 
         return [User(user) for user in users]
 
-    def delete_all_reactions(self, message, emoji, urlencoded=False):
+    def delete_all_reactions(self, message):
+        if isinstance(message, Message):
+            message = message.id
+
+        self.client.send_request(
+            "DELETE",
+            f"/channels/{self.id}/messages/{message}/reactions"
+        )
+
+    def delete_all_reactions_for_emoji(self, message, emoji, urlencoded=False):
         if isinstance(message, Message):
             message = message.id
         if not urlencoded:
