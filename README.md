@@ -27,11 +27,11 @@ I'm well aware that threading in python has a disadvantage due to Global Interpr
 
 - [x] implement Guild HTTP API requests
 
-- [ ] implement User HTTP API requests
+- [x] implement User HTTP API requests
 
-- [ ] implement Message HTTP API requests
+- [x] implement Message HTTP API requests
 
-- [ ] implement Member HTTP API requests
+- [x] implement Member HTTP API requests
 
 - [ ] Wire up discord object classes to Gateway events
 
