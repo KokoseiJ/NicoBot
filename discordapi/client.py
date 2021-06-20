@@ -1,8 +1,11 @@
-from .channel import get_channel
+from .guild import Guild
 from .gateway import DiscordGateway
+from .channel import get_channel, Channel
 from .const import API_URL, LIB_NAME, LIB_VER, LIB_URL
 
 import json
+import base64
+from io import BytesIO
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen, urljoin
 
@@ -36,6 +39,61 @@ class DiscordClient(DiscordGateway):
     def get_channel(self, id):
         channel_obj = self.send_request("GET", f"/channels/{id}")
         return get_channel(self, channel_obj)
+
+    def create_guild(self, name, icon=None, verification_level=None,
+                     default_message_notifications=None,
+                     explicit_content_filter=None, roles=None, channels=None,
+                     afk_channel_id=None, afk_timeout=None,
+                     system_channel_id=None, system_channel_flags=None):
+        if icon is not None:
+            if isinstance(icon, str):
+                with open(icon, "rb") as f:
+                    icon = f.read()
+            elif isinstance(icon, BytesIO):
+                icon = icon.read()
+
+            icon = base64.b64encode(icon).decode()
+
+        channels = [channel._json if isinstance(channel, Channel) else channel
+                    for channel in channels]
+
+        postdata = {
+            "name": name,
+            "icon": icon,
+            "verification_level": verification_level,
+            "default_message_notifications": default_message_notifications,
+            "explicit_content_filter": explicit_content_filter,
+            "roles": roles,
+            "channels": channels,
+            "afk_channel_id": afk_channel_id,
+            "afk_timeout": afk_timeout,
+            "system_channel_id": system_channel_id,
+            "system_channel_flags": system_channel_flags,
+        }
+
+        guild = self.send_request(
+            "POST", "/guilds", postdata
+        )
+
+        return Guild(guild)
+
+    def get_guild(self, id, with_counts=None):
+        getdata = {
+            "with_counts": with_counts
+        }
+
+        guild = self.send_request(
+            "GET", f"/guilds/{id}", getdata
+        )
+
+        return Guild(guild)
+
+    def get_guild_preview(self, id):
+        preview = self.send_request(
+            "GET", f"/guilds/{id}/preview"
+        )
+
+        return preview
 
     def send_request(self, method, route, data=None, expected_code=None,
                      raise_at_exc=True, baseurl=API_URL, headers=None):

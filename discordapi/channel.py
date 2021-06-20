@@ -249,6 +249,10 @@ class DMChannel(Channel):
 
 
 class GroupDMChannel(DMChannel):
+    def __init__(self, client, data):
+        super(DMChannel, self).__init__(client, data)
+        self.recipients = [User(client, user) for user in self.recipients]
+
     def modify(self, name=None, icon=None):
         if isinstance(icon, str):
             with open(icon, "rb") as f:
@@ -267,6 +271,11 @@ class GroupDMChannel(DMChannel):
 
 
 class GuildChannel(Channel):
+    def __init__(self, client, data):
+        super(Channel, self).__init__(client, data)
+        self.guild = self.client.guilds.get(self.guild_id)
+        self.parent = self.guild.channels.get(self.parent_id)
+
     def edit_permission(self, id, allow=None, deny=None, type=None):
         putdata = {
             "allow": allow,
