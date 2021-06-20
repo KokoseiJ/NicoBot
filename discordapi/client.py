@@ -11,6 +11,8 @@ from io import BytesIO
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen, urljoin
 
+__all__ = ["DiscordClient"]
+
 
 def construct_url(baseurl, endpoint):
     if endpoint.startswith("/"):

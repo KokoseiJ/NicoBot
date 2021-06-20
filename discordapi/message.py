@@ -1,6 +1,9 @@
 from .user import User
+from .const import EMPTY
 from .member import Member
 from .dictobject import DictObject
+
+__all__ = ["Message"]
 
 KEYLIST = ["id", "channel_id", "guild_id", "author", "member", "content",
            "timestamp", "edited_timestamp", "tts", "mention_everyone",
@@ -43,7 +46,7 @@ class Message(DictObject):
     def delete_others_reaction(self, emoji, user, urlencoded=False):
         self.channel.delete_others_reaction(self, emoji, user, urlencoded)
 
-    def get_reactions(self, emoji, limit=None, after=None, urlencoded=False):
+    def get_reactions(self, emoji, limit=EMPTY, after=EMPTY, urlencoded=False):
         self.channel.get_reactions(self, emoji, limit, after, urlencoded)
 
     def delete_all_reactions(self):
@@ -52,8 +55,8 @@ class Message(DictObject):
     def delete_all_reactions_for_emoji(self, emoji, urlencoded=False):
         self.channel.delete_all_reactions_for_emoji(self, emoji, urlencoded)
 
-    def edit(self, content=None, file=None, embeds=None, flags=None,
-             allowed_mentions=None, attachments=None, components=None):
+    def edit(self, content=EMPTY, file=EMPTY, embeds=EMPTY, flags=EMPTY,
+             allowed_mentions=EMPTY, attachments=EMPTY, components=EMPTY):
         self.channel.edit_message(self, content, file, embeds, flags,
                                   allowed_mentions, attachments, components)
 

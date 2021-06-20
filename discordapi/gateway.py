@@ -11,6 +11,8 @@ from websocket import STATUS_ABNORMAL_CLOSED
 
 logger = logging.getLogger(LIB_NAME)
 
+__all__ = []
+
 
 class DiscordGateway(WebSocketThread):
     DISPATCH = 0

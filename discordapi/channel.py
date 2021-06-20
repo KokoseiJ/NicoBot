@@ -1,11 +1,16 @@
 from .user import User
+from .const import EMPTY
 from .message import Message
+from .util import clear_postdata
 from .dictobject import DictObject
 
 import json
 import base64
 from io import IOBase
 from urllib.parse import quote as urlencode
+
+__all__ = ["get_channel", "Channel", "DMChannel", "GroupDMChannel",
+           "GuildChannel", "GuildTextChannel", "GuildVoiceChannel"]
 
 KEYLIST = ["id", "type", "guild_id", "position", "permission_overwrites",
            "name", "topic", "nsfw", "last_message_id", "bitrate", "user_limit",
@@ -51,11 +56,7 @@ class Channel(DictObject):
 
     def modify(self, postdata):
         # TODO: remove this part when EMPTY obj is implemented
-        postdata = {
-            key: value
-            for key, value in postdata.items()
-            if value is not None
-        }
+        postdata = clear_postdata(postdata)
 
         channel_obj = self.client.send_request(
             "PATCH", f"/channels/{self.id}", postdata
@@ -68,7 +69,8 @@ class Channel(DictObject):
     def delete(self):
         self.client.send_request("DELETE", f"/channels/{self.id}")
 
-    def get_messages(self, limit=None, around=None, before=None, after=None):
+    def get_messages(self, limit=EMPTY, around=EMPTY, before=EMPTY,
+                     after=EMPTY):
         endpoint = f"/channels/{self.id}/messages?"
         postdata = {
             "around": around,
@@ -76,6 +78,7 @@ class Channel(DictObject):
             "after": after,
             "limit": limit
         }
+        postdata = clear_postdata(postdata)
 
         for key, val in postdata.items():
             endpoint += f"{key}={val}&"
@@ -95,9 +98,9 @@ class Channel(DictObject):
 
         return Message(message)
 
-    def send(self, content=None, tts=None, file=None, embeds=None,
-             allowed_mentions=None, message_reference=None,
-             components=None):
+    def send(self, content=EMPTY, tts=EMPTY, file=EMPTY, embeds=EMPTY,
+             allowed_mentions=EMPTY, message_reference=EMPTY,
+             components=EMPTY):
         # TODO: implement multipart/form-data
         postdata = {
             "content": content,
@@ -108,6 +111,7 @@ class Channel(DictObject):
             "message_reference": message_reference,
             "components": components
         }
+        postdata = clear_postdata(postdata)
 
         message = self.client.send_request(
             "POST", f"/channels/{self.id}/messages", postdata
@@ -115,9 +119,9 @@ class Channel(DictObject):
 
         return Message(message)
 
-    def edit_message(self, message, content=None, file=None, embeds=None,
-                     flags=None, allowed_mentions=None, attachments=None,
-                     components=None):
+    def edit_message(self, message, content=EMPTY, file=EMPTY, embeds=EMPTY,
+                     flags=EMPTY, allowed_mentions=EMPTY, attachments=EMPTY,
+                     components=EMPTY):
         # TODO: implement multipart/form-data
 
         if isinstance(message, Message):
@@ -132,6 +136,7 @@ class Channel(DictObject):
             "attachments": attachments,
             "components": components
         }
+        postdata = clear_postdata(postdata)
 
         message = self.client.send_request(
             "PATCH", f"/channels/{self.id}/messages/{message}", postdata
@@ -221,7 +226,7 @@ class Channel(DictObject):
             f"/channels/{self.id}/messages/{message}/reactions/{emoji}/{user}"
         )
 
-    def get_reactions(self, message, emoji, limit=None, after=None,
+    def get_reactions(self, message, emoji, limit=EMPTY, after=EMPTY,
                       urlencoded=False):
         if isinstance(message, Message):
             message = message.id
@@ -232,6 +237,7 @@ class Channel(DictObject):
             "after": after,
             "limit": limit
         }
+        postdata = clear_postdata(postdata)
 
         endpoint = f"/channels/{self.id}/messages/{message}/reactions?"
 
@@ -274,7 +280,7 @@ class DMChannel(Channel):
 
 
 class GroupDMChannel(DMChannel):
-    def modify(self, name=None, icon=None):
+    def modify(self, name=EMPTY, icon=EMPTY):
         if isinstance(icon, str):
             with open(icon, "rb") as f:
                 icon = base64.b64encode(f.read())
@@ -297,12 +303,13 @@ class GuildChannel(Channel):
         self.guild = self.client.guilds.get(self.guild_id)
         self.parent = self.guild.channels.get(self.parent_id)
 
-    def edit_permission(self, id, allow=None, deny=None, type=None):
+    def edit_permission(self, id, allow=EMPTY, deny=EMPTY, type=EMPTY):
         postdata = {
             "allow": allow,
             "deny": deny,
             "type": type
         }
+        postdata = clear_postdata(postdata)
 
         self.client.send_request(
             "PUT", f"/channels/{self.id}/permissions/{id}", postdata
@@ -319,8 +326,8 @@ class GuildChannel(Channel):
         )
         return invites
 
-    def invite(self, max_age=None, max_uses=None, temporary=None, unique=None,
-               target_type=None, target_user_id=None):
+    def invite(self, max_age=EMPTY, max_uses=EMPTY, temporary=EMPTY,
+               unique=EMPTY, target_type=EMPTY, target_user_id=EMPTY):
         postdata = {
             "max_age": max_age,
             "max_uses": max_uses,
@@ -329,6 +336,8 @@ class GuildChannel(Channel):
             "target_type": target_type,
             "target_user_id": target_user_id,
         }
+        postdata = clear_postdata(postdata)
+        
         invite = self.client.send_request(
             "POST", f"/channels/{self.id}/invites", postdata
         )
@@ -336,9 +345,9 @@ class GuildChannel(Channel):
 
 
 class GuildTextChannel(GuildChannel):
-    def modify(self, name=None, position=None, topic=None, nsfw=None,
-               rate_limit_per_user=None, permission_overwrites=None,
-               parent_id=None):
+    def modify(self, name=EMPTY, position=EMPTY, topic=EMPTY, nsfw=EMPTY,
+               rate_limit_per_user=EMPTY, permission_overwrites=EMPTY,
+               parent_id=EMPTY):
         postdata = {
             "name": name,
             "position": position,
@@ -366,9 +375,9 @@ class GuildTextChannel(GuildChannel):
 
 
 class GuildVoiceChannel(GuildChannel):
-    def modify(self, name=None, position=None, bitrate=None, user_limit=None,
-               permission_overwrites=None, parent_id=None, rtc_region=None,
-               video_quality_mode=None):
+    def modify(self, name=EMPTY, position=EMPTY, bitrate=EMPTY,
+               user_limit=EMPTY, permission_overwrites=EMPTY, parent_id=EMPTY,
+               rtc_region=EMPTY, video_quality_mode=EMPTY):
         postdata = {
             "name": name,
             "position": position,

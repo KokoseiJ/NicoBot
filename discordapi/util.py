@@ -1,6 +1,10 @@
+from .const import EMPTY
+
 import os
 from select import select
 from threading import Thread
+
+__all__ = []
 
 
 class StoppableThread(Thread):
@@ -70,3 +74,9 @@ class SelectableEvent:
         """
         os.close(self._read_fd)
         os.close(self._write_fd)
+
+
+def clear_postdata(data):
+    return {
+        key: value for key, value in data.items() if value is not EMPTY
+    }

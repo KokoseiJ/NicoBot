@@ -1,11 +1,15 @@
 from .user import User
+from .const import EMPTY
 from .member import Member
 from .channel import get_channel
+from .util import clear_postdata
 from .dictobject import DictObject
 from .exceptions import DiscordHTTPError
 
 import base64
 from io import BytesIO
+
+__all__ = ["Guild"]
 
 KEYLIST = ["id", "name", "icon", "icon_hash?", "splash", "discovery_splash",
            "owner", "owner_id", "permissions", "region", "afk_channel_id",
@@ -38,14 +42,14 @@ class Guild(DictObject):
     def get_preview(self):
         return self.client.get_guild_preiew(self.id)
 
-    def modify(self, name=None, region=None, verification_level=None,
-               default_message_notifications=None,
-               explicit_content_filter=None, afk_channel_id=None,
-               afk_timeout=None, icon=None, owner_id=None, splash=None,
-               discovery_splash=None, banner=None, system_channel_id=None,
-               system_channel_flags=None, rules_channel_id=None,
-               public_updates_channel_id=None, preferred_locale=None,
-               features=None, description=None):
+    def modify(self, name=EMPTY, region=EMPTY, verification_level=EMPTY,
+               default_message_notifications=EMPTY,
+               explicit_content_filter=EMPTY, afk_channel_id=EMPTY,
+               afk_timeout=EMPTY, icon=EMPTY, owner_id=EMPTY, splash=EMPTY,
+               discovery_splash=EMPTY, banner=EMPTY, system_channel_id=EMPTY,
+               system_channel_flags=EMPTY, rules_channel_id=EMPTY,
+               public_updates_channel_id=EMPTY, preferred_locale=EMPTY,
+               features=EMPTY, description=EMPTY):
         if icon is not None:
             if isinstance(icon, str):
                 with open(icon, "rb") as f:
@@ -76,6 +80,7 @@ class Guild(DictObject):
             "features": features,
             "description": description
         }
+        postdata = clear_postdata(postdata)
 
         guild = self.client.send_request(
             "PATCH", f"/guilds/{self.id}", postdata
@@ -106,10 +111,10 @@ class Guild(DictObject):
 
         return channels
 
-    def create_channel(self, name, type, topic=None, bitrate=None,
-                       user_limit=None, rate_limit_per_user=None,
-                       position=None, permission_overwrites=None,
-                       parent_id=None, nsfw=None):
+    def create_channel(self, name, type, topic=EMPTY, bitrate=EMPTY,
+                       user_limit=EMPTY, rate_limit_per_user=EMPTY,
+                       position=EMPTY, permission_overwrites=EMPTY,
+                       parent_id=EMPTY, nsfw=EMPTY):
         postdata = {
             "name": name,
             "type": type,
@@ -122,6 +127,7 @@ class Guild(DictObject):
             "parent_id": parent_id,
             "nsfw": nsfw
         }
+        postdata = clear_postdata(postdata)
 
         channel = self.client.send_request(
             "POST", f"/guilds/{self.id}/channels", postdata
@@ -143,11 +149,12 @@ class Guild(DictObject):
 
         return Member(member)
 
-    def list_members(self, limit=None, after=None):
+    def list_members(self, limit=EMPTY, after=EMPTY):
         postdata = {
             "limit": limit,
             "after": after
         }
+        postdata = clear_postdata(postdata)
 
         endpoint = f"/guilds/{self.id}/members?"
         for key, val in postdata.items():
@@ -160,11 +167,12 @@ class Guild(DictObject):
 
         return [Member(member) for member in members]
 
-    def search_members(self, query=None, limit=1):
+    def search_members(self, query=EMPTY, limit=EMPTY):
         postdata = {
             "query": query,
             "limit": limit
         }
+        postdata = clear_postdata(postdata)
 
         endpoint = f"/guilds/{self.id}/members/search?"
         for key, val in postdata.items():
@@ -177,8 +185,8 @@ class Guild(DictObject):
 
         return [Member(member) for member in members]
 
-    def modify_member(self, member, nick=None, roles=None, mute=None,
-                      deaf=None, channel_id=None):
+    def modify_member(self, member, nick=EMPTY, roles=EMPTY, mute=EMPTY,
+                      deaf=EMPTY, channel_id=EMPTY):
         if isinstance(member, Member):
             member = member.id
         postdata = {
@@ -188,6 +196,7 @@ class Guild(DictObject):
             "deaf": deaf,
             "channel_id": channel_id 
         }
+        postdata = clear_postdata(postdata)
 
         member = self.client.send_request(
             "PATCH", f"/guilds/{self.id}/members/{member}", postdata
@@ -276,8 +285,8 @@ class Guild(DictObject):
 
         return roles
 
-    def create_role(self, name=None, permission=None, color=None, hoist=None,
-                    mentionable=None):
+    def create_role(self, name, permission=EMPTY, color=EMPTY,
+                    hoist=EMPTY, mentionable=EMPTY):
         postdata = {
             "name": name,
             "permission": permission,
@@ -285,6 +294,7 @@ class Guild(DictObject):
             "hoist": hoist,
             "mentionable": mentionable
         }
+        postdata = clear_postdata(postdata)
 
         role = self.client.send_request(
             "POST", f"/guilds/{self.id}/roles", postdata
@@ -299,8 +309,8 @@ class Guild(DictObject):
 
         return roles
 
-    def modify_guild_role(self, role, name=None, permissions=None, color=None,
-                          hoist=None, mentionable=None):
+    def modify_guild_role(self, role, name=EMPTY, permissions=EMPTY,
+                          color=EMPTY, hoist=EMPTY, mentionable=EMPTY):
         postdata = {
             "name": name,
             "permissions": permissions,
@@ -308,6 +318,7 @@ class Guild(DictObject):
             "hoist": hoist,
             "mentionable": mentionable
         }
+        postdata = clear_postdata(postdata)
 
         role = self.client.send_request(
             "PATCH", f"/guilds/{self.id}/roles/{role}", postdata

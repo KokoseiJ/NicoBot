@@ -9,6 +9,7 @@ import logging
 from ssl import SSLError
 from websocket import WebSocket, WebSocketConnectionClosedException
 
+__all__ = []
 
 logger = logging.getLogger(LIB_NAME)
 

@@ -1,9 +1,13 @@
+from .const import EMPTY
 from .guild import Guild
 from .channel import Channel
+from .util import clear_postdata
 from .dictobject import DictObject
 
 import base64
 from io import BytesIO
+
+__all__ = ["User"]
 
 KEYLIST = ["id", "username", "discriminator", "avatar", "bot", "system",
            "mfa_enabled", "locale", "verified", "email", "flags",
@@ -20,7 +24,7 @@ class User(DictObject):
 
 
 class BotUser(DictObject):
-    def modify_user(self, username=None, avatar=None):
+    def modify_user(self, username=EMPTY, avatar=EMPTY):
         if isinstance(avatar, str):
             with open(avatar, "rb") as f:
                 avatar = f.read()
@@ -32,6 +36,7 @@ class BotUser(DictObject):
             "username": username,
             "avatar": avatar
         }
+        postdata = clear_postdata(postdata)
 
         user = self.client.send_request(
             "PATCH", "/users/@me", postdata
