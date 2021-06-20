@@ -337,7 +337,6 @@ class GuildChannel(Channel):
             "target_user_id": target_user_id,
         }
         postdata = clear_postdata(postdata)
-        
         invite = self.client.send_request(
             "POST", f"/channels/{self.id}/invites", postdata
         )

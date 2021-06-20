@@ -32,12 +32,15 @@ class Guild(DictObject):
         super(Guild, self).__init__(data, KEYLIST)
         self.client = client
 
-        self.members = [
-            Member(client, self, member) for member in self.members
-        ]
-        self.channels = [
-            get_channel(client, channel) for channel in self.channels
-        ]
+        self.members = {
+            member['user']['id']: Member(client, self, member)
+            for member in self.members
+        }
+
+        self.channels = {
+            channel['id']: get_channel(client, channel)
+            for channel in self.channels
+        }
 
     def get_preview(self):
         return self.client.get_guild_preiew(self.id)
@@ -188,7 +191,7 @@ class Guild(DictObject):
     def modify_member(self, member, nick=EMPTY, roles=EMPTY, mute=EMPTY,
                       deaf=EMPTY, channel_id=EMPTY):
         if isinstance(member, Member):
-            member = member.id
+            member = member.user.id
         postdata = {
             "nick": nick,
             "roles": roles,
@@ -217,21 +220,21 @@ class Guild(DictObject):
 
     def add_role_to_member(self, member, role):
         if isinstance(member, Member):
-            member = member.id
+            member = member.user.id
         self.client.send_request(
             "PUT", f"/guilds/{self.id}/members/{member}/roles/{role}"
         )
 
     def remove_role_from_member(self, member, role):
         if isinstance(member, Member):
-            member = member.id
+            member = member.user.id
         self.client.send_request(
             "DELETE", f"/guilds/{self.id}/members/{member}/roles/{role}"
         )
 
     def kick(self, member):
         if isinstance(member, Member):
-            member = member.id
+            member = member.user.id
 
         self.client.send_request(
             "DELETE", f"/guilds/{self.id}/members/{member}"
@@ -246,7 +249,7 @@ class Guild(DictObject):
 
     def get_ban(self, member):
         if isinstance(member, Member):
-            member = member.id
+            member = member.user.id
 
         try:
             ban = self.client.send_request(
@@ -262,7 +265,7 @@ class Guild(DictObject):
 
     def ban(self, member):
         if isinstance(member, Member):
-            member = member.id
+            member = member.user.id
 
         ban = self.client.send_request(
             "PUT", f"/guilds/{self.id}/bans/{member}"
@@ -272,7 +275,7 @@ class Guild(DictObject):
 
     def remove_ban(self, member):
         if isinstance(member, Member):
-            member = member.id
+            member = member.user.id
 
         self.client.send_request(
             "DELETE", f"/guilds/{self.id}/bans/{member}"
