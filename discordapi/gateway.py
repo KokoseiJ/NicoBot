@@ -1,4 +1,8 @@
-from .user import BotUser
+from .guild import Guild
+from .member import Member
+from .message import message
+from .user import User, BotUser
+from .channel import get_channel
 from .util import SelectableEvent
 from .websocket import WebSocketThread
 from .const import LIB_NAME, GATEWAY_URL
@@ -137,17 +141,9 @@ class DiscordGateway(WebSocketThread):
 
         if op == self.DISPATCH:
             self.seq = seq
-            if event == "READY":
-                self.user = BotUser(payload['user'])
-                self.guilds = payload['guilds']
-                self.session_id = payload['session_id']
-                self.application = payload['application']
-                self.ready_to_run.set()
-            elif event == "RESUMED":
-                self.ready_to_run.set()
-            self.event_handler(event, payload)
+            self._event_parser(event, payload)
 
-        elif op == self.INVALID_SESSION:
+        elif op == self.INVALID_SESSION or op == self.RECONNECT:
             self.is_reconnect = payload
             self.sock.close()
 
@@ -158,3 +154,98 @@ class DiscordGateway(WebSocketThread):
         elif op == self.HEARTBEAT_ACK:
             logger.debug("Received Heartbeat ACK!")
             self.heartbeat_ack.set()
+
+    def _event_parser(self, event, payload):
+
+        obj = payload
+
+        if event == "READY":
+            self.user = BotUser(payload['user'])
+            self.guilds = {obj['id']: False for obj in payload['guilds']}
+            self.session_id = payload['session_id']
+            self.application = payload['application']
+            self.ready_to_run.set()
+
+        elif event == "RESUMED":
+            self.ready_to_run.set()
+
+        elif event.startswith("CHANNEL") and event != "CHANNEL_PINS_UPDATE":
+            obj = get_channel(payload)
+
+            guild_id = obj.guild_id
+            if guild_id is not None:
+                guild = self.guilds.get(guild_id)
+                id = obj.id
+                event_sub = event.split("_", 1)[-1]
+                if event_sub == "CREATE" or event_sub == "UPDATE":
+                    guild.channels.update({
+                        id: obj
+                    })
+                elif event_sub == "DELETE":
+                    if guild.channels.get(id) is not None:
+                        del guild.channel[id]
+
+        elif event == "CHANNEL_PINS_UPDATE":
+            guild_id = payload.get("guild_id")
+            if guild_id is not None:
+                channel_id = payload.get("channel_id")
+                timestamp = payload.get("last_pin_timestamp")
+                guild = self.guilds.get(guild_id)
+                channel = guild.channels.get(channel_id)
+                channel.last_pin_timestamp = timestamp
+
+        elif event == "GUILD_CREATE" or event == "GUILD_UPDATE":
+            obj = Guild(payload)
+            id = obj.id
+            self.guilds[id] = obj
+        
+        elif event == "GUILD_DELETE":
+            self.guilds[id] = False
+
+        elif event == "GUILD_BAN_ADD":
+            guild_id = payload.get("guild_id")
+            user_id = payload.get("user").get("id")
+            guild = self.guilds.get(guild_id)
+            member = guild.members.get(user_id)
+            if member is not None:
+                del guild.members[user_id]
+
+        elif event == "GUILD_EMOJIS_UPDATE":
+            guild_id = payload.get("guild_id")
+            guild = self.guilds.get(guild_id)
+            guild.emojis = payload.get("emojis")
+
+        elif event == "GUILD_MEMBER_ADD":
+            guild_id = payload.get("guild_id")
+            del payload['guild_id']
+            obj = Member(payload)
+            guild = self.guilds.get(guild_id)
+            guild.members.append(obj)
+
+        elif event == "GUILD_MEMBER_REMOVE":
+            guild_id = payload.get("guild_id")
+            user_id = payload.get("user").get("id")
+            guild = self.guilds.get(guild_id)
+            del guild.members[user_id]
+
+        elif event == "GUILD_MEMBER_UPDATE":
+            guild_id = payload.get("guild_id")
+            user_id = payload.get("user").get("id")
+            del payload['guild_id']
+            guild = self.guilds.get(guild_id)
+            member = guild.members.get(user_id)
+            member.__init__(self, guild, payload)
+
+        elif event == "GUILD_MEMBERS_CHUNK":
+            guild_id = payload.get("guild_id")
+            memberobjs = payload.get("members")
+            members = {
+                member['user']['id']: Member(member)
+                for member in memberobjs
+            }
+            guild = self.guilds.get(guild_id)
+            guild.members.update(members)
+
+        # Finish from guild_role, and messages
+
+        self.event_hander(event, obj)
