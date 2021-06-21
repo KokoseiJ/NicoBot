@@ -53,7 +53,8 @@ class WebSocketThread(StoppableThread):
             except Exception:
                 logger.exception("Exception occured while cleaning up.")
 
-            time.sleep(random.randint(1, 5))
+            if not self.stop_flag.is_set():
+                time.sleep(random.randint(1, 5))
 
         logger.debug("Stopping thread...")
 
