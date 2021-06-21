@@ -39,10 +39,11 @@ class Message(DictObject):
         super(Message, self).__init__(data, KEYLIST)
         self.client = client
 
-        if self.guild_id is not None:
-            self.guild = client.guilds.get(self.guild_id)
-            if self.guild is not None:
-                self.channel = self.guild.channels.get(self.channel_id)
+        if self.channel_id:
+            if self.guild_id is not None:
+                self.guild = client.guilds.get(self.guild_id)
+                if self.guild is not None:
+                    self.channel = self.guild.channels.get(self.channel_id)
             if self.channel is None:
                 self.channel = client.get_channel(self.channel_id)
 
