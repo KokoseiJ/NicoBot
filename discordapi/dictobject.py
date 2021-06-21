@@ -10,3 +10,13 @@ class DictObject:
 
         for key, value in data.items():
             setattr(self, key, value)
+
+    def __str__(self):
+        class_name = self.__class__.__name__
+        if self.id is not None:
+            if self.name is not None:
+                return f"<{class_name} {self.name}({self.id})>"
+            else:
+                return f"<{class_name} ({self.id})"
+        else:
+            return super(DictObject, self).__str__()

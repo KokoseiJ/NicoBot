@@ -33,6 +33,7 @@ class Message(DictObject):
             if guild is None:
                 guild = client.get_guild(self.guild_id)
             self.member = Member(client, guild, self.member)
+            self.member.user = self.author
         self.mentions = [User(client, user) for user in self.mentions]
         if self.referenced_message is not None:
             self.referenced_message = Message(client, self.referenced_message)
@@ -72,4 +73,9 @@ class Message(DictObject):
     def unpin(self):
         self.channel.unpin_message(self)
 
-    
+    def __str__(self):
+        class_name = self.__class__.__name__
+        username = self.author.username
+        tag = self.author.discriminator
+        username_full = f"{username}#{tag}"
+        return f"<{class_name} {username_full}({self.id})>"

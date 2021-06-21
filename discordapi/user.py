@@ -74,3 +74,10 @@ class BotUser(User):
         )
 
         return connections
+
+    def __str__(self):
+        class_name = self.__class__.__name__
+        username = self.username
+        tag = self.discriminator
+        username_full = f"{username}#{tag}"
+        return f"<{class_name} {username_full}({self.id})>"
