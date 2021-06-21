@@ -15,7 +15,7 @@ class Member(DictObject):
         self.guild = guild
 
         if self.user is not None:
-            self.user = User(self.user)
+            self.user = User(client, self.user)
 
     def modify(self, nick=EMPTY, roles=EMPTY, mute=EMPTY, deaf=EMPTY,
                channel_id=EMPTY):

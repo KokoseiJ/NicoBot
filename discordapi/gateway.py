@@ -1,7 +1,7 @@
 from .guild import Guild
+from .user import BotUser
 from .member import Member
-from .message import message
-from .user import User, BotUser
+from .message import Message
 from .channel import get_channel
 from .util import SelectableEvent
 from .websocket import WebSocketThread
@@ -160,7 +160,7 @@ class DiscordGateway(WebSocketThread):
         obj = payload
 
         if event == "READY":
-            self.user = BotUser(payload['user'])
+            self.user = BotUser(self, payload['user'])
             self.guilds = {obj['id']: False for obj in payload['guilds']}
             self.session_id = payload['session_id']
             self.application = payload['application']
@@ -170,7 +170,7 @@ class DiscordGateway(WebSocketThread):
             self.ready_to_run.set()
 
         elif event.startswith("CHANNEL") and event != "CHANNEL_PINS_UPDATE":
-            obj = get_channel(payload)
+            obj = get_channel(self, payload)
 
             guild_id = obj.guild_id
             if guild_id is not None:
@@ -195,7 +195,7 @@ class DiscordGateway(WebSocketThread):
                 channel.last_pin_timestamp = timestamp
 
         elif event == "GUILD_CREATE" or event == "GUILD_UPDATE":
-            obj = Guild(payload)
+            obj = Guild(self, payload)
             id = obj.id
             self.guilds[id] = obj
         
@@ -218,7 +218,7 @@ class DiscordGateway(WebSocketThread):
         elif event == "GUILD_MEMBER_ADD":
             guild_id = payload.get("guild_id")
             del payload['guild_id']
-            obj = Member(payload)
+            obj = Member(self, payload)
             guild = self.guilds.get(guild_id)
             guild.members.append(obj)
 
@@ -240,15 +240,15 @@ class DiscordGateway(WebSocketThread):
             guild_id = payload.get("guild_id")
             memberobjs = payload.get("members")
             members = {
-                member['user']['id']: Member(member)
+                member['user']['id']: Member(self, member)
                 for member in memberobjs
             }
             guild = self.guilds.get(guild_id)
             guild.members.update(members)
 
-        elif event == "MESSAGE_CREATE" or event == "MESSAGE_UPDATE"
-            obj = Message(payload)
+        elif event == "MESSAGE_CREATE" or event == "MESSAGE_UPDATE":
+            obj = Message(self, payload)
 
         # Add GUILD_ROLE event
 
-        self.event_hander(event, obj)
+        self.event_handler(event, obj)

@@ -1,6 +1,4 @@
 from .const import EMPTY
-from .guild import Guild
-from .channel import Channel
 from .util import clear_postdata
 from .dictobject import DictObject
 
@@ -23,7 +21,7 @@ class User(DictObject):
         return self.client.user.create_dm(self)
 
 
-class BotUser(DictObject):
+class BotUser(User):
     def modify_user(self, username=EMPTY, avatar=EMPTY):
         if isinstance(avatar, str):
             with open(avatar, "rb") as f:
@@ -47,6 +45,7 @@ class BotUser(DictObject):
         return self
 
     def leave_guild(self, guild):
+        from .guild import Guild
         if isinstance(guild, Guild):
             guild = guild.id
 
@@ -55,6 +54,7 @@ class BotUser(DictObject):
         )
 
     def create_dm(self, user):
+        from .channel import get_channel
         if isinstance(user, User):
             user = user.id
 
@@ -66,7 +66,7 @@ class BotUser(DictObject):
             "POST", "/users/@me/channels", postdata
         )
 
-        return Channel(channel)
+        return get_channel(channel)
 
     def get_connections(self):
         connections = self.client.send_request(
