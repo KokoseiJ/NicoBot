@@ -1,33 +1,83 @@
-#
-# NicoBot is Nicovideo Player bot for Discord, written from the scratch.
-# This file is part of NicoBot.
-#
-# Copyright (C) 2020 Wonjun Jung (KokoseiJ)
-#
-#    Nicobot is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
+from .const import EMPTY
+from .util import clear_postdata
+from .dictobject import DictObject
 
-from .const import IMAGE_URL
-from .JSONObject import JSONObject
+import base64
+from io import BytesIO
 
-KEY_LIST = ["id", "username", "discriminator", "avatar", "bot", "system",
-            "mfa_enabled", "locale", "verified", "email", "flags",
-            "premium_type", "public_flags"]
+__all__ = ["User"]
+
+KEYLIST = ["id", "username", "discriminator", "avatar", "bot", "system",
+           "mfa_enabled", "locale", "verified", "email", "flags",
+           "premium_type", "public_flags"]
 
 
-class User(JSONObject):
-    def __init__(self, json, client):
-        super().__init__(json, KEY_LIST)
+class User(DictObject):
+    def __init__(self, client, data):
+        super(User, self).__init__(data, KEYLIST)
         self.client = client
-        self.avatar = f"{IMAGE_URL}avatars/{self.id}/{self.avatar}.{{}}"
+
+    def dm(self):
+        return self.client.user.create_dm(self)
+
+
+class BotUser(User):
+    def modify_user(self, username=EMPTY, avatar=EMPTY):
+        if isinstance(avatar, str):
+            with open(avatar, "rb") as f:
+                avatar = f.read()
+        elif isinstance(avatar, BytesIO):
+            avatar = f.read()
+        avatar = base64.b64encode(avatar).decode()
+
+        postdata = {
+            "username": username,
+            "avatar": avatar
+        }
+        postdata = clear_postdata(postdata)
+
+        user = self.client.send_request(
+            "PATCH", "/users/@me", postdata
+        )
+
+        self.__init__(self.client, user)
+
+        return self
+
+    def leave_guild(self, guild):
+        from .guild import Guild
+        if isinstance(guild, Guild):
+            guild = guild.id
+
+        self.client.send_request(
+            "DELETE", f"/users/@me/guilds/{guild}"
+        )
+
+    def create_dm(self, user):
+        from .channel import get_channel
+        if isinstance(user, User):
+            user = user.id
+
+        postdata = {
+            "recipient_id": user
+        }
+
+        channel = self.client.send_request(
+            "POST", "/users/@me/channels", postdata
+        )
+
+        return get_channel(channel)
+
+    def get_connections(self):
+        connections = self.client.send_request(
+            "GET", "/users/@me/connections"
+        )
+
+        return connections
+
+    def __str__(self):
+        class_name = self.__class__.__name__
+        username = self.username
+        tag = self.discriminator
+        username_full = f"{username}#{tag}"
+        return self._get_str(class_name, self.id, username_full)

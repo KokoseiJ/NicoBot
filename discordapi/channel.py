@@ -1,143 +1,406 @@
-#
-# NicoBot is Nicovideo Player bot for Discord, written from the scratch.
-# This file is part of NicoBot.
-#
-# Copyright (C) 2020 Wonjun Jung (KokoseiJ)
-#
-#    Nicobot is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-
 from .user import User
-from .JSONObject import JSONObject
+from .const import EMPTY
+from .message import Message
+from .util import clear_postdata
+from .dictobject import DictObject
 
-TYPES = ["GUILD_TEXT", "DM", "GUILD_VOICE", "GROUP_DM ", "GUILD_CATEGORY",
-         "GUILD_NEWS", "GUILD_STORE"]
+import json
+import base64
+from io import IOBase
+from urllib.parse import quote as urlencode
 
-KEY_LIST = ["id", "type", "guild_id", "position", "permission_overwrites",
-            "name", "topic", "nsfw", "last_message_id", "bitrate",
-            "user_limit", "rate_limit_per_user", "recipients", "icon",
-            "owner_id", "application_id", "parent_id", "last_pin_timestamp"]
+__all__ = ["get_channel", "Channel", "DMChannel", "GroupDMChannel",
+           "GuildChannel", "GuildTextChannel", "GuildVoiceChannel"]
+
+KEYLIST = ["id", "type", "guild_id", "position", "permission_overwrites",
+           "name", "topic", "nsfw", "last_message_id", "bitrate", "user_limit",
+           "rate_limit_per_user", "recipients", "icon", "owner_id",
+           "application_id", "parent_id", "last_pin_timestamp", "rtc_region",
+           "video_quality_mode", "message_count", "member_count",
+           "thread_metadata", "member", "default_auto_archive_duration?"]
 
 
-def get_channel(data, client, guild=None, type=None):
-    if type is None:
-        type = data['type']
+GUILD_TEXT = 0
+DM = 1
+GUILD_VOICE = 2
+GROUP_DM = 3
+GUILD_CATEGORY = 4
+GUILD_NEWS = 5
+GUILD_STORE = 6
+GUILD_NEWS_THREAD = 10
+GUILD_PUBLIC_THREAD = 11
+GUILD_PRIVATE_THREAD = 12
+GUILD_STAGE_VOICE = 13
 
-    if type == 0:
-        return GuildTextChannel(data, client, guild)
-    elif type == 1:
-        return DMChannel(data, client)
-    elif type == 2:
-        return GuildVoiceChannel(data, client, guild)
-    elif type == 3:
-        return GroupDMChannel(data, client)
-    elif type == 4:
-        return ChannelCategory(data, client)
-    elif type == 5:
-        return GuildNewsChannel(data, client, guild)
-    elif type == 6:
-        return GuildStoreChannel(data, client, guild)
+
+def get_channel(client, data):
+    type = data['type']
+
+    if type == GUILD_TEXT:
+        return GuildTextChannel(client, data)
+    elif type == DM:
+        return DMChannel(client, data)
+    elif type == GUILD_VOICE:
+        return GuildVoiceChannel(client, data)
+    elif type == GROUP_DM:
+        return GroupDMChannel(client, data)
     else:
-        raise NotImplementedError(f"Type {type} is not implemented")
+        return Channel(client, data)
 
 
-class Channel(JSONObject):
-    def __init__(self, data, client):
-        super().__init__(data, KEY_LIST)
+class Channel(DictObject):
+    def __init__(self, client, data):
+        super(Channel, self).__init__(data, KEYLIST)
+
         self.client = client
 
-    def send(self, content=None, tts=False, embed=None, mentions=None,
-             reference=None, _json=None):
-        from .message import Message
+    def modify(self, postdata):
+        # TODO: remove this part when EMPTY obj is implemented
+        postdata = clear_postdata(postdata)
 
-        if _json is not None:
-            data = _json
-        else:
-            data = {
-                "content": content,
-                "tts": tts,
-                "embed": embed,
-                "allowed_mentions": mentions,
-                "message_reference": reference
-            }
+        channel_obj = self.client.send_request(
+            "PATCH", f"/channels/{self.id}", postdata
+        )
 
-        data, _, _ = self.client._request(
-            f"channels/{self.id}/messages", "POST", data)
+        self.__init__(self.client, channel_obj)
 
-        return Message(data, self.client)
+        return self
+
+    def delete(self):
+        self.client.send_request("DELETE", f"/channels/{self.id}")
+
+    def get_messages(self, limit=EMPTY, around=EMPTY, before=EMPTY,
+                     after=EMPTY):
+        endpoint = f"/channels/{self.id}/messages?"
+        postdata = {
+            "around": around,
+            "before": before,
+            "after": after,
+            "limit": limit
+        }
+        postdata = clear_postdata(postdata)
+
+        for key, val in postdata.items():
+            endpoint += f"{key}={val}&"
+
+        endpoint = endpoint[:-1]
+
+        messages = self.client.send_request(
+            "GET", endpoint
+        )
+
+        return [Message(self.client, message) for message in messages]
+
+    def get_message(self, id):
+        message = self.send_request(
+            "GET", f"/channels/{self.id}/messages/{id}"
+        )
+
+        return Message(self.client, message)
+
+    def send(self, content=EMPTY, tts=EMPTY, file=EMPTY, embeds=EMPTY,
+             allowed_mentions=EMPTY, message_reference=EMPTY,
+             components=EMPTY):
+        # TODO: implement multipart/form-data
+        postdata = {
+            "content": content,
+            "tts": tts,
+            "file": file,
+            "embeds": embeds,
+            "allowed_mentions": allowed_mentions,
+            "message_reference": message_reference,
+            "components": components
+        }
+        postdata = clear_postdata(postdata)
+
+        message = self.client.send_request(
+            "POST", f"/channels/{self.id}/messages", postdata
+        )
+
+        return Message(self.client, message)
+
+    def edit_message(self, message, content=EMPTY, file=EMPTY, embeds=EMPTY,
+                     flags=EMPTY, allowed_mentions=EMPTY, attachments=EMPTY,
+                     components=EMPTY):
+        # TODO: implement multipart/form-data
+
+        if isinstance(message, Message):
+            message = message.id
+
+        postdata = {
+            "content": content,
+            "file": file,
+            "embeds": embeds,
+            "flags": flags,
+            "allowed_mentions": allowed_mentions,
+            "attachments": attachments,
+            "components": components
+        }
+        postdata = clear_postdata(postdata)
+
+        message = self.client.send_request(
+            "PATCH", f"/channels/{self.id}/messages/{message}", postdata
+        )
+
+        return Message(self.client, message)
+
+    def delete_message(self, message):
+        if isinstance(message, Message):
+            message = message.id
+
+        self.client.send_request(
+            "DELETE", f"/channels/{self.id}/messages/{message}"
+        )
+
+    def delete_messages(self, messages):
+        messages = [message.id if isinstance(message, Message) else message
+                    for message in messages]
+        postdata = {
+            "messages": messages
+        }
+
+        self.client.send_request(
+            "POST", f"/channels/{self.id}/messages/bulk-delete", postdata
+        )
+
+    def typing(self):
+        self.client.send_request(
+            "POST", f"/channels/{self.id}/typing"
+        )
+
+    def get_pinned_messages(self):
+        messages = self.client.send_request(
+            "GET", f"/channels/{self.id}/pins"
+        )
+
+        return [Message(self.client, message) for message in messages]
+
+    def pin_message(self, message):
+        if isinstance(message, Message):
+            message = message.id
+
+        self.client.send_request(
+            "PUT", f"/channels/{self.id}/pins/{message}"
+        )
+
+    def unpin_message(self, message):
+        if isinstance(message, Message):
+            message = message.id
+
+        self.client.send_request(
+            "DELETE", f"/channels/{self.id}/pins/{message}"
+        )
+
+    def react(self, message, emoji, urlencoded=False):
+        if isinstance(message, Message):
+            message = message.id
+        if not urlencoded:
+            emoji = urlencode(emoji)
+
+        self.client.send_request(
+            "PUT",
+            f"/channels/{self.id}/messages/{message}/reactions/{emoji}/@me"
+        )
+
+    def delete_my_reaction(self, message, emoji, urlencoded=False):
+        if isinstance(message, Message):
+            message = message.id
+        if not urlencoded:
+            emoji = urlencode(emoji)
+
+        self.client.send_request(
+            "DELETE",
+            f"/channels/{self.id}/messages/{message}/reactions/{emoji}/@me"
+        )
+
+    def delete_others_reaction(self, message, emoji, user, urlencoded=False):
+        if isinstance(message, Message):
+            message = message.id
+        if isinstance(message, User):
+            user = user.id
+        if not urlencoded:
+            emoji = urlencode(emoji)
+
+        self.client.send_request(
+            "DELETE",
+            f"/channels/{self.id}/messages/{message}/reactions/{emoji}/{user}"
+        )
+
+    def get_reactions(self, message, emoji, limit=EMPTY, after=EMPTY,
+                      urlencoded=False):
+        if isinstance(message, Message):
+            message = message.id
+        if not urlencoded:
+            emoji = urlencode(emoji)
+
+        postdata = {
+            "after": after,
+            "limit": limit
+        }
+        postdata = clear_postdata(postdata)
+
+        endpoint = f"/channels/{self.id}/messages/{message}/reactions?"
+
+        for key, val in postdata.items():
+            endpoint += f"{key}={val}&"
+
+        endpoint = endpoint[:-1]
+
+        users = self.client.send_request(
+            "GET", endpoint
+        )
+
+        return [User(self.client, user) for user in users]
+
+    def delete_all_reactions(self, message):
+        if isinstance(message, Message):
+            message = message.id
+
+        self.client.send_request(
+            "DELETE",
+            f"/channels/{self.id}/messages/{message}/reactions"
+        )
+
+    def delete_all_reactions_for_emoji(self, message, emoji, urlencoded=False):
+        if isinstance(message, Message):
+            message = message.id
+        if not urlencoded:
+            emoji = urlencode(emoji)
+
+        self.client.send_request(
+            "DELETE",
+            f"/channels/{self.id}/messages/{message}/reactions/{emoji}"
+        )
 
 
 class DMChannel(Channel):
-    def __init__(self, data, client):
-        super().__init__(data, client)
-        self.recipients = {
-            user['id']: User(user, client) for user in self.recipients}
-
-    def __repr__(self):
-        user = self.recipients.values()[0]
-        name = user.username
-        disc = user.discriminator
-        return self._get_repr(f"{name}#{disc}({self.id})")
+    def __init__(self, client, data):
+        super(DMChannel, self).__init__(client, data)
+        self.recipients = [User(client, user) for user in self.recipients]
 
 
 class GroupDMChannel(DMChannel):
-    def __init__(self, data, client):
-        super().__init__(data, client)
-        self.owner = client.recipients.get(self.owner_id)
+    def modify(self, name=EMPTY, icon=EMPTY):
+        if isinstance(icon, str):
+            with open(icon, "rb") as f:
+                icon = base64.b64encode(f.read())
+        elif isinstance(icon, IOBase):
+            icon = base64.b64encode(f.read())
+        elif isinstance(icon, bytes):
+            icon = base64.b64encode(icon)
 
-    def __repr__(self):
-        return self._get_repr(f"{self.name}({self.id})")
+        postdata = json.dumps({
+            "name": name,
+            "icon": icon
+        })
+
+        return super(GroupDMChannel, self).modify(postdata)
 
 
 class GuildChannel(Channel):
-    def __init__(self, data, client, guild=None):
-        super().__init__(data, client)
+    def __init__(self, client, data):
+        super(GuildChannel, self).__init__(client, data)
 
-        if guild is not None:
-            self.guild = guild
+    def get_guild(self):
+        guild = self.client.guilds.get(self.guild_id)
+        if guild is None or not guild:
+            return self.client.get_guild(self.guild_id)
         else:
-            self.guild = client.guilds.get(self.guild_id)
+            return guild
 
-        if self.parent_id is not None:
-            channels = self.guild.channels
-            if isinstance(channels, list):
-                self.parent = [Channel(chn, self) for chn in channels
-                               if chn['id'] == self.parent_id][0]
+    def get_parent(self):
+        if self.parent_id is None:
+            return None
+        else:
+            parent = self.get_guild().channels.get(self.parent_id)
+            if parent is None:
+                return self.client.get_channel(self.parent_id)
             else:
-                self.parent = self.guild.channels.get(self.id)
-        else:
-            self.parent = None
+                return parent
 
-    def __repr__(self):
-        return self._get_repr(f"{self.guild.name}:{self.name}({self.id})")
+    def edit_permission(self, id, allow=EMPTY, deny=EMPTY, type=EMPTY):
+        postdata = {
+            "allow": allow,
+            "deny": deny,
+            "type": type
+        }
+        postdata = clear_postdata(postdata)
 
+        self.client.send_request(
+            "PUT", f"/channels/{self.id}/permissions/{id}", postdata
+        )
 
-class ChannelCategory(GuildChannel):
-    pass
+    def remove_permission(self, id):
+        self.client.send_request(
+            "DELETE", f"/channels/{self.id}/permissions/{id}"
+        )
+
+    def get_invites(self):
+        invites = self.client.send_request(
+            "POST", f"/channels/{self.id}/invites"
+        )
+        return invites
+
+    def invite(self, max_age=EMPTY, max_uses=EMPTY, temporary=EMPTY,
+               unique=EMPTY, target_type=EMPTY, target_user_id=EMPTY):
+        postdata = {
+            "max_age": max_age,
+            "max_uses": max_uses,
+            "temporary": temporary,
+            "unique": unique,
+            "target_type": target_type,
+            "target_user_id": target_user_id,
+        }
+        postdata = clear_postdata(postdata)
+        invite = self.client.send_request(
+            "POST", f"/channels/{self.id}/invites", postdata
+        )
+        return invite
 
 
 class GuildTextChannel(GuildChannel):
-    pass
+    def modify(self, name=EMPTY, position=EMPTY, topic=EMPTY, nsfw=EMPTY,
+               rate_limit_per_user=EMPTY, permission_overwrites=EMPTY,
+               parent_id=EMPTY):
+        postdata = {
+            "name": name,
+            "position": position,
+            "topic": topic,
+            "nsfw": nsfw,
+            "rate_limit_per_user": rate_limit_per_user,
+            "permission_overwrites": permission_overwrites,
+            "parent_id": parent_id
+        }
 
+        return super(GuildTextChannel, self).modify(postdata)
 
-class GuildNewsChannel(GuildTextChannel):
-    pass
+    def crosspost(self, message):
+        if isinstance(message, Message):
+            message = message.id
+        rtnmsg = self.client.send_request(
+            "POST", f"/channels/{self.id}/messages/{message}/crosspost"
+        )
+        return Message(self.client, rtnmsg)
+
+    def follow_news_channel(self, id):
+        return self.client.send_request(
+            "POST", f"/channels/{self.id}/followers"
+        )
 
 
 class GuildVoiceChannel(GuildChannel):
-    pass
+    def modify(self, name=EMPTY, position=EMPTY, bitrate=EMPTY,
+               user_limit=EMPTY, permission_overwrites=EMPTY, parent_id=EMPTY,
+               rtc_region=EMPTY, video_quality_mode=EMPTY):
+        postdata = {
+            "name": name,
+            "position": position,
+            "bitrate": bitrate,
+            "user_limit": user_limit,
+            "permission_overwrites": permission_overwrites,
+            "parent_id": parent_id,
+            "rtc_region": rtc_region,
+            "video_quality_mode": video_quality_mode
+        }
 
-
-class GuildStoreChannel(GuildChannel):
-    pass
+        return super(GuildVoiceChannel, self).modify(postdata)

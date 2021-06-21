@@ -20,6 +20,27 @@ I thought we might need a corountine-less library. That's why I didn't use a fam
 
 I'm well aware that threading in python has a disadvantage due to Global Interpreter Lock. but since there are bottlenecks in HTTP requests, I don't think bottlenecks caused by GIL will affect the performance largely. of course, I didn't do any tests yet. I'll do it later though, and if it appears to degrade performance, I will migrate to multiprocessing library.
 
+## Development Roadmap
+- [x] implement Channel HTTP API requests
+
+- [x] implement Guild HTTP API requests
+
+- [x] implement User HTTP API requests
+
+- [x] implement Message HTTP API requests
+
+- [x] implement Member HTTP API requests
+
+- [ ] Wire up discord object classes to Gateway events
+
+- [ ] Implement handlers
+
+- [ ] Implement Voice Connection based on WebSocketThread
+
+- [ ] Unify function behaviours and code styles
+
+- [ ] maybe implement slash commands?
+
 ## Contributions?
 Oh yes, I definitely need them! I'll happily accept any forms of contributions, just send me a PR! I'll review it right away.
 

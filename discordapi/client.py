@@ -1,112 +1,132 @@
-#
-# NicoBot is Nicovideo Player bot for Discord, written from the scratch.
-# This file is part of NicoBot.
-#
-# Copyright (C) 2020 Wonjun Jung (KokoseiJ)
-#
-#    Nicobot is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-
+from .user import User
+from .guild import Guild
 from .gateway import DiscordGateway
-from .exception import DiscordHTTPError
-from .channel import get_channel
-from .const import LIB_NAME, LIB_URL, LIB_VER, API_URL
+from .exceptions import DiscordHTTPError
+from .channel import get_channel, Channel
+from .const import API_URL, LIB_NAME, LIB_VER, LIB_URL
 
 import json
-import time
-import logging
-from urllib.parse import urljoin
+import base64
+from io import BytesIO
 from urllib.error import HTTPError
-from urllib.request import Request, urlopen
-from json.decoder import JSONDecodeError
+from urllib.request import Request, urlopen, urljoin
 
-logger = logging.getLogger(LIB_NAME)
+__all__ = ["DiscordClient"]
+
+
+def construct_url(baseurl, endpoint):
+    if endpoint.startswith("/"):
+        endpoint = endpoint[1:]
+
+    return urljoin(baseurl, endpoint)
 
 
 class DiscordClient(DiscordGateway):
-    def __init__(self, token, intents=None, event_handler=None):
-        super().__init__(token, intents, event_handler)
+    def __init__(self, *args, **kwargs):
+        super(DiscordClient, self).__init__(*args, **kwargs)
 
         self.headers = {
             "User-Agent": f"{LIB_NAME} ({LIB_URL}, {LIB_VER})",
-            "authorization": f"Bot {self.token}"
+            "Authorization": f"Bot {self.token}",
+            "Content-Type": "application/json"
         }
 
-        self.rate_limit = {"global": (False, None)}
+    def get_user(self, id):
+        user_obj = self.send_request("GET", f"/users/{id}")
+        return User(user_obj)
 
     def get_channel(self, id):
-        data, status, _ = self._request(f"channels/{id}")
-        return get_channel(data, self)
+        channel_obj = self.send_request("GET", f"/channels/{id}")
+        return get_channel(self, channel_obj)
 
-    def _get_rate_limit(self, endpoint):
-        if self.rate_limit['global'][0]:
-            return self.rate_limit['global'][1]
-        return self.rate_limit.get("endpoint")
+    def create_guild(self, name, icon=None, verification_level=None,
+                     default_message_notifications=None,
+                     explicit_content_filter=None, roles=None, channels=None,
+                     afk_channel_id=None, afk_timeout=None,
+                     system_channel_id=None, system_channel_flags=None):
+        if icon is not None:
+            if isinstance(icon, str):
+                with open(icon, "rb") as f:
+                    icon = f.read()
+            elif isinstance(icon, BytesIO):
+                icon = icon.read()
 
-    def _set_rate_limit(self, endpoint, until):
-        self.rate_limit[endpoint] = until
+            icon = base64.b64encode(icon).decode()
 
-    def _request(self, endpoint, method="GET", data=None, is_json=True,
-                 headers=None, throw=True):
+        channels = [channel._json if isinstance(channel, Channel) else channel
+                    for channel in channels]
+
+        postdata = {
+            "name": name,
+            "icon": icon,
+            "verification_level": verification_level,
+            "default_message_notifications": default_message_notifications,
+            "explicit_content_filter": explicit_content_filter,
+            "roles": roles,
+            "channels": channels,
+            "afk_channel_id": afk_channel_id,
+            "afk_timeout": afk_timeout,
+            "system_channel_id": system_channel_id,
+            "system_channel_flags": system_channel_flags,
+        }
+
+        guild = self.send_request(
+            "POST", "/guilds", postdata
+        )
+
+        return Guild(self, guild)
+
+    def get_guild(self, id, with_counts=False):
+        guild = self.send_request(
+            "GET", f"/guilds/{id}?with_counts={str(with_counts).lower()}"
+        )
+
+        return Guild(self, guild)
+
+    def get_guild_preview(self, id):
+        preview = self.send_request(
+            "GET", f"/guilds/{id}/preview"
+        )
+
+        return preview
+
+    def send_request(self, method, route, data=None, expected_code=None,
+                     raise_at_exc=True, baseurl=API_URL, headers=None):
+        url = construct_url(API_URL, route)
+
         if isinstance(data, dict):
-            data = json.dumps(data).encode()
-        elif isinstance(data, str):
+            data = json.dumps(data)
+        if isinstance(data, str):
             data = data.encode()
 
-        url = urljoin(API_URL, endpoint)
+        req_headers = self.headers
+        if headers is not None:
+            req_headers.update(headers)
 
-        _headers = self.headers.copy()
-        if data is not None and is_json:
-            _headers.update({"Content-Type": "application/json"})
-        if headers is not None and isinstance(headers, dict):
-            _headers.update(headers)
+        req = Request(url, data, req_headers, method=method)
 
-        rate_limit = self._get_rate_limit(endpoint)
-        if rate_limit is not None:
-            now = time.time()
-            if now < rate_limit:
-                time.sleep(rate_limit - now)
-            else:
-                del rate_limit
-
-        logger.debug(f"Sending {method} request to {url}")
-        req = Request(url, data, _headers, method=method)
+        exc = False
         try:
             res = urlopen(req)
-            try:
-                status = res.getstatus()
-            except AttributeError:
-                status = res.status
-            raised = False
         except HTTPError as e:
+            exc = True
             res = e
-            status = e.code
-            raised = True
+
+        try:
+            code = res.status
+        except AttributeError:
+            code = res.getstatus()
 
         rawdata = res.read()
-        try:
-            data = json.loads(rawdata)
-        except JSONDecodeError:
-            data = rawdata.decode()
+        if not rawdata:
+            resdata = None
+        else:
+            resdata = json.loads(rawdata)
 
-        if raised:
-            if status == 429:
-                logger.warning("Rate Limit provoked!")
-                self._set_rate_limit(
-                    endpoint, res.headers['x-ratelimit-reset'])
-                return self._request(
-                    endpoint, method, data, is_json, headers, throw)
-            if throw:
-                raise DiscordHTTPError(res, data) from res
-        return data, status, res
+        if raise_at_exc:
+            if (expected_code is not None and code != expected_code) or exc:
+                raise DiscordHTTPError(
+                    resdata['code'], resdata['message'], res
+                )
+
+        return resdata
