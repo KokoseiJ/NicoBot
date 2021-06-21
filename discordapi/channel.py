@@ -92,7 +92,7 @@ class Channel(DictObject):
         return [Message(self.client, message) for message in messages]
 
     def get_message(self, id):
-        message = self.send_request(
+        message = self.client.send_request(
             "GET", f"/channels/{self.id}/messages/{id}"
         )
 
