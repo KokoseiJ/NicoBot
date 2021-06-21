@@ -109,7 +109,9 @@ class Guild(DictObject):
             "GET", f"/guilds/{self.id}/channels"
         )
 
-        channels = [get_channel(channel) for channel in raw_channels]
+        channels = [
+            get_channel(self.client, channel) for channel in raw_channels
+        ]
         self.channels = channels
 
         return channels
@@ -136,7 +138,7 @@ class Guild(DictObject):
             "POST", f"/guilds/{self.id}/channels", postdata
         )
 
-        return get_channel(channel)
+        return get_channel(self.client, channel)
 
     def modify_channel_positions(self, params={}):
         self.client.send_request(
@@ -150,7 +152,7 @@ class Guild(DictObject):
             "GET", f"/guilds/{self.id}/members/{user}"
         )
 
-        return Member(member)
+        return Member(self.client, self, member)
 
     def list_members(self, limit=EMPTY, after=EMPTY):
         postdata = {
@@ -168,7 +170,7 @@ class Guild(DictObject):
             "GET", endpoint
         )
 
-        return [Member(member) for member in members]
+        return [Member(self.client, self, member) for member in members]
 
     def search_members(self, query=EMPTY, limit=EMPTY):
         postdata = {
@@ -186,7 +188,7 @@ class Guild(DictObject):
             "GET", endpoint
         )
 
-        return [Member(member) for member in members]
+        return [Member(self.client, self, member) for member in members]
 
     def modify_member(self, member, nick=EMPTY, roles=EMPTY, mute=EMPTY,
                       deaf=EMPTY, channel_id=EMPTY):
@@ -205,7 +207,7 @@ class Guild(DictObject):
             "PATCH", f"/guilds/{self.id}/members/{member}", postdata
         )
 
-        return Member(member)
+        return Member(self.client, self, member)
 
     def change_my_nick(self, nick):
         postdata = {

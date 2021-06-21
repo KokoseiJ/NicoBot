@@ -89,14 +89,14 @@ class Channel(DictObject):
             "GET", endpoint
         )
 
-        return [Message(message) for message in messages]
+        return [Message(self.client, message) for message in messages]
 
     def get_message(self, id):
         message = self.send_request(
             "GET", f"/channels/{self.id}/messages/{id}"
         )
 
-        return Message(message)
+        return Message(self.client, message)
 
     def send(self, content=EMPTY, tts=EMPTY, file=EMPTY, embeds=EMPTY,
              allowed_mentions=EMPTY, message_reference=EMPTY,
@@ -117,7 +117,7 @@ class Channel(DictObject):
             "POST", f"/channels/{self.id}/messages", postdata
         )
 
-        return Message(message)
+        return Message(self.client, message)
 
     def edit_message(self, message, content=EMPTY, file=EMPTY, embeds=EMPTY,
                      flags=EMPTY, allowed_mentions=EMPTY, attachments=EMPTY,
@@ -142,7 +142,7 @@ class Channel(DictObject):
             "PATCH", f"/channels/{self.id}/messages/{message}", postdata
         )
 
-        return Message(message)
+        return Message(self.client, message)
 
     def delete_message(self, message):
         if isinstance(message, Message):
@@ -173,7 +173,7 @@ class Channel(DictObject):
             "GET", f"/channels/{self.id}/pins"
         )
 
-        return [Message(message) for message in messages]
+        return [Message(self.client, message) for message in messages]
 
     def pin_message(self, message):
         if isinstance(message, Message):
@@ -250,7 +250,7 @@ class Channel(DictObject):
             "GET", endpoint
         )
 
-        return [User(user) for user in users]
+        return [User(self.client, user) for user in users]
 
     def delete_all_reactions(self, message):
         if isinstance(message, Message):
@@ -380,7 +380,7 @@ class GuildTextChannel(GuildChannel):
         rtnmsg = self.client.send_request(
             "POST", f"/channels/{self.id}/messages/{message}/crosspost"
         )
-        return Message(rtnmsg)
+        return Message(self.client, rtnmsg)
 
     def follow_news_channel(self, id):
         return self.client.send_request(
