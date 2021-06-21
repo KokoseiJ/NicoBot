@@ -246,6 +246,9 @@ class DiscordGateway(WebSocketThread):
             guild = self.guilds.get(guild_id)
             guild.members.update(members)
 
-        # Finish from guild_role, and messages
+        elif event == "MESSAGE_CREATE" or event == "MESSAGE_UPDATE"
+            obj = Message(payload)
+
+        # Add GUILD_ROLE event
 
         self.event_hander(event, obj)
