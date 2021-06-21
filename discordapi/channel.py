@@ -299,9 +299,24 @@ class GroupDMChannel(DMChannel):
 
 class GuildChannel(Channel):
     def __init__(self, client, data):
-        super(Channel, self).__init__(client, data)
-        self.guild = self.client.guilds.get(self.guild_id)
-        self.parent = self.guild.channels.get(self.parent_id)
+        super(GuildChannel, self).__init__(client, data)
+
+    def get_guild(self):
+        guild = self.client.guilds.get(self.guild_id)
+        if guild is None or not guild:
+            return self.client.get_guild(self.guild_id)
+        else:
+            return guild
+
+    def get_parent(self):
+        if self.parent_id is None:
+            return None
+        else:
+            parent = self.get_guild().channels.get(self.parent_id)
+            if parent is None:
+                return self.client.get_channel(self.parent_id)
+            else:
+                return parent
 
     def edit_permission(self, id, allow=EMPTY, deny=EMPTY, type=EMPTY):
         postdata = {
