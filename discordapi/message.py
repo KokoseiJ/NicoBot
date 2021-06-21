@@ -77,4 +77,4 @@ class Message(DictObject):
         username = self.author.username
         tag = self.author.discriminator
         username_full = f"{username}#{tag}"
-        return f"<{class_name} {username_full} ({self.id})>"
+        return self._get_str(class_name, self.id, username_full)
