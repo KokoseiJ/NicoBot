@@ -80,4 +80,4 @@ class BotUser(User):
         username = self.username
         tag = self.discriminator
         username_full = f"{username}#{tag}"
-        return f"<{class_name} {username_full}({self.id})>"
+        return f"<{class_name} {username_full} ({self.id})>"

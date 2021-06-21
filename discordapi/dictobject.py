@@ -13,10 +13,7 @@ class DictObject:
 
     def __str__(self):
         class_name = self.__class__.__name__
-        if self.id is not None:
-            if self.name is not None:
-                return f"<{class_name} {self.name}({self.id})>"
-            else:
-                return f"<{class_name} ({self.id})"
+        if self.name is not None:
+            return f"<{class_name} {self.name} ({self.id})>"
         else:
-            return super(DictObject, self).__str__()
+            return f"<{class_name} ({self.id})"

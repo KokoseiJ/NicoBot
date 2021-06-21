@@ -23,9 +23,8 @@ class Message(DictObject):
             self.guild = client.guilds.get(self.guild_id)
             if self.guild is not None:
                 self.channel = self.guild.channels.get(self.channel_id)
-
-        if self.channel is None:
-            self.channel = client.get_channel(self.channel_id)
+            if self.channel is None:
+                self.channel = client.get_channel(self.channel_id)
 
         self.author = User(client, self.author)
         if self.guild_id is not None and self.member is not None:
@@ -78,4 +77,4 @@ class Message(DictObject):
         username = self.author.username
         tag = self.author.discriminator
         username_full = f"{username}#{tag}"
-        return f"<{class_name} {username_full}({self.id})>"
+        return f"<{class_name} {username_full} ({self.id})>"

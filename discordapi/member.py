@@ -38,4 +38,4 @@ class Member(DictObject):
         username = self.user.username
         tag = self.user.discriminator
         username_full = f"{username}#{tag}"
-        return f"<{class_name} {username_full}({self.id})>"
+        return f"<{class_name} {username_full} ({self.id})>"
