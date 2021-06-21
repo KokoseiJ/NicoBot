@@ -118,7 +118,6 @@ class DiscordClient(DiscordGateway):
             code = res.getstatus()
 
         rawdata = res.read()
-        print(rawdata)
         if not rawdata:
             resdata = None
         else:
