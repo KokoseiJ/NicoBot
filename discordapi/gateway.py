@@ -217,8 +217,9 @@ class DiscordGateway(WebSocketThread):
 
         elif event == "GUILD_MEMBER_ADD":
             guild_id = payload.get("guild_id")
+            guild = self.guilds.get(guild_id)
             del payload['guild_id']
-            obj = Member(self, payload)
+            obj = Member(self, guild, payload)
             guild = self.guilds.get(guild_id)
             guild.members.append(obj)
 
@@ -238,9 +239,10 @@ class DiscordGateway(WebSocketThread):
 
         elif event == "GUILD_MEMBERS_CHUNK":
             guild_id = payload.get("guild_id")
+            guild = self.guilds.get(guild_id)
             memberobjs = payload.get("members")
             members = {
-                member['user']['id']: Member(self, member)
+                member['user']['id']: Member(self, guild, member)
                 for member in memberobjs
             }
             guild = self.guilds.get(guild_id)

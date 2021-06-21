@@ -28,8 +28,11 @@ class Message(DictObject):
             self.channel = client.get_channel(self.channel_id)
 
         self.author = User(client, self.author)
-        if self.member is not None:
-            self.member = Member(client, self.member)
+        if self.guild_id is not None and self.member is not None:
+            guild = client.guilds.get(self.guild_id)
+            if guild is None:
+                guild = client.get_guild(self.guild_id)
+            self.member = Member(client, guild, self.member)
         self.mentions = [User(client, user) for user in self.mentions]
         if self.referenced_message is not None:
             self.referenced_message = Message(client, self.referenced_message)
