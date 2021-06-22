@@ -67,6 +67,7 @@ class DiscordGateway(WebSocketThread):
         self.is_heartbeat_ready = SelectableEvent()
         self.heartbeat_ack = SelectableEvent()
         self.is_reconnect = False
+        self.voice_queue = {}
 
         self.user = None
         self.guilds = None
@@ -90,12 +91,6 @@ class DiscordGateway(WebSocketThread):
                 "$os": sys.platform,
                 "$browser": LIB_NAME,
                 "$device": LIB_NAME
-            },
-            presence={
-                "activities": [{
-                    "name": "Henceforth",
-                    "type": 2
-                }]
             }
         )
         self.send(data)
@@ -130,6 +125,8 @@ class DiscordGateway(WebSocketThread):
             elif self.heartbeat_ack not in rl:
                 logger.error("No HEARTBEAT_ACK received within time!")
                 self.ws.close(STATUS_ABNORMAL_CLOSED)
+
+            self.heartbeat_ack.clear()
 
             rl, _, _ = select((stop_flag,), (), (), deadline - time.time())
             if stop_flag in rl:
@@ -272,6 +269,9 @@ class DiscordGateway(WebSocketThread):
 
         elif event == "MESSAGE_CREATE" or event == "MESSAGE_UPDATE":
             obj = Message(self, payload)
+
+        elif event == "VOICE_SERVER_UPDATE" or event == "VOICE_STATE_UPDATE":
+            self.voice_queue[payload['guild_id']].put((event, payload))
 
         # Add GUILD_ROLE event
 

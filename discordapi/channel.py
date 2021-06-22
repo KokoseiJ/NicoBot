@@ -19,14 +19,16 @@
 #
 
 from .user import User
-from .const import EMPTY
 from .message import Message
 from .util import clear_postdata
 from .dictobject import DictObject
+from .const import EMPTY, VOICE_VER
+from .voice import DiscordVoiceClient
 
 import json
 import base64
 from io import IOBase
+from queue import Queue
 from urllib.parse import quote as urlencode
 
 __all__ = ["get_channel", "Channel", "DMChannel", "GroupDMChannel",
@@ -424,3 +426,22 @@ class GuildVoiceChannel(GuildChannel):
         }
 
         return super(GuildVoiceChannel, self).modify(postdata)
+
+    def connect(self, mute=False, deaf=False):
+        self.voice_queue[self.guild_id] = Queue()
+        self.client.update_voice_state(self.guild_id, self.id, mute, deaf)
+        token = None
+        session_id = None
+        while token is not None and session_id is not None:
+            event, payload = self.voice_queue[self.guild_id].get()
+            if event == "VOICE_STATE_UPDATE":
+                session_id = payload['session_id']
+            elif event == "VOICE_SERVER_UPDATE":
+                token = payload['token']
+                endpoint = payload['endpoint']
+        client = DiscordVoiceClient(
+            self.client, endpoint, token, session_id, self.guild_id
+        )
+        client.start()
+        client.is_ready.wait()
+        return client

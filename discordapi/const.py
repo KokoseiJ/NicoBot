@@ -28,4 +28,6 @@ GATEWAY_URL = f"wss://gateway.discord.gg/?v={GATEWAY_VER}&encoding=json"
 API_VER = 9
 API_URL = f"https://discord.com/api/v{API_VER}/"
 
+VOICE_VER = 4
+
 EMPTY = 1337
