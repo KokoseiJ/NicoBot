@@ -21,11 +21,13 @@
 from .user import User
 from .guild import Guild
 from .gateway import DiscordGateway
+from .util import EMPTY, clear_postdata
 from .exceptions import DiscordHTTPError
 from .channel import get_channel, Channel
 from .const import API_URL, LIB_NAME, LIB_VER, LIB_URL
 
 import json
+import time
 import base64
 from io import BytesIO
 from urllib.error import HTTPError
@@ -50,6 +52,57 @@ class DiscordClient(DiscordGateway):
             "Authorization": f"Bot {self.token}",
             "Content-Type": "application/json"
         }
+        self._activities = []
+
+    def request_guild_member(self, guild_id, query=EMPTY, limit=EMPTY,
+                             presences=EMPTY, user_ids=EMPTY, nonce=EMPTY):
+        data = self._get_payload(
+            self.REQUEST_GUILD_MEMBERS,
+            guild_id=guild_id,
+            query=query,
+            limit=limit,
+            presences=presences,
+            user_ids=user_ids,
+            nonce=nonce
+        )
+
+        data['d'] = clear_postdata(data['d'])
+
+        self.send(data)
+
+    def update_voice_state(self, guild_id, channel_id=None, mute=False,
+                           deaf=False):
+        data = self._get_payload(
+            self.VOICE_STATE_UPDATE,
+            guild_id=guild_id,
+            channel_id=channel_id,
+            self_mute=mute,
+            self_deaf=deaf
+        )
+
+        self.send(data)
+
+    def update_presence(self, activities=None, status=None, afk=False,
+                        since=None):
+        if since is None:
+            since = time.time() * 1000
+        if activities is not None:
+            if not isinstance(activities, list):
+                tmp = []
+                tmp.append(activities)
+                activities = tmp
+            self._activities = activities
+        data = self._get_payload(
+            self.PRESENCE_UPDATE,
+            activities=self._activities,
+            status=status,
+            afk=afk,
+            since=since
+        )
+
+        data['d'] = clear_postdata(data['d'])
+
+        self.send(data)
 
     def get_user(self, id):
         user_obj = self.send_request("GET", f"/users/{id}")

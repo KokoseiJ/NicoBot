@@ -154,6 +154,8 @@ class DiscordGateway(WebSocketThread):
         self.is_heartbeat_ready.clear()
 
     def _dispatcher(self, data):
+        logger.debug(data)
+
         op = data['op']
         payload = data['d']
         seq = data['s']

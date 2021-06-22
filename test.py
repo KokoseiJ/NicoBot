@@ -23,20 +23,26 @@ from discordapi.client import DiscordClient
 
 import sys
 import logging
+from queue import Queue
 from logging import StreamHandler
+from websocket._logging import enableTrace
+
+
+event_queue = Queue()
 
 
 def dummy_handler(*args, **kwargs):
     if __name__ == "__main__":
         print(*args)
+    event_queue.put((args[0], args[1]))
 
 
 logger = logging.getLogger(LIB_NAME)
 handler = StreamHandler(sys.stdout)
 
 if __name__ != "__main__":
-    logger.setLevel("ERROR")
-    handler.setLevel("ERROR")
+    logger.setLevel("INFO")
+    handler.setLevel("INFO")
 else:
     logger.setLevel("DEBUG")
     handler.setLevel("DEBUG")

@@ -47,7 +47,8 @@ class Message(DictObject):
             else:
                 self.channel = client.get_channel(self.channel_id)
 
-        self.author = User(client, self.author)
+        if self.author is not None:
+            self.author = User(client, self.author)
         if self.guild_id is not None and self.member is not None:
             guild = client.guilds.get(self.guild_id)
             if guild is None:
