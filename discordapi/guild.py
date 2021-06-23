@@ -58,7 +58,7 @@ class Guild(DictObject):
         }
 
         self.channels = {
-            channel['id']: get_channel(client, channel)
+            channel['id']: get_channel(client, channel, self)
             for channel in self.channels
         }
 

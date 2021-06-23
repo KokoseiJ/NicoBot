@@ -55,15 +55,15 @@ GUILD_PRIVATE_THREAD = 12
 GUILD_STAGE_VOICE = 13
 
 
-def get_channel(client, data):
+def get_channel(client, data, guild=None):
     type = data['type']
 
     if type == GUILD_TEXT:
-        return GuildTextChannel(client, data)
+        return GuildTextChannel(client, data, guild)
     elif type == DM:
         return DMChannel(client, data)
     elif type == GUILD_VOICE:
-        return GuildVoiceChannel(client, data)
+        return GuildVoiceChannel(client, data, guild)
     elif type == GROUP_DM:
         return GroupDMChannel(client, data)
     else:
@@ -320,8 +320,11 @@ class GroupDMChannel(DMChannel):
 
 
 class GuildChannel(Channel):
-    def __init__(self, client, data):
+    def __init__(self, client, data, guild=None):
         super(GuildChannel, self).__init__(client, data)
+
+        if self.guild_id is None and guild is not None:
+            self.guild_id = guild.id
 
     def get_guild(self):
         guild = self.client.guilds.get(self.guild_id)
