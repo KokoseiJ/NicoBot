@@ -103,6 +103,7 @@ class DiscordVoiceClient(WebSocketThread):
         self.send(payload)
 
     def disconnect(self):
+        self.stop()
         self.client.update_voice_state(self.server_id, None, False, False)
 
     def _send_voice(self, data):
