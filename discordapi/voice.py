@@ -18,21 +18,32 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
-from .const import LIB_NAME, VOICE_VER
-from .websocket import WebSocketThread
+from .const import LIB_NAME
 from .util import SelectableEvent
+from .exceptions import DiscordError
+from .websocket import WebSocketThread
 
 import json
 import time
-import select
 import struct
 import socket
 import logging
+from select import select
 from websocket import STATUS_ABNORMAL_CLOSED
+
+__all__ = []
 
 logger = logging.getLogger(LIB_NAME)
 
-__all__ = []
+IP_DISCOVERY_STRUCT = struct.Struct(">HHI64sH")
+VOICE_STRUCT = struct.Struct(">ccHII")
+
+try:
+    import nacl.secret
+    AVAILABLE = True
+except ImportError:
+    logger.info("PyNaCl not found, Voice unavailable")
+    AVAILABLE = False
 
 
 class DiscordVoiceClient(WebSocketThread):
@@ -42,24 +53,35 @@ class DiscordVoiceClient(WebSocketThread):
     HEARTBEAT = 3
     SESSION_DESCRIPTION = 4
     SPEAKING = 5
-    HEATBEAT_ACK = 6
+    HEARTBEAT_ACK = 6
     RESUME = 7
     HELLO = 8
     RESUMED = 9
     CLIENT_DISCONNECT = 13
 
     def __init__(self, client, endpoint, token, session_id, server_id):
+        if not AVAILABLE:
+            raise DiscordError("PyNaCl not found!")
         super(DiscordVoiceClient, self).__init__(
-            f"wss://{endpoint}?v={VOICE_VER}",
+            endpoint,
             self._dispatcher,
             f"voice_{session_id}"
         )
+
         self.client = client
-        self.endpoint = f"wss://{endpoint}?v={VOICE_VER}"
+        self.endpoint = endpoint
         self.token = token
         self.session_id = session_id
         self.server_id = server_id
         self.user_id = client.user.id
+
+        self.got_ready = SelectableEvent()
+        self.is_heartbeat_ready = SelectableEvent()
+        self.heartbeat_ack = SelectableEvent()
+        self.is_ready = SelectableEvent()
+        self.secret_box = None
+        self.voice_sequence = 0
+        self.timestamp = 0
 
         self.heartbeat_interval = None
         self.ssrc = None
@@ -67,13 +89,36 @@ class DiscordVoiceClient(WebSocketThread):
         self.modes = None
         self.ip = None
         self.port = None
-        self.key = None
-        self.got_ready = SelectableEvent()
-        self.is_heartbeat_ready = SelectableEvent()
-        self.heartbeat_ack = SelectableEvent()
-        self.is_ready = SelectableEvent()
+        self.secret_key = None
 
         self.udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+    def speak(self, speaking=1):
+        payload = self._get_payload(
+            self.SPEAKING,
+            speaking=speaking,
+            delay=0,
+            ssrc=self.ssrc
+        )
+        self.send(payload)
+
+    def disconnect(self):
+        self.client.update_voice_state(self.server_id, None, False, False)
+
+    def _send_voice(self, data):
+        header = VOICE_STRUCT.pack(
+            b"\x80", b"\x78",
+            self.voice_sequence,
+            self.timestamp,
+            self.ssrc
+        )
+        nonce = bytearray(24)
+        nonce[:12] = header
+        enc = self.secret_box.encrypt(data, bytes(nonce)).ciphertext
+        payload = header + enc
+        self.send_udp(payload)
+        self.voice_sequence += 1
+        self.timestamp += 960
 
     def init_connection(self):
         self.send_identify()
@@ -94,17 +139,27 @@ class DiscordVoiceClient(WebSocketThread):
         self.send(payload)
 
     def ip_discovery(self):
-        payload_struct = struct.Struct(">hhI64sH")
-        payload = struct.pack(0x1, 70, self.ssrc, b'', 0)
-        self.send_udp(self, payload)
+        payload = IP_DISCOVERY_STRUCT.pack(
+            0x1,
+            70,
+            self.ssrc,
+            self.server_addr[0].encode(),
+            self.server_addr[1]
+        )
+
+        self.send_udp(payload)
+
         addr = None
-        while addr == self.server_addr:
+        while addr != self.server_addr:
             payload, addr = self.udp_sock.recvfrom(1024)
-
-        data = payload_struct.unpack(payload)
-
-        ip = data[3].decode().rstrip()
-        port = data[4]
+        typ, len, ssrc, addr, port = IP_DISCOVERY_STRUCT.unpack(payload)
+        logger.debug(
+            f"typ: {typ} len: {len} ssrc: {ssrc} addr: {addr} port: {port}"
+        )
+        if not (typ == 0x2 and len == 70 and ssrc == self.ssrc):
+            raise RuntimeError("Packet Error")
+        
+        ip = addr.replace(b"\x00", b"").decode()
 
         return ip, port
 
@@ -148,7 +203,7 @@ class DiscordVoiceClient(WebSocketThread):
                 break
             elif self.heartbeat_ack not in rl:
                 logger.error("No HEARTBEAT_ACK received within time!")
-                self.ws.close(STATUS_ABNORMAL_CLOSED)
+                self.sock.close(STATUS_ABNORMAL_CLOSED)
 
             self.heartbeat_ack.clear()
 
@@ -171,8 +226,10 @@ class DiscordVoiceClient(WebSocketThread):
             "d": data if d is None else d
         }
 
+    def cleanup(self):
+        pass
+
     def _dispatcher(self, data):
-        data = json.loads(data)
         op = data['op']
         payload = data['d']
 
@@ -187,7 +244,11 @@ class DiscordVoiceClient(WebSocketThread):
             self.got_ready.set()
 
         elif op == self.SESSION_DESCRIPTION:
-            self.key = payload['secret_key']
+            self.secret_key = bytes(payload['secret_key'])
+            logger.debug("Received secret key, generating SecretBox...")
+            self.secret_box = nacl.secret.SecretBox(self.secret_key)
+            self.is_ready.set()
+            logger.debug("VOICE READY!!!")
 
         elif op == self.HEARTBEAT_ACK:
             self.heartbeat_ack.set()

@@ -68,6 +68,7 @@ class DiscordGateway(WebSocketThread):
         self.heartbeat_ack = SelectableEvent()
         self.is_reconnect = False
         self.voice_queue = {}
+        self.voice_clients = []
 
         self.user = None
         self.guilds = None
@@ -124,7 +125,7 @@ class DiscordGateway(WebSocketThread):
                 break
             elif self.heartbeat_ack not in rl:
                 logger.error("No HEARTBEAT_ACK received within time!")
-                self.ws.close(STATUS_ABNORMAL_CLOSED)
+                self.sock.close(STATUS_ABNORMAL_CLOSED)
 
             self.heartbeat_ack.clear()
 
@@ -150,9 +151,10 @@ class DiscordGateway(WebSocketThread):
     def cleanup(self):
         self.is_heartbeat_ready.clear()
 
-    def _dispatcher(self, data):
-        logger.debug(data)
+        for client in self.voice_clients:
+            client.stop()
 
+    def _dispatcher(self, data):
         op = data['op']
         payload = data['d']
         seq = data['s']
@@ -270,8 +272,11 @@ class DiscordGateway(WebSocketThread):
         elif event == "MESSAGE_CREATE" or event == "MESSAGE_UPDATE":
             obj = Message(self, payload)
 
-        elif event == "VOICE_SERVER_UPDATE" or event == "VOICE_STATE_UPDATE":
-            self.voice_queue[payload['guild_id']].put((event, payload))
+        elif (event == "VOICE_STATE_UPDATE" and
+                payload['user_id'] == self.user.id) or\
+                event == "VOICE_SERVER_UPDATE":
+            if self.voice_queue.get(payload['guild_id']) is not None:
+                self.voice_queue[payload['guild_id']].put((event, payload))
 
         # Add GUILD_ROLE event
 

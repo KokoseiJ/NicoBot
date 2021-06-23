@@ -115,6 +115,7 @@ class WebSocketThread(StoppableThread):
                     "Exception occured while receiving data from the gateway.")
 
             try:
+                logger.debug("Received " + data)
                 self.handler(parsed_data)
             except Exception:
                 logger.exception(
@@ -125,6 +126,7 @@ class WebSocketThread(StoppableThread):
             data = json.dumps(data)
 
         try:
+            logger.debug("Sent " + data)
             return self.sock.send(data)
         except SSLError:
             logger.exception("SSLError while sending data! retrying...")

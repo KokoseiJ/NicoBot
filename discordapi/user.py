@@ -40,6 +40,13 @@ class User(DictObject):
     def dm(self):
         return self.client.user.create_dm(self)
 
+    def __str__(self):
+        class_name = self.__class__.__name__
+        username = self.username
+        tag = self.discriminator
+        username_full = f"{username}#{tag}"
+        return self._get_str(class_name, self.id, username_full)
+
 
 class BotUser(User):
     def modify_user(self, username=EMPTY, avatar=EMPTY):
@@ -94,10 +101,3 @@ class BotUser(User):
         )
 
         return connections
-
-    def __str__(self):
-        class_name = self.__class__.__name__
-        username = self.username
-        tag = self.discriminator
-        username_full = f"{username}#{tag}"
-        return self._get_str(class_name, self.id, username_full)
