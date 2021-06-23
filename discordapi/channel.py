@@ -431,20 +431,22 @@ class GuildVoiceChannel(GuildChannel):
         return super(GuildVoiceChannel, self).modify(postdata)
 
     def connect(self, mute=False, deaf=False):
-        self.voice_queue[self.guild_id] = Queue()
+        self.client.voice_queue[self.guild_id] = Queue()
         self.client.update_voice_state(self.guild_id, self.id, mute, deaf)
         token = None
         session_id = None
-        while token is not None and session_id is not None:
-            event, payload = self.voice_queue[self.guild_id].get()
+        while token is None or session_id is None:
+            event, payload = self.client.voice_queue[self.guild_id].get()
             if event == "VOICE_STATE_UPDATE":
                 session_id = payload['session_id']
             elif event == "VOICE_SERVER_UPDATE":
                 token = payload['token']
                 endpoint = payload['endpoint']
+        endpoint = f"wss://{endpoint}?v={VOICE_VER}"
         client = DiscordVoiceClient(
             self.client, endpoint, token, session_id, self.guild_id
         )
+        self.client.voice_clients.append(client)
         client.start()
         client.is_ready.wait()
         return client
