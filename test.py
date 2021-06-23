@@ -130,7 +130,10 @@ if __name__ == "__main__":
                     else:
                         payload.channel.send("No u:heart:")
                 elif "?echo" in payload.content:
-                    payload.channel.send(payload.content.split("", 1)[-1])
+                    if "pp" in payload.content.split(" "):
+                        payload.channel.send("No pp >:(")
+                    else:
+                        payload.channel.send(payload.content.split(" ", 1)[-1])
 
     except KeyboardInterrupt:
         print("OUCH THAT HURTS")
