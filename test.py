@@ -133,7 +133,10 @@ if __name__ == "__main__":
                     if "pp" in payload.content.split(" "):
                         payload.channel.send("No pp >:(")
                     else:
-                        payload.channel.send(payload.content.split(" ", 1)[-1])
+                        try:
+                            payload.channel.send(payload.content.split(" ", 1)[-1])
+                        except:
+                            payload.channel.send("I can't send that!")
 
     except KeyboardInterrupt:
         print("OUCH THAT HURTS")
