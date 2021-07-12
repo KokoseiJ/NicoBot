@@ -23,7 +23,6 @@ from .user import BotUser
 from .member import Member
 from .message import Message
 from .channel import get_channel
-from .util import SelectableEvent
 from .websocket import WebSocketThread
 from .const import LIB_NAME, GATEWAY_URL
 
@@ -31,6 +30,7 @@ import sys
 import time
 import logging
 from select import select
+from threading import Event
 from websocket import STATUS_ABNORMAL_CLOSED
 
 logger = logging.getLogger(LIB_NAME)
@@ -68,8 +68,8 @@ class DiscordGateway(WebSocketThread):
 
         self.seq = 0
         self.heartbeat_interval = None
-        self.is_heartbeat_ready = SelectableEvent()
-        self.heartbeat_ack = SelectableEvent()
+        self.is_heartbeat_ready = Event()
+        self.heartbeat_ack = Event()
         self.is_reconnect = False
         self.voice_queue = {}
         self.voice_clients = []
@@ -132,7 +132,6 @@ class DiscordGateway(WebSocketThread):
 
         stop_flag = self.heartbeat_thread.stop_flag
         wait_time = self.heartbeat_interval
-        select((self.is_heartbeat_ready, stop_flag), (), ())
 
         while not stop_flag.is_set() and self.is_heartbeat_ready.wait():
             logger.debug("Sending heartbeat...")
@@ -140,20 +139,14 @@ class DiscordGateway(WebSocketThread):
             self.send_heartbeat()
 
             deadline = sendtime + wait_time
-            selectlist = (stop_flag, self.heartbeat_ack)
-            rl, _, _ = select(selectlist, (), (), deadline - time.time())
 
-            if stop_flag in rl:
+            if stop_flag.wait(deadline - time.time()):
                 break
-            elif self.heartbeat_ack not in rl:
+            elif not self.heartbeat_ack.is_set():
                 logger.error("No HEARTBEAT_ACK received within time!")
                 self.sock.close(STATUS_ABNORMAL_CLOSED)
 
             self.heartbeat_ack.clear()
-
-            rl, _, _ = select((stop_flag,), (), (), deadline - time.time())
-            if stop_flag in rl:
-                break
 
         logger.debug("Terminating heartbeat thread...")
 

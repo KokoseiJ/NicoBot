@@ -19,7 +19,6 @@
 #
 
 from .const import LIB_NAME
-from .util import SelectableEvent
 from .exceptions import DiscordError
 from .websocket import WebSocketThread
 
@@ -29,6 +28,7 @@ import struct
 import socket
 import logging
 from select import select
+from threading import Event
 from websocket import STATUS_ABNORMAL_CLOSED
 
 __all__ = ["DiscordVoiceClient"]
@@ -75,10 +75,9 @@ class DiscordVoiceClient(WebSocketThread):
         self.server_id = server_id
         self.user_id = client.user.id
 
-        self.got_ready = SelectableEvent()
-        self.is_heartbeat_ready = SelectableEvent()
-        self.heartbeat_ack = SelectableEvent()
-        self.is_ready = SelectableEvent()
+        self.got_ready = Event()
+        self.is_heartbeat_ready = Event()
+        self.heartbeat_ack = Event()
         self.secret_box = None
         self.voice_sequence = 0
         self.timestamp = 0
@@ -202,7 +201,6 @@ class DiscordVoiceClient(WebSocketThread):
 
         stop_flag = self.heartbeat_thread.stop_flag
         wait_time = self.heartbeat_interval
-        select((self.is_heartbeat_ready, stop_flag), (), ())
 
         while not stop_flag.is_set() and self.is_heartbeat_ready.wait():
             logger.debug("Sending heartbeat...")
@@ -210,20 +208,14 @@ class DiscordVoiceClient(WebSocketThread):
             self.send_heartbeat()
 
             deadline = sendtime + wait_time
-            selectlist = (stop_flag, self.heartbeat_ack)
-            rl, _, _ = select(selectlist, (), (), deadline - time.time())
 
-            if stop_flag in rl:
+            if stop_flag.wait(deadline - time.time()):
                 break
-            elif self.heartbeat_ack not in rl:
+            elif not self.heartbeat_ack.is_set():
                 logger.error("No HEARTBEAT_ACK received within time!")
                 self.sock.close(STATUS_ABNORMAL_CLOSED)
 
             self.heartbeat_ack.clear()
-
-            rl, _, _ = select((stop_flag,), (), (), deadline - time.time())
-            if stop_flag in rl:
-                break
 
         logger.debug("Terminating heartbeat thread...")
 
@@ -262,7 +254,7 @@ class DiscordVoiceClient(WebSocketThread):
             self.secret_key = bytes(payload['secret_key'])
             logger.debug("Received secret key, generating SecretBox...")
             self.secret_box = nacl.secret.SecretBox(self.secret_key)
-            self.is_ready.set()
+            self.ready_to_run.set()
             logger.debug("VOICE READY!!!")
 
         elif op == self.HEARTBEAT_ACK:

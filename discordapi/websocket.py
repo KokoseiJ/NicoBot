@@ -19,7 +19,7 @@
 #
 
 from .const import LIB_NAME
-from .util import StoppableThread, SelectableEvent
+from .util import StoppableThread
 
 import json
 import time
@@ -27,6 +27,7 @@ import random
 import select
 import logging
 from ssl import SSLError
+from threading import Event
 from websocket import WebSocket, WebSocketConnectionClosedException
 
 __all__ = []
@@ -78,7 +79,7 @@ class WebSocketThread(StoppableThread):
 
         self.url = url
         self.handler = handler
-        self.ready_to_run = SelectableEvent()
+        self.ready_to_run = Event()
         self.name = str(name)
         
         self._sock = None

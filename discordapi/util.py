@@ -22,7 +22,7 @@ from .const import EMPTY
 
 import os
 from select import select
-from threading import Thread
+from threading import Thread, Event
 
 __all__ = []
 
@@ -30,7 +30,7 @@ __all__ = []
 class StoppableThread(Thread):
     def __init__(self, *args, **kwargs):
         super(StoppableThread, self).__init__(*args, **kwargs)
-        self.stop_flag = SelectableEvent()
+        self.stop_flag = Event()
 
     def stop(self):
         self.stop_flag.set()
