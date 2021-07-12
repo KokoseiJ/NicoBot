@@ -48,11 +48,11 @@ class DictObject:
         for key, value in data.items():
             setattr(self, key, value)
 
-    def _get_str(self, _class, id, repr=None):
+    def _get_str(self, class_, id_, repr=None):
         if repr is not None:
-            return f"<{_class} '{repr}' ({id})>"
+            return f"<{class_} '{repr}' ({id_})>"
         else:
-            return f"<{_class} ({id})>"
+            return f"<{class_} ({id_})>"
 
     def __str__(self):
         class_name = self.__class__.__name__

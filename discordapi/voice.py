@@ -164,11 +164,11 @@ class DiscordVoiceClient(WebSocketThread):
         addr = None
         while addr != self.server_addr:
             payload, addr = self.udp_sock.recvfrom(1024)
-        typ, len, ssrc, addr, port = IP_DISCOVERY_STRUCT.unpack(payload)
+        typ, leng, ssrc, addr, port = IP_DISCOVERY_STRUCT.unpack(payload)
         logger.debug(
-            f"typ: {typ} len: {len} ssrc: {ssrc} addr: {addr} port: {port}"
+            f"typ: {typ} leng: {leng} ssrc: {ssrc} addr: {addr} port: {port}"
         )
-        if not (typ == 0x2 and len == 70 and ssrc == self.ssrc):
+        if not (typ == 0x2 and leng == 70 and ssrc == self.ssrc):
             raise RuntimeError("Packet Error")
         
         ip = addr.replace(b"\x00", b"").decode()

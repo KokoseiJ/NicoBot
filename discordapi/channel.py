@@ -113,9 +113,9 @@ class Channel(DictObject):
 
         return [Message(self.client, message) for message in messages]
 
-    def get_message(self, id):
+    def get_message(self, id_):
         message = self.client.send_request(
-            "GET", f"/channels/{self.id}/messages/{id}"
+            "GET", f"/channels/{self.id}/messages/{id_}"
         )
 
         return Message(self.client, message)
@@ -307,7 +307,7 @@ class GroupDMChannel(DMChannel):
             with open(icon, "rb") as f:
                 icon = base64.b64encode(f.read())
         elif isinstance(icon, IOBase):
-            icon = base64.b64encode(f.read())
+            icon = base64.b64encode(icon.read())
         elif isinstance(icon, bytes):
             icon = base64.b64encode(icon)
 
@@ -343,7 +343,7 @@ class GuildChannel(Channel):
             else:
                 return parent
 
-    def edit_permission(self, id, allow=EMPTY, deny=EMPTY, type=EMPTY):
+    def edit_permission(self, id_, allow=EMPTY, deny=EMPTY, type=EMPTY):
         postdata = {
             "allow": allow,
             "deny": deny,
@@ -352,12 +352,12 @@ class GuildChannel(Channel):
         postdata = clear_postdata(postdata)
 
         self.client.send_request(
-            "PUT", f"/channels/{self.id}/permissions/{id}", postdata
+            "PUT", f"/channels/{self.id}/permissions/{id_}", postdata
         )
 
-    def remove_permission(self, id):
+    def remove_permission(self, id_):
         self.client.send_request(
-            "DELETE", f"/channels/{self.id}/permissions/{id}"
+            "DELETE", f"/channels/{self.id}/permissions/{id_}"
         )
 
     def get_invites(self):
@@ -409,9 +409,12 @@ class GuildTextChannel(GuildChannel):
         )
         return Message(self.client, rtnmsg)
 
-    def follow_news_channel(self, id):
+    def follow_news_channel(self, id_):
+        postdata = {
+            "webhook_channel_id": id_
+        }
         return self.client.send_request(
-            "POST", f"/channels/{self.id}/followers"
+            "POST", f"/channels/{self.id}/followers", postdata
         )
 
 

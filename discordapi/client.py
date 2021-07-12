@@ -100,9 +100,7 @@ class DiscordClient(DiscordGateway):
             since = time.time() * 1000
         if activities is not None:
             if not isinstance(activities, list):
-                tmp = []
-                tmp.append(activities)
-                activities = tmp
+                activities = [activities]
             self._activities = activities
         data = self._get_payload(
             self.PRESENCE_UPDATE,
@@ -116,12 +114,12 @@ class DiscordClient(DiscordGateway):
 
         self.send(data)
 
-    def get_user(self, id):
-        user_obj = self.send_request("GET", f"/users/{id}")
-        return User(user_obj)
+    def get_user(self, id_):
+        user_obj = self.send_request("GET", f"/users/{id_}")
+        return User(self, user_obj)
 
-    def get_channel(self, id):
-        channel_obj = self.send_request("GET", f"/channels/{id}")
+    def get_channel(self, id_):
+        channel_obj = self.send_request("GET", f"/channels/{id_}")
         return get_channel(self, channel_obj)
 
     def create_guild(self, name, icon=None, verification_level=None,
@@ -161,16 +159,16 @@ class DiscordClient(DiscordGateway):
 
         return Guild(self, guild)
 
-    def get_guild(self, id, with_counts=False):
+    def get_guild(self, id_, with_counts=False):
         guild = self.send_request(
-            "GET", f"/guilds/{id}?with_counts={str(with_counts).lower()}"
+            "GET", f"/guilds/{id_}?with_counts={str(with_counts).lower()}"
         )
 
         return Guild(self, guild)
 
-    def get_guild_preview(self, id):
+    def get_guild_preview(self, id_):
         preview = self.send_request(
-            "GET", f"/guilds/{id}/preview"
+            "GET", f"/guilds/{id_}/preview"
         )
 
         return preview

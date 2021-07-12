@@ -54,7 +54,7 @@ class BotUser(User):
             with open(avatar, "rb") as f:
                 avatar = f.read()
         elif isinstance(avatar, BytesIO):
-            avatar = f.read()
+            avatar = avatar.read()
         avatar = base64.b64encode(avatar).decode()
 
         postdata = {
