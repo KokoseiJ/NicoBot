@@ -81,7 +81,7 @@ if __name__ != "__main__":
     handler.setLevel("DEBUG")
 else:
     logger.setLevel("DEBUG")
-    handler.setLevel("INFO")
+    handler.setLevel("DEBUG")
 
 fmt = logging.Formatter("[%(levelname)s]|%(asctime)s|%(threadName)s|"
                         "%(funcName)s|: %(message)s")
@@ -116,6 +116,7 @@ if __name__ == "__main__":
                         print("running test")
                         threading.Thread(target=vc_test, args=(vc, file)).start()
                     except:
+                        logger.exception("wtf")
                         payload.channel.send("That causes error >:( what have you done")
                 elif "?eval" in payload.content and payload.author.id == "378898017249525771":
                     try:
@@ -123,7 +124,9 @@ if __name__ == "__main__":
                     except:
                         payload.channel.send("that causes error you dumb bitch")
                 elif payload.content == "?disconnect":
-                    gw.update_voice_state(payload.guild_id, None, False, False)
+                    for client in gw.voice_clients:
+                        client.disconnect()
+                        del client
                     payload.channel.send("Why did you have to do that >:(")
                 elif payload.content == "?die":
                     if payload.author.id == "378898017249525771":

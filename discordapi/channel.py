@@ -448,5 +448,5 @@ class GuildVoiceChannel(GuildChannel):
         )
         self.client.voice_clients.append(client)
         client.start()
-        client.is_ready.wait()
+        client.ready_to_run.wait()
         return client
