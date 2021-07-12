@@ -29,11 +29,14 @@ from .const import API_URL, LIB_NAME, LIB_VER, LIB_URL
 import json
 import time
 import base64
+import logging
 from io import BytesIO
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen, urljoin
 
 __all__ = ["DiscordClient"]
+
+logger = logging.getLogger(LIB_NAME)
 
 
 def construct_url(baseurl, endpoint):
@@ -204,6 +207,8 @@ class DiscordClient(DiscordGateway):
             resdata = None
         else:
             resdata = json.loads(rawdata)
+
+        logger.debug(f"Received from HTTP API: {resdata}")
 
         if raise_at_exc:
             if (expected_code is not None and code != expected_code) or exc:

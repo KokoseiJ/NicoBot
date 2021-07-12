@@ -128,7 +128,7 @@ if __name__ == "__main__":
                         client.disconnect()
                         del client
                     payload.channel.send("Why did you have to do that >:(")
-                elif payload.content == "?die":
+                elif payload.content == "?sleep":
                     if payload.author.id == "378898017249525771":
                         payload.channel.send("okay Good night :wave:")
                         raise KeyboardInterrupt()

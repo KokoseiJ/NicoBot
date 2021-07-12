@@ -32,9 +32,9 @@ import logging
 from threading import Event
 from websocket import STATUS_ABNORMAL_CLOSED
 
-logger = logging.getLogger(LIB_NAME)
-
 __all__ = []
+
+logger = logging.getLogger(LIB_NAME)
 
 
 class DiscordGateway(WebSocketThread):
