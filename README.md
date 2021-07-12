@@ -15,7 +15,7 @@ I just wanted to understand its underlying protocols, as well as practice to wri
 Also, since `Discord.py` heavily depends on coroutine which coufuses the hell out of beginners and make them write a spaghetti,
 I thought we might need a corountine-less library. That's why I didn't use a famous `websockets` library, and went with `websocket-client` instead. [They stated that its purpose is to provide a convenient asynchronous API, not synchronous one.](https://github.com/aaugustin/websockets/issues/173)
 
-## Using Threads instead of Processes?! Cast it into the fire, DESTROY IT!!
+## Using threading instead of multiprocessing?! Cast it into the fire, DESTROY IT!!
 ![No.](https://media1.tenor.com/images/27364728e09d58e670154b50a59ca9c8/tenor.gif?itemid=5743603)
 
 I'm well aware that threading in python has a disadvantage due to Global Interpreter Lock. but since there are bottlenecks in HTTP requests, I don't think bottlenecks caused by GIL will affect the performance largely. of course, I didn't do any tests yet. I'll do it later though, and if it appears to degrade performance, I will migrate to multiprocessing library.
@@ -31,11 +31,11 @@ I'm well aware that threading in python has a disadvantage due to Global Interpr
 
 - [x] implement Member HTTP API requests
 
-- [ ] Wire up discord object classes to Gateway events
+- [x] Wire up discord object classes to Gateway events
+
+- [x] Implement Voice Connection based on WebSocketThread
 
 - [ ] Implement handlers
-
-- [ ] Implement Voice Connection based on WebSocketThread
 
 - [ ] Unify function behaviours and code styles
 
