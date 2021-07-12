@@ -81,7 +81,7 @@ if __name__ != "__main__":
     handler.setLevel("DEBUG")
 else:
     logger.setLevel("DEBUG")
-    handler.setLevel("DEBUG")
+    handler.setLevel("INFO")
 
 fmt = logging.Formatter("[%(levelname)s]|%(asctime)s|%(threadName)s|"
                         "%(funcName)s|: %(message)s")
@@ -94,6 +94,8 @@ gw = DiscordClient(
 )
 
 gw.start()
+gw.ready_to_run.wait()
+logger.info(f"Logged in as {gw.user.username}#{gw.user.discriminator}!")
 
 
 if __name__ == "__main__":
