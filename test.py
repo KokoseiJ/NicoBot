@@ -122,6 +122,7 @@ if __name__ == "__main__":
                     try:
                         payload.channel.send(str(eval(payload.content.split(" ", 1)[-1])))
                     except:
+                        logger.exception("wtf")
                         payload.channel.send("that causes error you dumb bitch")
                 elif payload.content == "?disconnect":
                     for client in gw.voice_clients:

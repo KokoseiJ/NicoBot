@@ -366,8 +366,9 @@ class GuildChannel(Channel):
         )
         return invites
 
-    def invite(self, max_age=EMPTY, max_uses=EMPTY, temporary=EMPTY,
-               unique=EMPTY, target_type=EMPTY, target_user_id=EMPTY):
+    def invite(self, max_age=86400, max_uses=0, temporary=False,
+               unique=False, target_type=EMPTY, target_user_id=EMPTY,
+               target_application_id=EMPTY):
         postdata = {
             "max_age": max_age,
             "max_uses": max_uses,
@@ -375,6 +376,7 @@ class GuildChannel(Channel):
             "unique": unique,
             "target_type": target_type,
             "target_user_id": target_user_id,
+            "target_application_id": target_application_id
         }
         postdata = clear_postdata(postdata)
         invite = self.client.send_request(
