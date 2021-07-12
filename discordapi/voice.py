@@ -27,7 +27,6 @@ import time
 import struct
 import socket
 import logging
-from select import select
 from threading import Event
 from websocket import STATUS_ABNORMAL_CLOSED
 
