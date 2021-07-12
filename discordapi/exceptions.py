@@ -18,12 +18,28 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
+__all__ = ["DiscordError", "DiscordHTTPError"]
+
+
 class DiscordError(Exception):
+    '''Base Exception for Discord Errors.
+    '''
     pass
 
 
 class DiscordHTTPError(DiscordError):
+    """Exception to be thrown when error occurs from Discord HTTP API.
+
+    Attributes:
+        code:
+            Error code specified by API.
+        message:
+            Message specified by API.
+        response:
+            http.cilent.HTTPResponse object containing the error
+    """
     def __init__(self, code, message, response):
+        super(DiscordHTTPError, self).__init__(self, code, message, response)
         self.code = code
         self.message = message
         self.response = response

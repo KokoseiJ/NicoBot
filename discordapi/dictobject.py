@@ -18,8 +18,25 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
+__all__ = ["DictObject"]
+
+
 class DictObject:
+    """Object which automatically sets the attribute based on a dict object.
+
+    Attributes:
+        _json:
+            The original dict object in which the class was constructed from.
+    """
     def __init__(self, data, keylist=[]):
+        """Constructs the class from the data.
+
+        This automatically sets the attributes from the dict. additionally,
+        keys in keylist will be set as an attribute with the value of None
+        when the attribute doesn't exist- this is to ensure that it won't 
+        overwrite the existing keys when running __init__ in already
+        initialized instance.
+        """
         self._json = data
         
         for key in keylist:

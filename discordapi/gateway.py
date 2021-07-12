@@ -39,6 +39,10 @@ __all__ = []
 
 
 class DiscordGateway(WebSocketThread):
+    """Gateway Class which defines websocket behaviour and handles events.
+
+    Event related operations are done within this class.
+    """
     DISPATCH = 0
     HEARTBEAT = 1
     IDENTIFY = 2
@@ -84,6 +88,13 @@ class DiscordGateway(WebSocketThread):
             self.send_resume()
 
     def send_identify(self):
+        try:
+            activities = self._activities
+            if not self._activities:
+                raise NameError
+        except NameError:
+            activities = None
+
         data = self._get_payload(
             self.IDENTIFY,
             token=self.token,
@@ -92,8 +103,19 @@ class DiscordGateway(WebSocketThread):
                 "$os": sys.platform,
                 "$browser": LIB_NAME,
                 "$device": LIB_NAME
-            }
+            },
         )
+
+        if activities:
+            data.update({
+                "presence": {
+                    "since": time.time() * 1000,
+                    "activities": activities,
+                    "afk": False,
+                    "status": None
+                }
+            })
+
         self.send(data)
 
     def send_resume(self):
@@ -177,7 +199,6 @@ class DiscordGateway(WebSocketThread):
             self.heartbeat_ack.set()
 
     def _event_parser(self, event, payload):
-
         obj = payload
 
         if event == "READY":

@@ -18,7 +18,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
-LIB_NAME = "discordapi"
+LIB_NAME = "nicobot"
 LIB_VER = "a20210622"
 LIB_URL = "https://github.com/KokoseiJ/NicoBot"
 

@@ -31,7 +31,7 @@ import logging
 from select import select
 from websocket import STATUS_ABNORMAL_CLOSED
 
-__all__ = []
+__all__ = ["DiscordVoiceClient"]
 
 logger = logging.getLogger(LIB_NAME)
 
@@ -42,7 +42,7 @@ try:
     import nacl.secret
     AVAILABLE = True
 except ImportError:
-    logger.info("PyNaCl not found, Voice unavailable")
+    logger.warning("PyNaCl not found, Voice unavailable")
     AVAILABLE = False
 
 
@@ -94,6 +94,19 @@ class DiscordVoiceClient(WebSocketThread):
         self.udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     def speak(self, speaking=1):
+        """Send SPEAKING event to the gateway.
+
+        Args:
+            speaking:
+                either bool or integer. True indicates speaking, False
+                indicates that the client is no longer speaking. integer value
+                should be the flag value to be used. Default value is 1.
+        """
+        if speaking is True:
+            speaking = 1
+        elif speaking is False:
+            speaking = 0
+
         payload = self._get_payload(
             self.SPEAKING,
             speaking=speaking,
@@ -241,6 +254,7 @@ class DiscordVoiceClient(WebSocketThread):
         elif op == self.READY:
             self.ssrc = payload['ssrc']
             self.server_addr = (payload['ip'], payload['port'])
+            self.udp_sock.bind(self.server_addr)
             self.modes = payload['modes']
             self.got_ready.set()
 

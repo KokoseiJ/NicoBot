@@ -44,6 +44,15 @@ def construct_url(baseurl, endpoint):
 
 
 class DiscordClient(DiscordGateway):
+    """Class which handles sending events to Discord.
+
+    Attributes:
+        headers:
+            Headers to be used when sending HTTP request.
+        _activities:
+            Activity objects used when sending UPDATE_PRESENCE event- This
+            attribute is required as changing status resets the activities.
+    """
     def __init__(self, *args, **kwargs):
         super(DiscordClient, self).__init__(*args, **kwargs)
 

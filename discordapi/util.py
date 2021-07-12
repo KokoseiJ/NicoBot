@@ -97,6 +97,8 @@ class SelectableEvent:
 
 
 def clear_postdata(data):
+    """checks for postdata and remove the key if the value is EMPTY.
+    """
     return {
         key: value for key, value in data.items() if value is not EMPTY
     }
