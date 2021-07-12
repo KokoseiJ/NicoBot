@@ -163,6 +163,11 @@ class WebSocketThread(StoppableThread):
                 logger.error(f"Gateway returned invalid JSON data:\n{data}")
             except WebSocketConnectionClosedException:
                 break
+            except OSError as e:
+                if e.args[0] == 9:
+                    break
+                else:
+                    raise
             except Exception:
                 logger.exception(
                     "Exception occured while receiving data from the gateway.")
