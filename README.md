@@ -7,6 +7,8 @@ Just like its name, It plays songs from [Nicovideo](https://nicovideo.jp) server
 It currently uses `urllib` to communicate with their HTTP endpoints, `websocket-client` to communicate with Gateway. 
 Since It doesn't use coroutine on purpose, It currently uses threading library to parallelly run websockets and heartbeats.
 
+since `websocket-client` is written in pure Python and could cause a bottleneck in some cases, installing `wsaccel` package from pip is recommended.
+
 ## Why though? wasn't Discord.py enough?
 Well, I just made it because I can ¯\\\_(ツ)\_/¯
 
