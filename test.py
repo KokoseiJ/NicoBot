@@ -147,12 +147,13 @@ if __name__ == "__main__":
                         process.kill()
                     stdout = process.stdout.read().decode()
                     if is_killed:
-                        result += "Timeout occured! git output:\n"
+                        result += "Timeout occured!\ngit output:```diff\n"
                     elif process.returncode != 0:
-                        result += "An error occured! git output:\n"
+                        result += "An error occured!\ngit output:```diff\n"
                     else:
-                        result += "Update successful! Restarting... git output:\n"
+                        result += "Update successful! Restarting...\ngit output:```diff\n"
                     result += stdout
+                    result += "```"
                     payload.channel.send(result)
                     if not is_killed and process.returncode == 0:
                         os.system("systemctl restart nicobot")
