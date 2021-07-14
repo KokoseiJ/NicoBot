@@ -20,10 +20,12 @@
 
 from .user import User
 from .guild import Guild
+from .channel import Channel
 from .gateway import DiscordGateway
 from .util import EMPTY, clear_postdata
+from .ratelimit import RateLimitHandler
 from .exceptions import DiscordHTTPError
-from .channel import get_channel, Channel
+from .channel import get_channel as _get_channel
 from .const import API_URL, LIB_NAME, LIB_VER, LIB_URL
 
 import json
@@ -55,6 +57,8 @@ class DiscordClient(DiscordGateway):
         _activities:
             Activity objects used when sending UPDATE_PRESENCE event- This
             attribute is required as changing status resets the activities.
+        ratelimit_handler:
+            handler used to handle rate limit accordingly.
     """
     def __init__(self, *args, **kwargs):
         super(DiscordClient, self).__init__(*args, **kwargs)
@@ -65,6 +69,7 @@ class DiscordClient(DiscordGateway):
             "Content-Type": "application/json"
         }
         self._activities = []
+        self.ratelimit_handler = RateLimitHandler()
 
     def request_guild_member(self, guild_id, query=EMPTY, limit=EMPTY,
                              presences=EMPTY, user_ids=EMPTY, nonce=EMPTY):
@@ -120,7 +125,7 @@ class DiscordClient(DiscordGateway):
 
     def get_channel(self, id_):
         channel_obj = self.send_request("GET", f"/channels/{id_}")
-        return get_channel(self, channel_obj)
+        return _get_channel(self, channel_obj)
 
     def create_guild(self, name, icon=None, verification_level=None,
                      default_message_notifications=None,
@@ -175,6 +180,47 @@ class DiscordClient(DiscordGateway):
 
     def send_request(self, method, route, data=None, expected_code=None,
                      raise_at_exc=True, baseurl=API_URL, headers=None):
+
+        self.ratelimit_handler.check(route)
+        
+        res, exc = self._send_request(method, route, data, baseurl, headers)
+
+        try:
+            code = res.status
+        except AttributeError:
+            code = res.getstatus()
+
+        rawdata = res.read()
+        if not rawdata:
+            resdata = None
+        else:
+            resdata = json.loads(rawdata)
+        
+        logger.debug(f"Received from HTTP API: {resdata}")
+
+        if code == 429:
+            limit = time.time() + resdata['retry_after']
+            _route = "global" if resdata['global'] else route
+            self.ratelimit_handler.set_limit(_route, limit)
+
+            return self.send_request(method, route, data, expected_code,
+                                     raise_at_exc, baseurl, headers)
+
+        bucket = res.headers.get("X-RateLimit-Bucket")
+        if bucket is not None:
+            if not self.ratelimit_handler.is_in_bucket_map(route):
+                self.ratelimit_handler.register_bucket(route, bucket)
+
+        if raise_at_exc:
+            if (expected_code is not None and code != expected_code) or exc:
+                raise DiscordHTTPError(
+                    resdata['code'], resdata['message'], res
+                )
+
+        return resdata
+
+    def _send_request(self, method, route, data=None, baseurl=API_URL,
+                      headers=None):
         url = construct_url(API_URL, route)
 
         if isinstance(data, dict):
@@ -195,23 +241,4 @@ class DiscordClient(DiscordGateway):
             exc = True
             res = e
 
-        try:
-            code = res.status
-        except AttributeError:
-            code = res.getstatus()
-
-        rawdata = res.read()
-        if not rawdata:
-            resdata = None
-        else:
-            resdata = json.loads(rawdata)
-
-        logger.debug(f"Received from HTTP API: {resdata}")
-
-        if raise_at_exc:
-            if (expected_code is not None and code != expected_code) or exc:
-                raise DiscordHTTPError(
-                    resdata['code'], resdata['message'], res
-                )
-
-        return resdata
+        return res, exc

@@ -38,6 +38,12 @@ fmt = logging.Formatter("[%(levelname)s]|%(asctime)s|%(threadName)s|"
                         "%(funcName)s|: %(message)s")
 handler.setFormatter(fmt)
 logger.addHandler(handler)
+if __name__ != "__main__":
+    logger.setLevel("DEBUG")
+    handler.setLevel("DEBUG")
+else:
+    logger.setLevel("DEBUG")
+    handler.setLevel("INFO")
 
 
 event_queue = Queue()
@@ -79,14 +85,6 @@ def vc_test(vc, filename):
     vc.speak(0)
     vc.disconnect()
     pass
-
-
-if __name__ != "__main__":
-    logger.setLevel("DEBUG")
-    handler.setLevel("DEBUG")
-else:
-    logger.setLevel("DEBUG")
-    handler.setLevel("WARNING")
 
 
 gw = DiscordClient(
@@ -167,6 +165,7 @@ if __name__ == "__main__":
                         try:
                             payload.channel.send(payload.content.split(" ", 1)[-1])
                         except:
+                            logger.exception("rate limit kicks in?")
                             payload.channel.send("I can't send that!")
 
     except KeyboardInterrupt:
