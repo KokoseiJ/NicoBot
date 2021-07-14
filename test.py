@@ -22,6 +22,7 @@ from discordapi.ogg import OggParser
 from discordapi.const import LIB_NAME
 from discordapi.client import DiscordClient
 
+import os
 import sys
 import time
 import logging
@@ -135,6 +136,27 @@ if __name__ == "__main__":
                         raise KeyboardInterrupt()
                     else:
                         payload.channel.send("No u:heart:")
+                elif "?update" in payload.content and payload.author.id == "378898017249525771":
+                    is_killed = False
+                    process = Popen(["git", "pull"], stdout=PIPE, stderr=PIPE)
+                    result = ""
+                    try:
+                        process.wait()
+                    except:
+                        is_killed = True
+                        process.kill()
+                    stdout = process.stdout.read().decode()
+                    if is_killed:
+                        result += "Timeout occured! git output:\n"
+                    elif process.returncode != 0:
+                        result += "An error occured! git output:\n"
+                    else:
+                        result += "Update successful! Restarting... git output:\n"
+                    result += stdout
+                    payload.channel.send(result)
+                    if not is_killed and process.returncode == 0:
+                        os.system("systemctl restart nicobot")
+
                 elif "?echo" in payload.content:
                     if "pp" in payload.content.split(" "):
                         payload.channel.send("No pp >:(")
