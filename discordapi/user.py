@@ -63,7 +63,7 @@ class BotUser(User):
         }
         postdata = clear_postdata(postdata)
 
-        user = self.send_request(
+        user = self._send_request(
             "PATCH", "", postdata
         )
 
@@ -76,7 +76,7 @@ class BotUser(User):
         if isinstance(guild, Guild):
             guild = guild.id
 
-        self.send_request(
+        self._send_request(
             "DELETE", f"/guilds/{guild}"
         )
 
@@ -89,14 +89,14 @@ class BotUser(User):
             "recipient_id": user
         }
 
-        channel = self.send_request(
+        channel = self._send_request(
             "POST", "/channels", postdata
         )
 
         return get_channel(channel)
 
     def get_connections(self):
-        connections = self.send_request(
+        connections = self._send_request(
             "GET", "/connections"
         )
 
