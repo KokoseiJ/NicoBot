@@ -105,8 +105,8 @@ class Guild(DictObject):
         }
         postdata = clear_postdata(postdata)
 
-        guild = self.client.send_request(
-            "PATCH", f"/guilds/{self.id}", postdata
+        guild = self.send_request(
+            "PATCH", "", postdata
         )
 
         self.__init__(self.client, guild)
@@ -114,8 +114,8 @@ class Guild(DictObject):
         return self
 
     def delete(self):
-        self.client.send_request(
-            "DELETE", f"/guilds/{self.id}"
+        self.send_request(
+            "DELETE", ""
         )
 
     def leave(self):
@@ -125,8 +125,8 @@ class Guild(DictObject):
         if self.channels is not None:
             return self.channels
         
-        raw_channels = self.client.send_request(
-            "GET", f"/guilds/{self.id}/channels"
+        raw_channels = self.send_request(
+            "GET", "/channels"
         )
 
         channels = [
@@ -154,22 +154,22 @@ class Guild(DictObject):
         }
         postdata = clear_postdata(postdata)
 
-        channel = self.client.send_request(
-            "POST", f"/guilds/{self.id}/channels", postdata
+        channel = self.send_request(
+            "POST", "/channels", postdata
         )
 
         return get_channel(self.client, channel)
 
     def modify_channel_positions(self, params={}):
-        self.client.send_request(
-            "PATCH", f"/guilds/{self.id}/channels", params
+        self.send_request(
+            "PATCH", "/channels", params
         )
 
     def get_member(self, user):
         if isinstance(user, User):
             user = user.id
-        member = self.client.send_request(
-            "GET", f"/guilds/{self.id}/members/{user}"
+        member = self.send_request(
+            "GET", f"/members/{user}"
         )
 
         return Member(self.client, self, member)
@@ -181,12 +181,12 @@ class Guild(DictObject):
         }
         postdata = clear_postdata(postdata)
 
-        endpoint = f"/guilds/{self.id}/members?"
+        endpoint = "/members?"
         for key, val in postdata.items():
             endpoint += f"{key}={val}&"
         endpoint = endpoint[:-1]
 
-        members = self.client.send_request(
+        members = self.send_request(
             "GET", endpoint
         )
 
@@ -199,12 +199,12 @@ class Guild(DictObject):
         }
         postdata = clear_postdata(postdata)
 
-        endpoint = f"/guilds/{self.id}/members/search?"
+        endpoint = "/members/search?"
         for key, val in postdata.items():
             endpoint += f"{key}={val}&"
         endpoint = endpoint[:-1]
 
-        members = self.client.send_request(
+        members = self.send_request(
             "GET", endpoint
         )
 
@@ -223,8 +223,8 @@ class Guild(DictObject):
         }
         postdata = clear_postdata(postdata)
 
-        member = self.client.send_request(
-            "PATCH", f"/guilds/{self.id}/members/{member}", postdata
+        member = self.send_request(
+            "PATCH", f"/members/{member}", postdata
         )
 
         return Member(self.client, self, member)
@@ -234,8 +234,8 @@ class Guild(DictObject):
             "nick": nick
         }
 
-        nick = self.client.send_request(
-            "PATCH", f"/guilds/{self.id}/members/@me/nick", postdata
+        nick = self.send_request(
+            "PATCH", "/members/@me/nick", postdata
         )
 
         return nick
@@ -243,28 +243,28 @@ class Guild(DictObject):
     def add_role_to_member(self, member, role):
         if isinstance(member, Member):
             member = member.user.id
-        self.client.send_request(
-            "PUT", f"/guilds/{self.id}/members/{member}/roles/{role}"
+        self.send_request(
+            "PUT", f"/members/{member}/roles/{role}"
         )
 
     def remove_role_from_member(self, member, role):
         if isinstance(member, Member):
             member = member.user.id
-        self.client.send_request(
-            "DELETE", f"/guilds/{self.id}/members/{member}/roles/{role}"
+        self.send_request(
+            "DELETE", f"/members/{member}/roles/{role}"
         )
 
     def kick(self, member):
         if isinstance(member, Member):
             member = member.user.id
 
-        self.client.send_request(
-            "DELETE", f"/guilds/{self.id}/members/{member}"
+        self.send_request(
+            "DELETE", f"/members/{member}"
         )
 
     def get_bans(self):
-        bans = self.client.send_request(
-            "GET", f"/guilds/{self.id}/bans"
+        bans = self.send_request(
+            "GET", "/bans"
         )
 
         return bans
@@ -274,8 +274,8 @@ class Guild(DictObject):
             member = member.user.id
 
         try:
-            ban = self.client.send_request(
-                "GET", f"/guilds/{self.id}/bans/{member}"
+            ban = self.send_request(
+                "GET", f"/bans/{member}"
             )
         except DiscordHTTPError as e:
             if e.code == 404:
@@ -289,8 +289,8 @@ class Guild(DictObject):
         if isinstance(member, Member):
             member = member.user.id
 
-        ban = self.client.send_request(
-            "PUT", f"/guilds/{self.id}/bans/{member}"
+        ban = self.send_request(
+            "PUT", f"/bans/{member}"
         )
         
         return ban
@@ -299,13 +299,13 @@ class Guild(DictObject):
         if isinstance(member, Member):
             member = member.user.id
 
-        self.client.send_request(
-            "DELETE", f"/guilds/{self.id}/bans/{member}"
+        self.send_request(
+            "DELETE", f"/bans/{member}"
         )
     
     def get_roles(self):
-        roles = self.client.send_request(
-            "GET", f"/guilds/{self.id}/roles"
+        roles = self.send_request(
+            "GET", "/roles"
         )
 
         return roles
@@ -321,15 +321,15 @@ class Guild(DictObject):
         }
         postdata = clear_postdata(postdata)
 
-        role = self.client.send_request(
-            "POST", f"/guilds/{self.id}/roles", postdata
+        role = self.send_request(
+            "POST", "/roles", postdata
         )
 
         return role
 
     def modify_role_position(self, params):
-        roles = self.client.send_request(
-            "PATCH", f"/guilds/{self.id}/roles", params
+        roles = self.send_request(
+            "PATCH", "/roles", params
         )
 
         return roles
@@ -345,25 +345,32 @@ class Guild(DictObject):
         }
         postdata = clear_postdata(postdata)
 
-        role = self.client.send_request(
-            "PATCH", f"/guilds/{self.id}/roles/{role}", postdata
+        role = self.send_request(
+            "PATCH", f"/roles/{role}", postdata
         )
 
     def delete_role(self, role):
-        self.client.send_request(
-            "DELETE", f"/guilds/{self.id}/roles/{role}"
+        self.send_request(
+            "DELETE", f"/roles/{role}"
         )
 
     def get_voice_regions(self):
-        regions = self.client.send_request(
-            "GET", f"/guilds/{self.id}/regions"
+        regions = self.send_request(
+            "GET", "/regions"
         )
 
         return regions
 
     def get_invites(self):
-        invites = self.client.send_request(
-            "GET", f"/guilds/{self.id}/invites"
+        invites = self.send_request(
+            "GET", "/invites"
         )
 
         return invites
+
+    def _send_request(self, method, route, data=None, expected_code=None,
+                      raise_at_exc=True, baseurl=None, headers=None):
+        route = f"/guilds/{self.id}{route}"
+        return self.client.send_request(
+            method, route, data, expected_code, raise_at_exc, baseurl, headers
+        )

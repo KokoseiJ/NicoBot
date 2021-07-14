@@ -63,8 +63,8 @@ class BotUser(User):
         }
         postdata = clear_postdata(postdata)
 
-        user = self.client.send_request(
-            "PATCH", "/users/@me", postdata
+        user = self.send_request(
+            "PATCH", "", postdata
         )
 
         self.__init__(self.client, user)
@@ -76,8 +76,8 @@ class BotUser(User):
         if isinstance(guild, Guild):
             guild = guild.id
 
-        self.client.send_request(
-            "DELETE", f"/users/@me/guilds/{guild}"
+        self.send_request(
+            "DELETE", f"/guilds/{guild}"
         )
 
     def create_dm(self, user):
@@ -89,15 +89,22 @@ class BotUser(User):
             "recipient_id": user
         }
 
-        channel = self.client.send_request(
-            "POST", "/users/@me/channels", postdata
+        channel = self.send_request(
+            "POST", "/channels", postdata
         )
 
         return get_channel(channel)
 
     def get_connections(self):
-        connections = self.client.send_request(
-            "GET", "/users/@me/connections"
+        connections = self.send_request(
+            "GET", "/connections"
         )
 
         return connections
+
+    def _send_request(self, method, route, data=None, expected_code=None,
+                      raise_at_exc=True, baseurl=None, headers=None):
+        route = f"/users/@me{route}"
+        return self.client.send_request(
+            method, route, data, expected_code, raise_at_exc, baseurl, headers
+        )

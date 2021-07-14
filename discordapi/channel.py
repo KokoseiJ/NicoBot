@@ -80,8 +80,8 @@ class Channel(DictObject):
         # TODO: remove this part when EMPTY obj is implemented
         postdata = clear_postdata(postdata)
 
-        channel_obj = self.client.send_request(
-            "PATCH", f"/channels/{self.id}", postdata
+        channel_obj = self.send_request(
+            "PATCH", "", postdata
         )
 
         self.__init__(self.client, channel_obj)
@@ -89,11 +89,11 @@ class Channel(DictObject):
         return self
 
     def delete(self):
-        self.client.send_request("DELETE", f"/channels/{self.id}")
+        self.send_request("DELETE", "")
 
     def get_messages(self, limit=EMPTY, around=EMPTY, before=EMPTY,
                      after=EMPTY):
-        endpoint = f"/channels/{self.id}/messages?"
+        endpoint = "/messages?"
         postdata = {
             "around": around,
             "before": before,
@@ -107,15 +107,15 @@ class Channel(DictObject):
 
         endpoint = endpoint[:-1]
 
-        messages = self.client.send_request(
+        messages = self.send_request(
             "GET", endpoint
         )
 
         return [Message(self.client, message) for message in messages]
 
     def get_message(self, id_):
-        message = self.client.send_request(
-            "GET", f"/channels/{self.id}/messages/{id_}"
+        message = self.send_request(
+            "GET", f"/messages/{id_}"
         )
 
         return Message(self.client, message)
@@ -140,8 +140,8 @@ class Channel(DictObject):
         }
         postdata = clear_postdata(postdata)
 
-        message = self.client.send_request(
-            "POST", f"/channels/{self.id}/messages", postdata
+        message = self.send_request(
+            "POST", "/messages", postdata
         )
 
         return Message(self.client, message)
@@ -165,8 +165,8 @@ class Channel(DictObject):
         }
         postdata = clear_postdata(postdata)
 
-        message = self.client.send_request(
-            "PATCH", f"/channels/{self.id}/messages/{message}", postdata
+        message = self.send_request(
+            "PATCH", f"/messages/{message}", postdata
         )
 
         return Message(self.client, message)
@@ -175,8 +175,8 @@ class Channel(DictObject):
         if isinstance(message, Message):
             message = message.id
 
-        self.client.send_request(
-            "DELETE", f"/channels/{self.id}/messages/{message}"
+        self.send_request(
+            "DELETE", f"/messages/{message}"
         )
 
     def delete_messages(self, messages):
@@ -186,18 +186,18 @@ class Channel(DictObject):
             "messages": messages
         }
 
-        self.client.send_request(
-            "POST", f"/channels/{self.id}/messages/bulk-delete", postdata
+        self.send_request(
+            "POST", "/messages/bulk-delete", postdata
         )
 
     def typing(self):
-        self.client.send_request(
-            "POST", f"/channels/{self.id}/typing"
+        self.send_request(
+            "POST", "/typing"
         )
 
     def get_pinned_messages(self):
-        messages = self.client.send_request(
-            "GET", f"/channels/{self.id}/pins"
+        messages = self.send_request(
+            "GET", "/pins"
         )
 
         return [Message(self.client, message) for message in messages]
@@ -206,16 +206,16 @@ class Channel(DictObject):
         if isinstance(message, Message):
             message = message.id
 
-        self.client.send_request(
-            "PUT", f"/channels/{self.id}/pins/{message}"
+        self.send_request(
+            "PUT", f"/pins/{message}"
         )
 
     def unpin_message(self, message):
         if isinstance(message, Message):
             message = message.id
 
-        self.client.send_request(
-            "DELETE", f"/channels/{self.id}/pins/{message}"
+        self.send_request(
+            "DELETE", f"/pins/{message}"
         )
 
     def react(self, message, emoji, urlencoded=False):
@@ -224,9 +224,9 @@ class Channel(DictObject):
         if not urlencoded:
             emoji = urlencode(emoji)
 
-        self.client.send_request(
+        self.send_request(
             "PUT",
-            f"/channels/{self.id}/messages/{message}/reactions/{emoji}/@me"
+            f"/messages/{message}/reactions/{emoji}/@me"
         )
 
     def delete_my_reaction(self, message, emoji, urlencoded=False):
@@ -235,9 +235,9 @@ class Channel(DictObject):
         if not urlencoded:
             emoji = urlencode(emoji)
 
-        self.client.send_request(
+        self.send_request(
             "DELETE",
-            f"/channels/{self.id}/messages/{message}/reactions/{emoji}/@me"
+            f"/messages/{message}/reactions/{emoji}/@me"
         )
 
     def delete_others_reaction(self, message, emoji, user, urlencoded=False):
@@ -248,9 +248,9 @@ class Channel(DictObject):
         if not urlencoded:
             emoji = urlencode(emoji)
 
-        self.client.send_request(
+        self.send_request(
             "DELETE",
-            f"/channels/{self.id}/messages/{message}/reactions/{emoji}/{user}"
+            f"/messages/{message}/reactions/{emoji}/{user}"
         )
 
     def get_reactions(self, message, emoji, limit=EMPTY, after=EMPTY,
@@ -266,14 +266,14 @@ class Channel(DictObject):
         }
         postdata = clear_postdata(postdata)
 
-        endpoint = f"/channels/{self.id}/messages/{message}/reactions?"
+        endpoint = f"/messages/{message}/reactions?"
 
         for key, val in postdata.items():
             endpoint += f"{key}={val}&"
 
         endpoint = endpoint[:-1]
 
-        users = self.client.send_request(
+        users = self.send_request(
             "GET", endpoint
         )
 
@@ -283,9 +283,9 @@ class Channel(DictObject):
         if isinstance(message, Message):
             message = message.id
 
-        self.client.send_request(
+        self.send_request(
             "DELETE",
-            f"/channels/{self.id}/messages/{message}/reactions"
+            f"/messages/{message}/reactions"
         )
 
     def delete_all_reactions_for_emoji(self, message, emoji, urlencoded=False):
@@ -294,9 +294,16 @@ class Channel(DictObject):
         if not urlencoded:
             emoji = urlencode(emoji)
 
-        self.client.send_request(
+        self.send_request(
             "DELETE",
-            f"/channels/{self.id}/messages/{message}/reactions/{emoji}"
+            f"/messages/{message}/reactions/{emoji}"
+        )
+
+    def _send_request(self, method, route, data=None, expected_code=None,
+                      raise_at_exc=True, baseurl=None, headers=None):
+        route = f"/channels/{self.id}{route}"
+        return self.send_request(
+            method, route, data, expected_code, raise_at_exc, baseurl, headers
         )
 
 
@@ -356,18 +363,18 @@ class GuildChannel(Channel):
         }
         postdata = clear_postdata(postdata)
 
-        self.client.send_request(
-            "PUT", f"/channels/{self.id}/permissions/{id_}", postdata
+        self.send_request(
+            "PUT", f"/permissions/{id_}", postdata
         )
 
     def remove_permission(self, id_):
-        self.client.send_request(
-            "DELETE", f"/channels/{self.id}/permissions/{id_}"
+        self.send_request(
+            "DELETE", f"/permissions/{id_}"
         )
 
     def get_invites(self):
-        invites = self.client.send_request(
-            "POST", f"/channels/{self.id}/invites"
+        invites = self.send_request(
+            "POST", "/invites"
         )
         return invites
 
@@ -384,8 +391,8 @@ class GuildChannel(Channel):
             "target_application_id": target_application_id
         }
         postdata = clear_postdata(postdata)
-        invite = self.client.send_request(
-            "POST", f"/channels/{self.id}/invites", postdata
+        invite = self.send_request(
+            "POST", "/invites", postdata
         )
         return invite
 
@@ -409,8 +416,8 @@ class GuildTextChannel(GuildChannel):
     def crosspost(self, message):
         if isinstance(message, Message):
             message = message.id
-        rtnmsg = self.client.send_request(
-            "POST", f"/channels/{self.id}/messages/{message}/crosspost"
+        rtnmsg = self.send_request(
+            "POST", f"/messages/{message}/crosspost"
         )
         return Message(self.client, rtnmsg)
 
@@ -418,8 +425,8 @@ class GuildTextChannel(GuildChannel):
         postdata = {
             "webhook_channel_id": id_
         }
-        return self.client.send_request(
-            "POST", f"/channels/{self.id}/followers", postdata
+        return self.send_request(
+            "POST", "/followers", postdata
         )
 
 

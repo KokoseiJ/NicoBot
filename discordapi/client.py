@@ -180,6 +180,8 @@ class DiscordClient(DiscordGateway):
 
     def send_request(self, method, route, data=None, expected_code=None,
                      raise_at_exc=True, baseurl=API_URL, headers=None):
+        if baseurl is None:
+            baseurl = API_URL
 
         self.ratelimit_handler.check(route)
         
