@@ -31,13 +31,20 @@ from logging import StreamHandler
 from websocket._logging import enableTrace
 from subprocess import Popen, PIPE, DEVNULL, check_output
 
+logger = logging.getLogger(LIB_NAME)
+handler = StreamHandler(sys.stdout)
+fmt = logging.Formatter("[%(levelname)s]|%(asctime)s|%(threadName)s|"
+                        "%(funcName)s|: %(message)s")
+handler.setFormatter(fmt)
+logger.addHandler(handler)
+
 
 event_queue = Queue()
 
 
 def dummy_handler(*args, **kwargs):
     if __name__ == "__main__":
-        print(*args)
+        logger.info(" ".join([str(x) for x in args]))
     event_queue.put((args[0], args[1]))
 
 
@@ -73,20 +80,13 @@ def vc_test(vc, filename):
     pass
 
 
-logger = logging.getLogger(LIB_NAME)
-handler = StreamHandler(sys.stdout)
-
 if __name__ != "__main__":
     logger.setLevel("DEBUG")
     handler.setLevel("DEBUG")
 else:
     logger.setLevel("DEBUG")
-    handler.setLevel("DEBUG")
+    handler.setLevel("WARNING")
 
-fmt = logging.Formatter("[%(levelname)s]|%(asctime)s|%(threadName)s|"
-                        "%(funcName)s|: %(message)s")
-handler.setFormatter(fmt)
-logger.addHandler(handler)
 
 gw = DiscordClient(
     open("token").read(),
