@@ -62,7 +62,7 @@ class DiscordGateway(WebSocketThread):
             name
         )
         self.token = token
-        self.event_handler = handler
+        self.handler = handler
         self.intents = intents
 
         self.seq = 0
@@ -286,4 +286,4 @@ class DiscordGateway(WebSocketThread):
 
         # Add GUILD_ROLE event
 
-        self.event_handler(event, obj)
+        self.handler(event, obj)

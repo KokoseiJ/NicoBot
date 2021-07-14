@@ -48,7 +48,7 @@ class WebSocketThread(StoppableThread):
     Attributes:
         url:
             URL of the gateway for this client to connect to.
-        handler:
+        dispatcher:
             Handler to be called when the event has been received. It should
             recieve a single argument with type of dict.
         ready_to_run:
@@ -65,20 +65,20 @@ class WebSocketThread(StoppableThread):
             ._event_loop method could run parellelly. This thread is expected
             to run quick and quit shortly after.
     """
-    def __init__(self, url, handler, name):
+    def __init__(self, url, dispatcher, name):
         """
         Args:
             url:
                 same as .url attribute
-            handler:
-                same as .handler attribute
+            dispatcher:
+                same as .dispatcher attribute
             name:
-                same as handler argument in threading.Thread
+                same as name argument in threading.Thread
         """
         super(WebSocketThread, self).__init__()
 
         self.url = url
-        self.handler = handler
+        self.dispatcher = dispatcher
         self.ready_to_run = Event()
         self.name = str(name)
         
@@ -148,7 +148,7 @@ class WebSocketThread(StoppableThread):
         self.init_thread.start()
 
     def _event_loop(self):
-        """Receives from _socket, parses it to JSON and passes it to handler.
+        """Receives from _socket, parses it to JSON and passes it to dispatcher.
         """
         while self._sock.connected:
             rl, _, _ = select.select((self._sock.sock,), (), ())
@@ -174,10 +174,10 @@ class WebSocketThread(StoppableThread):
 
             try:
                 logger.debug("Received " + data)
-                self.handler(parsed_data)
+                self.dispatcher(parsed_data)
             except Exception:
                 logger.exception(
-                    "Exception occured while running handler function.")
+                    "Exception occured while running dispatcher function.")
 
     def send(self, data):
         """serializes data to json if dict, and send it through the socket.
