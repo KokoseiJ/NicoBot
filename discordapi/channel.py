@@ -121,8 +121,13 @@ class Channel(DictObject):
         return Message(self.client, message)
 
     def send(self, content=EMPTY, tts=EMPTY, file=EMPTY, embeds=EMPTY,
-             allowed_mentions=EMPTY, message_reference=EMPTY,
+             allowed_mentions=EMPTY, reply_to=None,
              components=EMPTY):
+        msg_ref = clear_postdata({
+            "message_id": reply_to,
+            "channel_id": self.id,
+            "guild_id": self.guild_id if self.guild_id else EMPTY
+        }) if reply_to is not None else EMPTY
         # TODO: implement multipart/form-data
         postdata = {
             "content": content,
@@ -130,7 +135,7 @@ class Channel(DictObject):
             "file": file,
             "embeds": embeds,
             "allowed_mentions": allowed_mentions,
-            "message_reference": message_reference,
+            "message_reference": msg_ref,
             "components": components
         }
         postdata = clear_postdata(postdata)
