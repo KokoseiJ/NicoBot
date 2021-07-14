@@ -104,6 +104,8 @@ if __name__ == "__main__":
         for event, payload in event_generator():
             if event == "MESSAGE_CREATE":
                 print(payload.author, payload.content)
+                if payload.author.id == gw.user.id:
+                    continue
                 if "?ping" in payload.content:
                     payload.channel.send("이쿠사바 무쿠로... 이 학교에 숨은 16번째 고교생... "
                                          "\"초고교급 절망\"이라 불리는 여고생... "
