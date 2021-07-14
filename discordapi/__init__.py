@@ -5,9 +5,11 @@ from .dictobject import *
 from .exceptions import *
 from .gateway import *
 from .guild import *
+from .handler import *
 from .member import *
 from .message import *
 from .ogg import *
+from .ratelimit import *
 from .user import *
 from .util import *
 from .voice import *

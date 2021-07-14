@@ -21,13 +21,13 @@
 from discordapi.ogg import OggParser
 from discordapi.const import LIB_NAME
 from discordapi.client import DiscordClient
+from discordapi.handler import GeneratorEventHandler
 
 import os
 import sys
 import time
 import logging
 import threading
-from queue import Queue
 from logging import StreamHandler
 from websocket._logging import enableTrace
 from subprocess import Popen, PIPE, DEVNULL, check_output
@@ -44,20 +44,6 @@ if __name__ != "__main__":
 else:
     logger.setLevel("DEBUG")
     handler.setLevel("INFO")
-
-
-event_queue = Queue()
-
-
-def dummy_handler(*args, **kwargs):
-    if __name__ == "__main__":
-        logger.info(" ".join([str(x) for x in args]))
-    event_queue.put((args[0], args[1]))
-
-
-def event_generator():
-    while True:
-        yield event_queue.get()
 
 
 def vc_test(vc, filename):
@@ -87,9 +73,11 @@ def vc_test(vc, filename):
     pass
 
 
+handler = GeneratorEventHandler()
+
 gw = DiscordClient(
     open("token").read(),
-    dummy_handler
+    handler
 )
 
 gw.start()
@@ -99,7 +87,7 @@ logger.info(f"Logged in as {gw.user.username}#{gw.user.discriminator}!")
 
 if __name__ == "__main__":
     try:
-        for event, payload in event_generator():
+        for event, payload in handler.event_generator():
             if event == "MESSAGE_CREATE":
                 print(payload.author, payload.content)
                 if payload.author.id == gw.user.id:

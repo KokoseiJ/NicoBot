@@ -25,6 +25,7 @@ from .message import Message
 from .channel import get_channel
 from .websocket import WebSocketThread
 from .const import LIB_NAME, GATEWAY_URL
+from .handler import EventHandler, GeneratorEventHandler
 
 import sys
 import time
@@ -54,15 +55,20 @@ class DiscordGateway(WebSocketThread):
     HELLO = 10
     HEARTBEAT_ACK = 11
 
-    def __init__(self, token, handler, intents=32509, name="main"):
+    def __init__(self, token, handler=None, intents=32509, name="main"):
         # 32509 is an intent value that omits flags that require verification
         super(DiscordGateway, self).__init__(
             GATEWAY_URL,
             self._dispatcher,
             name
         )
+
+        if handler is None:
+            handler = GeneratorEventHandler
+
+        self.set_handler(handler)
+
         self.token = token
-        self.handler = handler
         self.intents = intents
 
         self.seq = 0
@@ -77,6 +83,16 @@ class DiscordGateway(WebSocketThread):
         self.guilds = None
         self.session_id = None
         self.application = None
+
+    def set_handler(self, handler):
+        if isinstance(handler, EventHandler):
+            self.handler = handler
+        elif issubclass(handler, EventHandler):
+            self.handler = handler()
+        else:
+            raise TypeError("Inappropriate EventHandler object.")
+
+        self.handler.set_client(self)
 
     def init_connection(self):
         self.is_heartbeat_ready.wait()
@@ -286,4 +302,4 @@ class DiscordGateway(WebSocketThread):
 
         # Add GUILD_ROLE event
 
-        self.handler(event, obj)
+        self.handler.handle(event, obj)
