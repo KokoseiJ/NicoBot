@@ -35,7 +35,7 @@ I'm well aware that threading in python has a disadvantage due to Global Interpr
 
 - [x] Implement Voice Connection based on WebSocketThread
 
-- [ ] Implement handlers
+- [x] Implement handlers
 
 - [ ] Unify function behaviours and code styles
 
