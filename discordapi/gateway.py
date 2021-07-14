@@ -275,7 +275,8 @@ class DiscordGateway(WebSocketThread):
                     guild.members.update(members)
 
         elif event == "MESSAGE_CREATE" or event == "MESSAGE_UPDATE":
-            obj = Message(self, payload)
+            if payload.get("author") is not None:
+                obj = Message(self, payload)
 
         elif (event == "VOICE_STATE_UPDATE" and
                 payload['user_id'] == self.user.id) or\
