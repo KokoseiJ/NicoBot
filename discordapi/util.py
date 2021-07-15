@@ -2,7 +2,7 @@
 # NicoBot is Nicovideo Player bot for Discord, written from the scratch.
 # This file is part of NicoBot.
 #
-# Copyright (C) 2020 Wonjun Jung (KokoseiJ)
+# Copyright (C) 2021 Wonjun Jung (KokoseiJ)
 #
 #    Nicobot is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
