@@ -124,13 +124,17 @@ class DiscordVoiceClient(WebSocketThread):
             self.timestamp,
             self.ssrc
         )
-        nonce = bytearray(24)
-        nonce[:12] = header
-        enc = self.secret_box.encrypt(data, bytes(nonce)).ciphertext
-        payload = header + enc
+        payload = self.xsalsa20_poly1305(header, data)
+
         self.send_udp(payload)
         self.voice_sequence += 1
         self.timestamp += 960
+
+    def xsalsa20_poly1305(self, header, data):
+        nonce = bytearray(24)
+        nonce[:12] = header
+        enc = self.secret_box.encrypt(data, bytes(nonce)).ciphertext
+        return header + enc
 
     def init_connection(self):
         self.send_identify()
@@ -230,6 +234,10 @@ class DiscordVoiceClient(WebSocketThread):
             "op": op,
             "d": data if d is None else d
         }
+
+    def on_close(self, code, reason):
+        if code == 4014:
+            self.stop()
 
     def cleanup(self):
         pass

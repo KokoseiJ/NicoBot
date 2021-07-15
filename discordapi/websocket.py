@@ -29,6 +29,7 @@ import logging
 from ssl import SSLError
 from threading import Event
 from websocket import WebSocket, WebSocketConnectionClosedException
+from websocket._abnf import ABNF
 
 __all__ = []
 
@@ -131,6 +132,8 @@ class WebSocketThread(StoppableThread):
 
         self.heartbeat_thread.stop()
 
+        self.ready_to_run.clear()
+
     def run_heartbeat(self):
         logger.debug("Starting heartbeat thread.")
         self.heartbeat_thread = StoppableThread(
@@ -155,8 +158,17 @@ class WebSocketThread(StoppableThread):
             if self._sock.sock not in rl:
                 continue
             try:
-                data = self._sock.recv()
-                if not data:
+                opcode, data = self._sock.recv_data()
+                if opcode == ABNF.OPCODE_TEXT:
+                    data = data.decode()
+                elif opcode == ABNF.OPCODE_CLOSE:
+                    code, reason = self._get_close_args(data)
+                    if code:
+                        logger.warning("Gateway connection closed with Code "
+                                       f"{code}: {reason}")
+                    self.on_close(code, reason)
+                    break
+                elif not data:
                     continue
                 parsed_data = json.loads(data)
             except json.JSONDecodeError:
@@ -178,6 +190,18 @@ class WebSocketThread(StoppableThread):
             except Exception:
                 logger.exception(
                     "Exception occured while running dispatcher function.")
+
+    def _get_close_args(self, close_frame):
+        if close_frame is None:
+            return [None, None]
+
+        if close_frame and len(close_frame) >= 2:
+            close_status_code = 256 * close_frame[0] + close_frame[1]
+            reason = close_frame[2:].decode('utf-8')
+            return [close_status_code, reason]
+        else:
+            # Most likely reached this because len(close_frame_data.data) < 2
+            return [None, None]
 
     def send(self, data):
         """serializes data to json if dict, and send it through the socket.
@@ -231,6 +255,20 @@ class WebSocketThread(StoppableThread):
         This method should be implemented by the inherited class.
         """
         raise NotImplementedError()
+
+    def on_close(self, code, reason):
+        """Method to be run when websocket connection closes.
+
+        This method is made to handle Websocket connection close codes
+        accordingly.
+
+        Whether to override this method or not is your choice.
+
+        Args:
+            code:
+
+        """
+        pass
 
     def cleanup(self):
         """Method to be called after the client disconnects.
