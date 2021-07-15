@@ -47,8 +47,8 @@ else:
 
 
 def vc_test(vc, filename):
-    if filename.startswith("http"):
-        url = check_output(["youtube-dl", "--get-url", "-f", "bestaudio", filename])
+    if filename.startswith("yt_http"):
+        url = check_output(["youtube-dl", "--get-url", "-f", "bestaudio", filename[3:]])
         filename = url.decode()
     ffmpeg_args = [
         "ffmpeg", "-vn",

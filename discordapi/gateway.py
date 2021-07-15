@@ -303,3 +303,18 @@ class DiscordGateway(WebSocketThread):
         # Add GUILD_ROLE event
 
         self.handler.handle(event, obj)
+
+    def __str__(self):
+        class_name = self.__class__.__name__
+        if self.user is not None:
+            username = self.user.username
+            tag = self.user.discriminator
+            username_full = f"{username}#{tag}"
+            id_ = self.user.id
+        else:
+            username_full = None
+            id_ = None
+        return f"<{class_name} '{username_full}' ({id_})>"
+
+    def __repr__(self):
+        return self.__str__()
