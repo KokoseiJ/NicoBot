@@ -9,6 +9,7 @@ from .handler import *
 from .member import *
 from .message import *
 from .ogg import *
+from .player import *
 from .ratelimit import *
 from .user import *
 from .util import *

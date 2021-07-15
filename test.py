@@ -22,6 +22,7 @@ from discordapi.ogg import OggParser
 from discordapi.const import LIB_NAME
 from discordapi.client import DiscordClient
 from discordapi.handler import GeneratorEventHandler
+from discordapi.player import SingleAudioPlayer, FFMPEGAudioSource
 
 import os
 import sys
@@ -43,7 +44,7 @@ if __name__ != "__main__":
     handler.setLevel("DEBUG")
 else:
     logger.setLevel("DEBUG")
-    handler.setLevel("INFO")
+    handler.setLevel("DEBUG")
 
 
 def vc_test(vc, filename):
@@ -103,7 +104,16 @@ if __name__ == "__main__":
                         channel = gw.get_channel(channel_id)
                         vc = channel.connect()
                         print("running test")
-                        threading.Thread(target=vc_test, args=(vc, file)).start()
+                        if file.startswith("yt_http"):
+                            url = check_output(["youtube-dl", "--get-url", "-f", "bestaudio", file[3:]])
+                            filename = url.decode()
+
+                        source = FFMPEGAudioSource(file)
+                        player = SingleAudioPlayer(
+                            vc, source,
+                            lambda:  payload.channel.send("Finished!"))
+                        player.play()
+
                     except:
                         logger.exception("wtf")
                         payload.channel.send("That causes error >:( what have you done")

@@ -159,7 +159,7 @@ class DiscordGateway(WebSocketThread):
                 break
             elif not self.heartbeat_ack.is_set():
                 logger.error("No HEARTBEAT_ACK received within time!")
-                self.sock.close(STATUS_ABNORMAL_CLOSED)
+                self._sock.close(STATUS_ABNORMAL_CLOSED)
 
             self.heartbeat_ack.clear()
 
@@ -196,7 +196,7 @@ class DiscordGateway(WebSocketThread):
 
         elif op == self.INVALID_SESSION or op == self.RECONNECT:
             self.is_reconnect = payload
-            self.sock.close()
+            self._sock.close()
 
         elif op == self.HELLO:
             self.heartbeat_interval = payload['heartbeat_interval'] / 1000
