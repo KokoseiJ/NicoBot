@@ -24,7 +24,6 @@ from .voice import DiscordVoiceClient
 
 import time
 import subprocess
-from queue import Queue
 from threading import Event
 from subprocess import PIPE, DEVNULL
 
@@ -82,6 +81,9 @@ class FFMPEGAudioSource(AudioSource):
         except StopIteration:
             return None
 
+    def cleanup(self):
+        self.proc.kill()
+
 
 class AudioPlayer(StoppableThread):
     def __init__(self, client=None, source=None, callback=None):
@@ -129,28 +131,28 @@ class AudioPlayer(StoppableThread):
         if self.source is None:
             raise RuntimeError("Source is not set.")
 
+        self.source.prepare()
         self._prepare_play()
-        self.client.speak(1)
         self._ready.set()
-
         if not self.is_alive():
             self.start()
 
+        self.client.speak(1)
+
     def stop(self):
-        self._source_is_finished()
         self.client.speak(0)
+        self._source_is_finished()
 
     def pause(self):
-        self._resumed.clear()
         self.client.speak(0)
+        self._resumed.clear()
 
     def resume(self):
         self._prepare_play()
-        self.client.speak(1)
         self._resumed.set()
+        self.client.speak(1)
 
     def _prepare_play(self):
-        self.source.prepare()
         self.start_time = time.perf_counter()
         self.loop = 0
         self._resumed.set()
@@ -192,7 +194,8 @@ class AudioPlayer(StoppableThread):
     def _source_is_finished(self):
         self._ready.clear()
         self.source.cleanup()
-        self.callback()
+        if self.callback is not None:
+            self.callback()
 
 
 class SingleAudioPlayer(AudioPlayer):
@@ -231,6 +234,7 @@ class QueuedAudioPlayer(AudioPlayer):
             raise RuntimeError("Client is not set.")
         
         self._update_source()
+        self.source.prepare()
         self._prepare_play()
         self.client.speak(1)
         self._ready.set()
@@ -241,8 +245,10 @@ class QueuedAudioPlayer(AudioPlayer):
     def _source_is_finished(self):
         self._ready.clear()
         self.source.cleanup()
-        self.callback()
+        if self.callback is not None:
+            self.callback()
         if len(self.queue) > 0:
             self._update_source()
+            self.source.prepare()
             self._prepare_play()
             self._ready.set()

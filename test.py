@@ -106,12 +106,10 @@ if __name__ == "__main__":
                         print("running test")
                         if file.startswith("yt_http"):
                             url = check_output(["youtube-dl", "--get-url", "-f", "bestaudio", file[3:]])
-                            filename = url.decode()
+                            file = url.decode()
 
                         source = FFMPEGAudioSource(file)
-                        player = SingleAudioPlayer(
-                            vc, source,
-                            lambda:  payload.channel.send("Finished!"))
+                        player = SingleAudioPlayer(vc, source)
                         player.play()
 
                     except:
