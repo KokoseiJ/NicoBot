@@ -77,7 +77,7 @@ class DiscordGateway(WebSocketThread):
         self.heartbeat_ack = Event()
         self.is_reconnect = False
         self.voice_queue = {}
-        self.voice_clients = []
+        self.voice_clients = {}
 
         self.user = None
         self.guilds = None
@@ -104,9 +104,10 @@ class DiscordGateway(WebSocketThread):
 
     def send_identify(self):
         try:
+            # Reuse_activities if it was already set
             activities = self._activities
             if not self._activities:
-                raise NameError
+                activities = None
         except NameError:
             activities = None
 
@@ -157,7 +158,8 @@ class DiscordGateway(WebSocketThread):
 
             if stop_flag.wait(deadline - time.time()):
                 break
-            elif not self.heartbeat_ack.is_set():
+
+            if not self.heartbeat_ack.is_set():
                 logger.error("No HEARTBEAT_ACK received within time!")
                 self._sock.close(STATUS_ABNORMAL_CLOSED)
 
@@ -297,6 +299,8 @@ class DiscordGateway(WebSocketThread):
         elif (event == "VOICE_STATE_UPDATE" and
                 payload['user_id'] == self.user.id) or\
                 event == "VOICE_SERVER_UPDATE":
+            # Puts data into voice_queue so that GuildVoiceChannel.connect
+            # method can start a voice session
             if self.voice_queue.get(payload['guild_id']) is not None:
                 self.voice_queue[payload['guild_id']].put((event, payload))
 

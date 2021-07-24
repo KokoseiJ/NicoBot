@@ -47,6 +47,13 @@ KEYLIST = ["id", "name", "icon", "icon_hash?", "splash", "discovery_splash",
            "welcome_screen", "nsfw_level", "stage_instances"]
 
 
+"""
+It is recommended to check Official Discord documentation for these methods.
+Almost every arguments in these method represent those in their API doc 1:1,
+and thus I did not add further explanations about how things work.
+"""
+
+
 class Guild(DictObject):
     def __init__(self, client, data):
         super(Guild, self).__init__(data, KEYLIST)

@@ -31,6 +31,12 @@ KEYLIST = ["id", "username", "discriminator", "avatar", "bot", "system",
            "mfa_enabled", "locale", "verified", "email", "flags",
            "premium_type", "public_flags"]
 
+"""
+It is recommended to check Official Discord documentation for these methods.
+Almost every arguments in these method represent those in their API doc 1:1,
+and thus I did not add further explanations about how things work.
+"""
+
 
 class User(DictObject):
     def __init__(self, client, data):

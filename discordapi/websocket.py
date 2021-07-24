@@ -276,6 +276,6 @@ class WebSocketThread(StoppableThread):
         This method exists to reset the attributes when needed. if not, you can
         just leave this method as is.
 
-        whether to override this method or not is your choice.
+        Whether to override this method or not is your choice.
         """
         pass

@@ -54,6 +54,14 @@ GUILD_PUBLIC_THREAD = 11
 GUILD_PRIVATE_THREAD = 12
 GUILD_STAGE_VOICE = 13
 
+"""
+It is recommended to check Official Discord documentation for these methods.
+Almost every arguments in these method represent those in their API doc 1:1,
+and thus I did not add further explanations about how things work.
+Only few methods need being checked on its own- such as .connect method in
+GuildVoiceChannel class.
+"""
+
 
 def get_channel(client, data, guild=None):
     type = data['type']
@@ -77,7 +85,6 @@ class Channel(DictObject):
         self.client = client
 
     def modify(self, postdata):
-        # TODO: remove this part when EMPTY obj is implemented
         postdata = clear_postdata(postdata)
 
         channel_obj = self._send_request(
@@ -448,6 +455,15 @@ class GuildVoiceChannel(GuildChannel):
         return super(GuildVoiceChannel, self).modify(postdata)
 
     def connect(self, mute=False, deaf=False):
+        """Connects the bot to the voice channel.
+
+        This method will fire a Gateway event to initialize connection to the
+        voice server, create DiscordVoiceClient object, add it to
+        client.voice_clients and return the client.
+        Please note that client would most likely not be ready to run when it
+        gets returned- please check its availability using .is_ready method or
+        .ready_to_run Event attribute. AudioPlayer will also check this.
+        """
         self.client.voice_queue[self.guild_id] = Queue()
         self.client.update_voice_state(self.guild_id, self.id, mute, deaf)
         token = None
@@ -463,7 +479,6 @@ class GuildVoiceChannel(GuildChannel):
         client = DiscordVoiceClient(
             self.client, endpoint, token, session_id, self.guild_id
         )
-        self.client.voice_clients.append(client)
+        self.client.voice_clients[self.guild_id] = client
         client.start()
-        client.ready_to_run.wait()
         return client

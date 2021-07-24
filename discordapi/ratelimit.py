@@ -30,6 +30,17 @@ logger = logging.getLogger(LIB_NAME)
 
 
 class RateLimitHandler:
+    """Handler to handle Rate limits.
+
+    it works by storing already fired 429 response- So encountering 429 is not
+    avoidable.
+
+    Attributes:
+        bucket_map:
+            dict to match routes with corresponding bucket value.
+        limit_list:
+            dict to store current rate limits in effect.
+    """
     def __init__(self):
         self.bucket_map = {}
         self.limit_list = {}
@@ -37,9 +48,11 @@ class RateLimitHandler:
         self.limit_list_lock = Lock()
 
     def is_in_bucket_map(self, route):
+        """Checks if route has been registered to bucket."""
         return route in self.bucket_map
 
     def register_bucket(self, route, bucket):
+        """Registers route to bucket value."""
         with self.bucket_map_lock:
             self.bucket_map[route] = bucket
 
@@ -52,6 +65,7 @@ class RateLimitHandler:
         logger.info(f"Registered {bucket} to {route}")
 
     def set_limit(self, route, limit):
+        """Sets 429 Rate Limit in action."""
         if route in self.bucket_map:
             route = self.bucket_map[route]
 
@@ -61,6 +75,9 @@ class RateLimitHandler:
             self.limit_list[route] = limit
 
     def check(self, route):
+        """Checks if limit is ongoing, and wait until it no longer is."""
+        if route[0] != "/":
+            route = f"/{route}"
         if route in self.bucket_map:
             route = self.bucket_map[route]
         
@@ -82,6 +99,7 @@ class RateLimitHandler:
             time.sleep(limit - now)
 
     def _reset_limit(self, route, expected_value):
+        """Checks if new limit hasn't been issued, then deletes limit"""
         with self.limit_list_lock:
             if self.limit_list.get(route) == expected_value:
                 del self.limit_list[route]

@@ -68,7 +68,7 @@ class DiscordClient(DiscordGateway):
             "Authorization": f"Bot {self.token}",
             "Content-Type": "application/json"
         }
-        self._activities = []
+        self._activities = ()
         self.ratelimit_handler = RateLimitHandler()
 
     def request_guild_member(self, guild_id, query=EMPTY, limit=EMPTY,
@@ -101,11 +101,29 @@ class DiscordClient(DiscordGateway):
 
     def update_presence(self, activities=None, status=None, afk=False,
                         since=None):
+        """Updates the presence- This includes its status and activities.
+
+        You can use this method to change the bot's status, as well as its
+        activities.
+        Activities will be stored on ._activities attribute and will carry over
+        other changes. If you want to reset the Activities, pass an empty list
+        or tuple to activities argument.
+
+        Args:
+            activities:
+                A list/tuple of array, or a single object of Activity object
+                in dict type. This will be saved into ._activities attribute.
+            status:
+                Status string. Possible values are;
+                online, idle, dnd, invisible, offline.
+        """
         if since is None:
             since = time.time() * 1000
         if activities is not None:
-            if not isinstance(activities, list):
-                activities = [activities]
+            if isinstance(activities, list):
+                activities = tuple(activities)
+            elif not isinstance(activities, tuple):
+                activities = (activities,)
             self._activities = activities
         data = self._get_payload(
             self.PRESENCE_UPDATE,
@@ -165,6 +183,12 @@ class DiscordClient(DiscordGateway):
         return Guild(self, guild)
 
     def get_guild(self, id_, with_counts=False):
+        """Returns guild object.
+
+        This method sends request to HTTP API to fetch the object. Most of the
+        time, this is probably not what you want. Try to find the guild in
+        .guilds Attribute by calling `client.guilds.get(guild_id)`.
+        """
         guild = self.send_request(
             "GET", f"/guilds/{id_}?with_counts={str(with_counts).lower()}"
         )
@@ -180,6 +204,41 @@ class DiscordClient(DiscordGateway):
 
     def send_request(self, method, route, data=None, expected_code=None,
                      raise_at_exc=True, baseurl=API_URL, headers=None):
+        """Sends HTTP API request.
+
+        It sends the request, parses result data, checks ratelimit, and returns
+        result data in JSON format.
+
+        Args:
+            method:
+                HTTP method to use- e.g. GET, POST, DELETE, etc...
+            route:
+                API subdirectory to send request to. e.g. /channels/id
+            data:
+                POST data to send to, as a dictionary, refer to urllib.request
+                for details.
+            expected_code:
+                HTTP return code to check for. If this code mismatches and
+                raise_at_exc is true, This will raise DiscordHTTPError.
+            raise_at_exc:
+                Whether or not to throw exception when urllib.request raises
+                HTTPError or return code is not what we were expecting.
+                If this is true, DiscordHTTPError will be raised.
+            baseurl:
+                Base URL to construct full URL with. Defaluts to Discord API
+                endpoint.
+            headers:
+                Headers to use when sending requests. It contains User-Agent,
+                Autorization, Content-Type by default. Should be used if
+                Content-Type is not application/json .
+
+        Returns:
+            Dict made out of JSON object returned from API.
+
+        Raises:
+            DiscordHTTPError:
+                Raised when HTTPError is raised, or unexpected code is returned
+        """
         if baseurl is None:
             baseurl = API_URL
 
@@ -223,6 +282,30 @@ class DiscordClient(DiscordGateway):
 
     def _send_request(self, method, route, data=None, baseurl=API_URL,
                       headers=None):
+        """Returns Response object directly.
+
+        Args:
+            method:
+                HTTP method to use- e.g. GET, POST, DELETE, etc...
+            route:
+                API subdirectory to send request to. e.g. /channels/id
+            data:
+                POST data to send to, as a dictionary, refer to urllib.request
+                for details.
+            baseurl:
+                Base URL to construct full URL with. Defaluts to Discord API
+                endpoint.
+            headers:
+                Headers to use when sending requests. It contains User-Agent,
+                Autorization, Content-Type by default. Should be used if
+                Content-Type is not application/json.
+
+        Returns:
+            A tuple of (Response, exc) where exc determines whether an
+            exception was occured or not.
+            If HTTPError was thrown, Response object would be a catched
+            exception, but there's no difference in its functionality.
+        """
         url = construct_url(API_URL, route)
 
         if isinstance(data, dict):
