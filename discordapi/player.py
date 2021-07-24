@@ -36,21 +36,63 @@ DELAY = 20 / 1000
 
 
 class AudioSource:
+    """AudioSource providing the Opus packet to send to Voice server.
+    """
     def prepare(self):
+        """Preparation to do before the song plays.
+
+        This method gets called before it starts playing. You can e.g. download
+        the audio file, spawn a process, connect to remote server, etc etc.
+
+        Whether to override this method or not is your choice.
+        """
         return
 
     def read(self):
+        """Method that returns a packet of Opus audio stream to be sent.
+
+        Return empty value (b'') if the audio stream has finished.
+
+        Each packet contains around 20ms worth of data. If you're sending Opus
+        data stored in Ogg container(which is also what FFMPEG uses), You can
+        extract each packets from it and return it right away.
+
+        This method should be implemented by the inherited class.
+        """
         raise NotImplementedError()
 
     def cleanup(self):
+        """Method to clean things after audio stops playing.
+
+        This method gets called after the audio stops. You can e.g. remove the
+        used audio file, kill the used process, etc etc.
+
+        Whether to override this method or not is your choice.
+        """
         return
 
 
 class FFMPEGAudioSource(AudioSource):
+    """AudioSource that utilizes FFMPEG commandline tool to play audio.
+
+    This class requires ffmpeg to be installed on the system.
+    """
     def __init__(self, filename, inputargs=[], outputargs=[], FFMPEG="ffmpeg"):
+        """Initialize the ffmpeg settings.
+
+        Args:
+            filename:
+                Input file to process. gets passed straight into -i.
+            inputargs:
+                Options to be used in input stream.
+            outputargs:
+                Options to be used in output stream.
+            FFMPEG:
+                directory to the binary. defaults to "ffmpeg".
+        """
         self.filename = filename
 
-        self.inputargs = outputargs
+        self.inputargs = inputargs
 
         self.outputargs = [
             "-f", "opus",
@@ -68,8 +110,9 @@ class FFMPEGAudioSource(AudioSource):
         self.gen = None
 
     def prepare(self):
+        """Starts FFMPEG process and initializes Ogg parser."""
         args = [self.FFMPEG] + self.inputargs + ["-i", self.filename] +\
-                self.outputargs + ["-"]
+            self.outputargs + ["-"]
 
         self.proc = subprocess.Popen(args, stdout=PIPE, stderr=DEVNULL)
         self.parser = OggParser(self.proc.stdout)
@@ -86,7 +129,48 @@ class FFMPEGAudioSource(AudioSource):
 
 
 class AudioPlayer(StoppableThread):
+    """Player to play AudioSource to given VoiceClient.
+
+    This player is designed to be managed separately from the voice client.
+    it will keep on running after the source finishes playing or client stops.
+    you can also change which client to play to, if you want.
+
+    This player inherits StoppableThread, will run on a separate thread, and is
+    able to be stopped by calling .stop method.
+
+    Attributes:
+        client:
+            DiscordVoiceClient to play to.
+        source:
+            Source to play with.
+        callback:
+            Function to be called after the source finishes.
+        _resumed:
+            Event indicating if the player has been paused or not.
+        _ready:
+            Event indicating if the player is ready to play.
+        _sent_silence:
+            bool indicating if the five frame of silence has been played after
+            the player pauses playing.
+        loop:
+            Integer tracking how many packets have been sent so far, to
+            determine when to send the next packet.
+        start_time:
+            Integer indicating when the transmission has started, to determine
+            when to send the next packet.
+    """
     def __init__(self, client=None, source=None, callback=None):
+        """Initializes player.
+
+        Args:
+            client:
+                Client to play to.
+            source:
+                Source to play with.
+            callback:
+                A function to be called after the song finishes playing. this
+                function receives no arguments.
+        """
         super(AudioPlayer, self).__init__()
         self.client = None
         self.source = None
@@ -94,6 +178,7 @@ class AudioPlayer(StoppableThread):
 
         self._resumed = Event()
         self._ready = Event()
+        self._sent_silence = False
 
         self.loop = 0
         self.start_time = 0
@@ -106,24 +191,32 @@ class AudioPlayer(StoppableThread):
             self.set_callback(callback)
         
     def set_client(self, client):
+        """Sets client. Also checks if client is in the right type."""
         if isinstance(client, DiscordVoiceClient):
             self.client = client
         else:
             raise TypeError("Invalid Voice Client Object.")
 
     def set_source(self, source):
+        """Sets source. Also checks if source is in the right type."""
         if isinstance(source, AudioSource):
             self.source = source
         else:
             raise TypeError("Invalid Source Object.")
 
     def set_callback(self, callback):
+        """Sets callback. Also checks if callback is in the right type."""
         if callable(callback):
             self.callback = callback
         else:
             raise TypeError("Invalid callback object.")
 
     def play(self, source=None):
+        """Starts playing the source.
+
+        It can set the source if provided.
+        This method will refuse playing if either client or source is not set.
+        """
         if source is not None:
             self.set_source(source)
         if self.client is None:
@@ -134,18 +227,19 @@ class AudioPlayer(StoppableThread):
         self.source.prepare()
         self._prepare_play()
         self._ready.set()
+
         if not self.is_alive():
             self.start()
 
         self.client.speak(1)
 
     def stop(self):
-        self.client.speak(0)
         self._source_is_finished()
+        self.client.speak(0)
 
     def pause(self):
-        self.client.speak(0)
         self._resumed.clear()
+        self.client.speak(0)
 
     def resume(self):
         self._prepare_play()
@@ -153,23 +247,45 @@ class AudioPlayer(StoppableThread):
         self.client.speak(1)
 
     def _prepare_play(self):
+        """Initializes needed attributes to start playing."""
         self.start_time = time.perf_counter()
         self.loop = 0
+        self._sent_silence = False
         self._resumed.set()
 
     def run(self):
         self._ready.wait()
-        ready_to_run = self.client.ready_to_run
+        self.client.ready_to_run.wait()
 
-        while ready_to_run.is_set() and not self.stop_flag.is_set():
+        while not self.stop_flag.is_set():
+            # Waits only 1 second so that stop_flag would still have effect
+            # Check if client is ready
             if not self._ready.is_set():
                 self._ready.wait(1)
                 continue
 
+            # Check if we're paused
             if not self._resumed.is_set():
-                for _ in range(5):
-                    self._send_and_wait(SILENCE)
-                self._resumed.wait()
+                if not self._sent_silence:
+                    # Sends 5 frame of silence as indicated in docs
+                    for _ in range(5):
+                        self._send_and_wait(SILENCE)
+                    self._sent_silence = True
+                self._resumed.wait(1)
+                continue
+
+            # Check if client is ready to play
+            if not self.client.is_ready():
+                if self.client.stop_flag.is_set():
+                    # If the client is dead, try to determine a new client for
+                    # the guild, and keep on playing to that client
+                    # Do nothing if failed to do so
+                    guild_id = self.client.server_id
+                    gw_client = self.client.client
+                    new_client = gw_client.voice_clients.get(guild_id)
+                    if new_client is not None:
+                        self.set_client(new_client)
+                self.client.ready_to_run.wait(1)
                 continue
 
             data = self.source.read()
@@ -186,10 +302,9 @@ class AudioPlayer(StoppableThread):
         self.loop += 1
 
         wait_until = self.start_time + DELAY * self.loop
+        # Do this since it can result in negative integer
         delay = max(0, wait_until - time.perf_counter())
-            
-        if self.stop_flag.wait(delay):
-            return True
+        time.sleep(delay)
 
     def _source_is_finished(self):
         self._ready.clear()
@@ -199,12 +314,18 @@ class AudioPlayer(StoppableThread):
 
 
 class SingleAudioPlayer(AudioPlayer):
+    """AudioPlayer that disconnects right after the source finishes."""
     def _source_is_finished(self):
         super(SingleAudioPlayer, self)._source_is_finished()
         self.client.disconnect()
 
 
 class QueuedAudioPlayer(AudioPlayer):
+    """AudioPlayer with audio queue implemented.
+
+    player keeps on playing until the queue gets empty. .play method can be
+    called again to resume playing.
+    """
     def __init__(self, client=None, source=None, callback=None):
         super(QueuedAudioPlayer, self).__init__(client, source, callback)
         self.queue = []
@@ -216,9 +337,10 @@ class QueuedAudioPlayer(AudioPlayer):
         self.queue.append(source)
 
     def add_to_queue(self, source):
+        """Adds list of source to the queue. can be used with single object."""
         if hasattr(source, '__iter__'):
             for src in source:
-                self.source(src)
+                self.set_source(src)
         else:
             self.set_source(source)
 

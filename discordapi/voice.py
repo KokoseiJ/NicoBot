@@ -141,7 +141,13 @@ class DiscordVoiceClient(WebSocketThread):
         self.got_ready.wait()
         self.got_ready.clear()
 
-        self.ip, self.port = self.ip_discovery()
+        while True:
+            try:
+                self.ip, self.port = self.ip_discovery()
+                break
+            except RuntimeError:
+                logger.warning("IP Discovery data mismatch!")
+                continue
         self.send_protocol()
         
     def send_identify(self):
@@ -240,7 +246,8 @@ class DiscordVoiceClient(WebSocketThread):
             self.stop()
 
     def cleanup(self):
-        pass
+        self.client.voice_clients[self.server_id] = None
+        self.udp_sock.close()
 
     def _dispatcher(self, data):
         op = data['op']
