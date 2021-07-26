@@ -60,8 +60,8 @@ class DiscordClient(DiscordGateway):
         ratelimit_handler:
             handler used to handle rate limit accordingly.
     """
-    def __init__(self, *args, **kwargs):
-        super(DiscordClient, self).__init__(*args, **kwargs)
+    def __init__(self, token, handler=None, intents=32509, name="main"):
+        super(DiscordClient, self).__init__(token, handler, intents, name)
 
         self.headers = {
             "User-Agent": f"{LIB_NAME} ({LIB_URL}, {LIB_VER})",

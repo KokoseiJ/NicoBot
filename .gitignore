@@ -173,6 +173,8 @@ bh_unicode_properties.cache
 GitHub.sublime-settings
 ## End of SublimeText.gitignore
 
-run
 token
-
+# Other local files could be used now, you served well :')
+nicotest.opus
+# Docs won't be commited for now
+docs/
