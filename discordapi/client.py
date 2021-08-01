@@ -71,33 +71,18 @@ class DiscordClient(DiscordGateway):
         self._activities = ()
         self.ratelimit_handler = RateLimitHandler()
 
-    def request_guild_member(self, guild_id, query=EMPTY, limit=EMPTY,
-                             presences=EMPTY, user_ids=EMPTY, nonce=EMPTY):
-        data = self._get_payload(
-            self.REQUEST_GUILD_MEMBERS,
-            guild_id=guild_id,
-            query=query,
-            limit=limit,
-            presences=presences,
-            user_ids=user_ids,
-            nonce=nonce
-        )
+    def get_guild(self, id_):
+        return self.guilds.get(id_)
 
-        data['d'] = clear_postdata(data['d'])
+    def get_channel(self, id_):
+        return {
+            x: y for guild in self.guilds for x, y in guild.channels.items()
+        }.get(id_)
 
-        self.send(data)
-
-    def update_voice_state(self, guild_id, channel_id=None, mute=False,
-                           deaf=False):
-        data = self._get_payload(
-            self.VOICE_STATE_UPDATE,
-            guild_id=guild_id,
-            channel_id=channel_id,
-            self_mute=mute,
-            self_deaf=deaf
-        )
-
-        self.send(data)
+    def get_user(self, id_):
+        return {
+            x: y for guild in self.guilds for x, y in guild.users.items()
+        }.get(id_)
 
     def update_presence(self, activities=None, status=None, afk=False,
                         since=None):
@@ -137,11 +122,51 @@ class DiscordClient(DiscordGateway):
 
         self.send(data)
 
-    def get_user(self, id_):
+    def update_voice_state(self, guild_id, channel_id=None, mute=False,
+                           deaf=False):
+        data = self._get_payload(
+            self.VOICE_STATE_UPDATE,
+            guild_id=guild_id,
+            channel_id=channel_id,
+            self_mute=mute,
+            self_deaf=deaf
+        )
+
+        self.send(data)
+
+    def request_guild_member(self, guild_id, query=EMPTY, limit=EMPTY,
+                             presences=EMPTY, user_ids=EMPTY, nonce=EMPTY):
+        data = self._get_payload(
+            self.REQUEST_GUILD_MEMBERS,
+            guild_id=guild_id,
+            query=query,
+            limit=limit,
+            presences=presences,
+            user_ids=user_ids,
+            nonce=nonce
+        )
+
+        data['d'] = clear_postdata(data['d'])
+
+        self.send(data)
+
+    def modify_user(self, username=EMPTY, avatar=EMPTY):
+        return self.user.modify_user(username, avatar)
+
+    def leave_guild(self, guild):
+        return self.user.leave_guild(guild)
+
+    def create_dm(self, user):
+        return self.user.create_dm(user)
+
+    def get_connections(self):
+        return self.user.get_connections()
+
+    def fetch_user(self, id_):
         user_obj = self.send_request("GET", f"/users/{id_}")
         return User(self, user_obj)
 
-    def get_channel(self, id_):
+    def fetch_channel(self, id_):
         channel_obj = self.send_request("GET", f"/channels/{id_}")
         return _get_channel(self, channel_obj)
 
@@ -182,7 +207,7 @@ class DiscordClient(DiscordGateway):
 
         return Guild(self, guild)
 
-    def get_guild(self, id_, with_counts=False):
+    def fetch_guild(self, id_, with_counts=False):
         """Returns guild object.
 
         This method sends request to HTTP API to fetch the object. Most of the
