@@ -2,12 +2,12 @@ from niconico import NicoPlayer
 
 import os
 
-id = os.environ.get("ID")
+id_ = os.environ.get("ID")
 pw = os.environ.get("PW")
 
 player = NicoPlayer()
-if id and pw:
-    player.login(id, pw)
+if id_ and pw:
+    player.login(id_, pw)
 
 song = player.play("sm22792311")
 song.prepare()
