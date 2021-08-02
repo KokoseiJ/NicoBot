@@ -107,7 +107,7 @@ def clear_postdata(data):
     }
 
 
-def get_formdata(self, data, boundary=None):
+def get_formdata(data, boundary=None):
     if boundary is None:
         randhex = random.randbytes(8).hex()
         boundary = f"VOCALOIDIA-{randhex}"
