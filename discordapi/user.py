@@ -18,12 +18,12 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
+from .file import File
 from .const import EMPTY
 from .util import clear_postdata
 from .dictobject import DictObject
 
 import base64
-from io import BytesIO
 
 __all__ = ["User"]
 
@@ -55,13 +55,11 @@ class User(DictObject):
 
 
 class BotUser(User):
-    def modify_user(self, username=EMPTY, avatar=EMPTY):
-        if isinstance(avatar, str):
-            with open(avatar, "rb") as f:
-                avatar = f.read()
-        elif isinstance(avatar, BytesIO):
-            avatar = avatar.read()
-        avatar = base64.b64encode(avatar).decode()
+    def modify_user(self, username=EMPTY, avatar=None):
+        if avatar is not None:
+            if not isinstance(avatar, File):
+                raise ValueError(f"avatar should be File, not {type(avatar)}")
+            avatar = base64.b64encode(avatar.read()).decode()
 
         postdata = {
             "username": username,

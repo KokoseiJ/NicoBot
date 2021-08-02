@@ -18,6 +18,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
+from .file import File
 from .user import User
 from .guild import Guild
 from .channel import Channel
@@ -32,7 +33,6 @@ import json
 import time
 import base64
 import logging
-from io import BytesIO
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen, urljoin
 
@@ -170,19 +170,15 @@ class DiscordClient(DiscordGateway):
         channel_obj = self.send_request("GET", f"/channels/{id_}")
         return _get_channel(self, channel_obj)
 
-    def create_guild(self, name, icon=None, verification_level=None,
-                     default_message_notifications=None,
-                     explicit_content_filter=None, roles=None, channels=None,
-                     afk_channel_id=None, afk_timeout=None,
-                     system_channel_id=None, system_channel_flags=None):
+    def create_guild(self, name, icon=None, verification_level=EMPTY,
+                     default_message_notifications=EMPTY,
+                     explicit_content_filter=EMPTY, roles=EMPTY,
+                     channels=EMPTY, afk_channel_id=EMPTY, afk_timeout=EMPTY,
+                     system_channel_id=EMPTY, system_channel_flags=EMPTY):
         if icon is not None:
-            if isinstance(icon, str):
-                with open(icon, "rb") as f:
-                    icon = f.read()
-            elif isinstance(icon, BytesIO):
-                icon = icon.read()
-
-            icon = base64.b64encode(icon).decode()
+            if not isinstance(icon, File):
+                raise ValueError(f"icon should be File, not {type(icon)}")
+            icon = base64.b64encode(icon.read()).decode()
 
         channels = [channel._json if isinstance(channel, Channel) else channel
                     for channel in channels]
@@ -200,6 +196,8 @@ class DiscordClient(DiscordGateway):
             "system_channel_id": system_channel_id,
             "system_channel_flags": system_channel_flags,
         }
+
+        postdata = clear_postdata(postdata)
 
         guild = self.send_request(
             "POST", "/guilds", postdata

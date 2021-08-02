@@ -18,16 +18,16 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
+from .file import File
 from .user import User
 from .message import Message
-from .util import clear_postdata
+from .util import clear_postdata, get_formdata
 from .dictobject import DictObject
 from .const import EMPTY, VOICE_VER
 from .voice import DiscordVoiceClient
 
 import json
 import base64
-from io import IOBase
 from queue import Queue
 from urllib.parse import quote as urlencode
 
@@ -127,7 +127,7 @@ class Channel(DictObject):
 
         return Message(self.client, message)
 
-    def send(self, content=EMPTY, tts=EMPTY, file=EMPTY, embeds=EMPTY,
+    def send(self, content=EMPTY, tts=EMPTY, file=None, embeds=EMPTY,
              allowed_mentions=EMPTY, reply_to=None,
              components=EMPTY):
         msg_ref = clear_postdata({
@@ -135,11 +135,10 @@ class Channel(DictObject):
             "channel_id": self.id,
             "guild_id": self.guild_id if self.guild_id else EMPTY
         }) if reply_to is not None else EMPTY
-        # TODO: implement multipart/form-data
+
         postdata = {
             "content": content,
             "tts": tts,
-            "file": file,
             "embeds": embeds,
             "allowed_mentions": allowed_mentions,
             "message_reference": msg_ref,
@@ -147,13 +146,28 @@ class Channel(DictObject):
         }
         postdata = clear_postdata(postdata)
 
-        message = self._send_request(
-            "POST", "/messages", postdata
-        )
+        if file is not None:
+            if not isinstance(file, File):
+                raise ValueError(f"file should be File, not {type(file)}")
+
+            content_type, formdata = get_formdata({
+                "file": file,
+                "payload_json": postdata
+            })
+
+            headers = {"Content-Type": content_type}
+
+            message = self._send_request(
+                "POST", "/messages", formdata, headers=headers
+            )
+        else:
+            message = self._send_request(
+                "POST", "/messages", postdata
+            )
 
         return Message(self.client, message)
 
-    def edit_message(self, message, content=EMPTY, file=EMPTY, embeds=EMPTY,
+    def edit_message(self, message, content=EMPTY, file=None, embeds=EMPTY,
                      flags=EMPTY, allowed_mentions=EMPTY, attachments=EMPTY,
                      components=EMPTY):
         # TODO: implement multipart/form-data
@@ -172,9 +186,24 @@ class Channel(DictObject):
         }
         postdata = clear_postdata(postdata)
 
-        message = self._send_request(
-            "PATCH", f"/messages/{message}", postdata
-        )
+        if file is not None:
+            if not isinstance(file, File):
+                raise ValueError(f"file should be File, not {type(file)}")
+
+            content_type, formdata = get_formdata({
+                "file": file,
+                "payload_json": postdata
+            })
+
+            headers = {"Content-Type": content_type}
+
+            message = self._send_request(
+                "PATCH", f"/messages/{message}", formdata, headers=headers
+            )
+        else:
+            message = self._send_request(
+                "PATCH", f"/messages/{message}", postdata
+            )
 
         return Message(self.client, message)
 
@@ -321,14 +350,11 @@ class DMChannel(Channel):
 
 
 class GroupDMChannel(DMChannel):
-    def modify(self, name=EMPTY, icon=EMPTY):
-        if isinstance(icon, str):
-            with open(icon, "rb") as f:
-                icon = base64.b64encode(f.read())
-        elif isinstance(icon, IOBase):
-            icon = base64.b64encode(icon.read())
-        elif isinstance(icon, bytes):
-            icon = base64.b64encode(icon)
+    def modify(self, name=EMPTY, icon=None):
+        if icon is not None:
+            if not isinstance(icon, File):
+                raise RuntimeError(f"icon should be File, not {type(icon)}")
+            icon = base64.b64encode(icon.read()).decode()
 
         postdata = json.dumps({
             "name": name,

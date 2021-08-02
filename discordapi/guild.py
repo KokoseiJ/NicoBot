@@ -18,6 +18,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
+from .file import File
 from .user import User
 from .const import EMPTY
 from .member import Member
@@ -27,7 +28,6 @@ from .dictobject import DictObject
 from .exceptions import DiscordHTTPError
 
 import base64
-from io import BytesIO
 
 __all__ = ["Guild"]
 
@@ -75,19 +75,15 @@ class Guild(DictObject):
     def modify(self, name=EMPTY, region=EMPTY, verification_level=EMPTY,
                default_message_notifications=EMPTY,
                explicit_content_filter=EMPTY, afk_channel_id=EMPTY,
-               afk_timeout=EMPTY, icon=EMPTY, owner_id=EMPTY, splash=EMPTY,
+               afk_timeout=EMPTY, icon=None, owner_id=EMPTY, splash=EMPTY,
                discovery_splash=EMPTY, banner=EMPTY, system_channel_id=EMPTY,
                system_channel_flags=EMPTY, rules_channel_id=EMPTY,
                public_updates_channel_id=EMPTY, preferred_locale=EMPTY,
                features=EMPTY, description=EMPTY):
         if icon is not None:
-            if isinstance(icon, str):
-                with open(icon, "rb") as f:
-                    icon = f.read()
-            elif isinstance(icon, BytesIO):
-                icon = icon.read()
-
-            icon = base64.b64encode(icon).decode()
+            if not isinstance(icon, File):
+                raise RuntimeError(f"icon should be File, not {type(icon)}")
+            icon = base64.b64encode(icon.read()).decode()
 
         postdata = {
             "name": name,

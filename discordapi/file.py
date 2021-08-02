@@ -189,12 +189,15 @@ class File:
         return self.name
 
     def read(self, *args, **kwargs):
+        self._prep_read()
+
+        return self.fileobj.read(*args, **kwargs)
+
+    def _prep_read(self):
         if self.fileobj is None:
             if self.path is None:
                 raise RuntimeError("Class has not been initialized properly.")
             self.fileobj = open(self.path, "rb")
-
-        return self.fileobj.read(*args, **kwargs)
 
     def _from_path(self, path, name=None):
         absolute = abspath(path)

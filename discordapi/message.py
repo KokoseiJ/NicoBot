@@ -81,7 +81,7 @@ class Message(DictObject):
     def delete_all_reactions_for_emoji(self, emoji, urlencoded=False):
         self.channel.delete_all_reactions_for_emoji(self, emoji, urlencoded)
 
-    def edit(self, content=EMPTY, file=EMPTY, embeds=EMPTY, flags=EMPTY,
+    def edit(self, content=EMPTY, file=None, embeds=EMPTY, flags=EMPTY,
              allowed_mentions=EMPTY, attachments=EMPTY, components=EMPTY):
         self.channel.edit_message(self, content, file, embeds, flags,
                                   allowed_mentions, attachments, components)
