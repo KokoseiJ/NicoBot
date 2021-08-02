@@ -19,8 +19,11 @@
 #
 
 from .const import EMPTY
+from .file import File
 
 import os
+import json
+import random
 from select import select
 from threading import Thread, Event
 
@@ -102,3 +105,33 @@ def clear_postdata(data):
     return {
         key: value for key, value in data.items() if value is not EMPTY
     }
+
+
+def get_formdata(self, data, boundary=None):
+    if boundary is None:
+        randhex = random.randbytes(8).hex()
+        boundary = f"VOCALOIDIA-{randhex}"
+
+    content_type = f"multiplart/form-data;boundary=\"{boundary}\""
+
+    body = bytes()
+
+    for key, value in data.items():
+        body += f"--{boundary}\n".encode()
+        body += f"Content-Disposition: form-data; name=\"{key}\"".encode()
+
+        if isinstance(value, dict):
+            value = json.dumps(value).encode()
+            body += b"\nContent-Type: application/json"
+        elif isinstance(value, File):
+            name = value.get_name()
+            value = value.read()
+            body += f"; filename=\"{name}\"\n".encode()
+            body += b"Content-Type: application/octet-stream"
+
+        body += b"\n\n"
+        body += value if isinstance(value, bytes) else value.encode()
+        body += b"\n"
+    body += f"--{boundary}--\n".encode()
+
+    return content_type, body
