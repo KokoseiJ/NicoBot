@@ -53,7 +53,6 @@ class OggParser:
             yield self._packet_iter()
         elif not magicheader:
             yield None
-            return
         else:
             raise ValueError("Invalid Ogg Header")
 

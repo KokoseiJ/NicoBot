@@ -291,15 +291,15 @@ class DiscordClient(DiscordGateway):
                                      raise_at_exc, baseurl, headers)
 
         bucket = res.headers.get("X-RateLimit-Bucket")
-        if bucket is not None:
-            if not self.ratelimit_handler.is_in_bucket_map(route):
-                self.ratelimit_handler.register_bucket(route, bucket)
+        if bucket is not None and\
+                not self.ratelimit_handler.is_in_bucket_map(route):
+            self.ratelimit_handler.register_bucket(route, bucket)
 
-        if raise_at_exc:
-            if (expected_code is not None and code != expected_code) or exc:
-                raise DiscordHTTPError(
-                    resdata['code'], resdata['message'], res
-                )
+        if raise_at_exc and \
+                ((expected_code is not None and code != expected_code) or exc):
+            raise DiscordHTTPError(
+                resdata['code'], resdata['message'], res
+            )
 
         return resdata
 

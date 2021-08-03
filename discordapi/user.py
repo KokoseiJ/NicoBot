@@ -97,7 +97,7 @@ class BotUser(User):
             "POST", "/channels", postdata
         )
 
-        return get_channel(channel)
+        return get_channel(self.client, channel)
 
     def get_connections(self):
         connections = self._send_request(

@@ -96,11 +96,9 @@ class File:
         
         if isinstance(obj, BytesIO):
             self._from_io(name, obj)
-            return
 
         elif isinstance(obj, (bytes, bytearray)):
             self._from_bytes(name, obj)
-            return
 
         else:
             raise ValueError(f"Unknown type '{type(obj)}'")

@@ -46,7 +46,7 @@ class AudioSource:
 
         Whether to override this method or not is your choice.
         """
-        return
+        pass
 
     def read(self):
         """Method that returns a packet of Opus audio stream to be sent.
@@ -69,7 +69,7 @@ class AudioSource:
 
         Whether to override this method or not is your choice.
         """
-        return
+        pass
 
 
 class FFMPEGAudioSource(AudioSource):
@@ -77,7 +77,8 @@ class FFMPEGAudioSource(AudioSource):
 
     This class requires ffmpeg to be installed on the system.
     """
-    def __init__(self, filename, inputargs=[], outputargs=[], FFMPEG="ffmpeg"):
+    def __init__(self, filename, inputargs=None, outputargs=None,
+                 ffmpeg="ffmpeg"):
         """Initialize the ffmpeg settings.
 
         Args:
@@ -87,12 +88,15 @@ class FFMPEGAudioSource(AudioSource):
                 Options to be used in input stream.
             outputargs:
                 Options to be used in output stream.
-            FFMPEG:
+            ffmpeg:
                 directory to the binary. defaults to "ffmpeg".
         """
         self.filename = filename
 
-        self.inputargs = inputargs
+        if inputargs:
+            self.inputargs = inputargs
+        else:
+            self.inputargs = list()
 
         self.outputargs = [
             "-f", "opus",
@@ -100,10 +104,10 @@ class FFMPEGAudioSource(AudioSource):
             "-ac", "2",
             "-b:a", "96K"
         ]
-        if outputargs:
+        if outputargs is not None:
             self.outputargs.extend(outputargs)
 
-        self.FFMPEG = FFMPEG
+        self.FFMPEG = ffmpeg
 
         self.proc = None
         self.parser = None

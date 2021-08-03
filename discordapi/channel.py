@@ -64,15 +64,15 @@ GuildVoiceChannel class.
 
 
 def get_channel(client, data, guild=None):
-    type = data['type']
+    _type = data['type']
 
-    if type == GUILD_TEXT:
+    if _type == GUILD_TEXT:
         return GuildTextChannel(client, data, guild)
-    elif type == DM:
+    elif _type == DM:
         return DMChannel(client, data)
-    elif type == GUILD_VOICE:
+    elif _type == GUILD_VOICE:
         return GuildVoiceChannel(client, data, guild)
-    elif type == GROUP_DM:
+    elif _type == GROUP_DM:
         return GroupDMChannel(client, data)
     else:
         return Channel(client, data)
@@ -130,11 +130,18 @@ class Channel(DictObject):
     def send(self, content=EMPTY, tts=EMPTY, file=None, embeds=EMPTY,
              allowed_mentions=EMPTY, reply_to=None,
              components=EMPTY):
-        msg_ref = clear_postdata({
-            "message_id": reply_to,
-            "channel_id": self.id,
-            "guild_id": self.guild_id if self.guild_id else EMPTY
-        }) if reply_to is not None else EMPTY
+        if reply_to is not None:
+            if self.guild_id is not None:
+                guild_id = self.guild_id
+            else:
+                guild_id = None
+            msg_ref = clear_postdata({
+                "message_id": reply_to,
+                "channel_id": self.id,
+                "guild_id": guild_id
+            })
+        else:
+            msg_ref = EMPTY
 
         postdata = {
             "content": content,

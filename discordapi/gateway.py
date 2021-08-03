@@ -74,7 +74,7 @@ class DiscordGateway(WebSocketThread):
         self.seq = 0
         self.heartbeat_interval = None
         self.is_heartbeat_ready = Event()
-        self.heartbeat_ack = Event()
+        self.heartbeat_ack_received = Event()
         self.is_reconnect = False
         self.voice_queue = {}
         self.voice_clients = {}
@@ -159,11 +159,11 @@ class DiscordGateway(WebSocketThread):
             if stop_flag.wait(deadline - time.time()):
                 break
 
-            if not self.heartbeat_ack.is_set():
+            if not self.heartbeat_ack_received.is_set():
                 logger.error("No HEARTBEAT_ACK received within time!")
                 self._sock.close(STATUS_ABNORMAL_CLOSED)
 
-            self.heartbeat_ack.clear()
+            self.heartbeat_ack_received.clear()
 
         logger.debug("Terminating heartbeat thread...")
 
@@ -206,7 +206,7 @@ class DiscordGateway(WebSocketThread):
 
         elif op == self.HEARTBEAT_ACK:
             logger.debug("Received Heartbeat ACK!")
-            self.heartbeat_ack.set()
+            self.heartbeat_ack_received.set()
 
     def _event_parser(self, event, payload):
         obj = payload
@@ -227,15 +227,15 @@ class DiscordGateway(WebSocketThread):
             guild_id = obj.guild_id
             if guild_id is not None:
                 guild = self.guilds.get(guild_id)
-                id = obj.id
+                _id = obj.id
                 event_sub = event.split("_", 1)[-1]
                 if event_sub == "CREATE" or event_sub == "UPDATE":
                     guild.channels.update({
-                        id: obj
+                        _id: obj
                     })
-                elif event_sub == "DELETE":
-                    if guild.channels.get(id) is not None:
-                        del guild.channel[id]
+                elif event_sub == "DELETE" and \
+                        guild.channels.get(_id) is not None:
+                    del guild.channel[_id]
 
         elif event == "CHANNEL_PINS_UPDATE":
             guild_id = payload.get("guild_id")
@@ -248,11 +248,12 @@ class DiscordGateway(WebSocketThread):
 
         elif event == "GUILD_CREATE" or event == "GUILD_UPDATE":
             obj = Guild(self, payload)
-            id = obj.id
-            self.guilds[id] = obj
+            _id = obj.id
+            self.guilds[_id] = obj
         
         elif event == "GUILD_DELETE":
-            self.guilds[id] = False
+            _id = payload.get("id")
+            self.guilds[_id] = False
 
         elif event.startswith("GUILD_"):
             guild_id = payload.get("guild_id")
@@ -296,13 +297,13 @@ class DiscordGateway(WebSocketThread):
             if payload.get("author") is not None:
                 obj = Message(self, payload)
 
-        elif (event == "VOICE_STATE_UPDATE" and
-                payload['user_id'] == self.user.id) or\
-                event == "VOICE_SERVER_UPDATE":
+        elif ((event == "VOICE_STATE_UPDATE" and
+              payload['user_id'] == self.user.id) or
+                event == "VOICE_SERVER_UPDATE") and \
+                self.voice_queue.get(payload['guild_id']) is not None:
             # Puts data into voice_queue so that GuildVoiceChannel.connect
             # method can start a voice session
-            if self.voice_queue.get(payload['guild_id']) is not None:
-                self.voice_queue[payload['guild_id']].put((event, payload))
+            self.voice_queue[payload['guild_id']].put((event, payload))
 
         # Add GUILD_ROLE event
 

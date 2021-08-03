@@ -76,7 +76,7 @@ class DiscordVoiceClient(WebSocketThread):
 
         self.got_ready = Event()
         self.is_heartbeat_ready = Event()
-        self.heartbeat_ack = Event()
+        self.heartbeat_ack_received = Event()
         self.secret_box = None
         self.voice_sequence = 0
         self.timestamp = 0
@@ -220,11 +220,11 @@ class DiscordVoiceClient(WebSocketThread):
 
             if stop_flag.wait(deadline - time.time()):
                 break
-            elif not self.heartbeat_ack.is_set():
+            elif not self.heartbeat_ack_received.is_set():
                 logger.error("No HEARTBEAT_ACK received within time!")
                 self.sock.close(STATUS_ABNORMAL_CLOSED)
 
-            self.heartbeat_ack.clear()
+            self.heartbeat_ack_received.clear()
 
         logger.debug("Terminating heartbeat thread...")
 
@@ -272,4 +272,4 @@ class DiscordVoiceClient(WebSocketThread):
             logger.debug("VOICE READY!!!")
 
         elif op == self.HEARTBEAT_ACK:
-            self.heartbeat_ack.set()
+            self.heartbeat_ack_received.set()
