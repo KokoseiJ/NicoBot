@@ -20,12 +20,17 @@
 
 import json
 import requests
+from base64 import b64decode
 from urllib.parse import urljoin
 from collections import namedtuple
 from threading import Thread, Event
 from bs4 import BeautifulSoup as bs
 
-Author = namedtuple("Author", ("id", "name", "thumbnail"))
+User = namedtuple("User", ("id", "name", "thumbnail"))
+Mylist = namedtuple("Mylist", ("id", "name", "description", "owner", "items"))
+Video = namedtuple(
+    "Video", ("id", "title", "description", "author", "thumbnail", "length")
+)
 
 
 class NicoError(Exception):
@@ -34,15 +39,27 @@ class NicoError(Exception):
 
 class NicoPlayer:
     LOGIN_URL = "https://account.nicovideo.jp/login/redirector"
+    MYLIST_URL = "https://nvapi.nicovideo.jp/v2/mylists/{}?pageSize={}&page={}"
+    SEARCH_URL = "https://api.search.nicovideo.jp/" + \
+                 "api/v2/snapshot/video/contents/search"
     
-    def __init__(self, lang="ja-jp", headers={}, cookies={}):
+    def __init__(self, lang="ja-jp", headers={}, cookies={}, user_agent=None):
         self.lang = lang
         self.logged_in = False
         self.user_id = None
+        self.frontend_id = "6"
+        self.frontend_version = "0"
+
+        if user_agent:
+            self.user_agent = user_agent
+        else:
+            self.user_agent = "NicoPlayer"
 
         self.session = requests.session()
         self.session.headers.update({
-            "User-Agent": "NicoPlayer"
+            "User-Agent": self.user_agent,
+            "x-frontend-id": self.frontend_id,
+            "x-frontend-version": self.frontend_version
         })
         self.session.headers.update(headers)
         self.session.cookies.update(cookies)
@@ -56,17 +73,100 @@ class NicoPlayer:
             }
         )
 
-        if not self.session.cookies.get("user_session"):
+        cookie = self.session.cookies.get("user_session_secure")
+        if not cookie:
             raise NicoError("Failed to Login.")
 
+        cookie += "=" * (3 - len(cookie) % 3)
+
+        cookie_dec = b64decode(cookie.encode()).decode()
+        self.user_id = cookie_dec.split(":", 1)[0]
         self.logged_in = True
-        self.user_id = self.session.cookies['user_session'].split("_")[2]
+
+    def get_mylist(self, id_):
+        pagesize = 100
+        index = 1
+        items = []
+        while True:
+            url = self.MYLIST_URL.format(id_, pagesize, index)
+            r = self.session.get(url)
+            r.raise_for_status()
+            data = r.json()["data"]["mylist"]
+
+            _id = data['id']
+            name = data['name']
+            description = data['description']
+
+            owner_obj = data['owner']
+            owner = User(
+                owner_obj['id'],
+                owner_obj['name'],
+                owner_obj['iconUrl']
+            )
+
+            items.extend([Video(
+                vid['id'],
+                vid['title'],
+                vid['shortDescription'],
+                User(
+                    vid['owner']['id'],
+                    vid['owner']['name'],
+                    vid['owner']['iconUrl']
+                ),
+                vid['thumbnail']['largeUrl'] if vid['thumbnail']['largeUrl']
+                else vid['thumbnail']['nHdUrl'],
+                vid['duration']
+            ) for vid in [obj['video'] for obj in data['items']]])
+
+            if data['hasNext']:
+                index += 1
+                continue
+            break
+
+        return Mylist(_id, name, description, owner, items)
+
+    def search(self, query, **kwargs):
+        arg_dict = {
+            "q": query,
+            "targets": "title",
+            "fields": "contentId,title,description,userId,thumbnailUrl,"
+                      "lengthSeconds",
+            "_sort": "-viewCounter",
+            "_context": self.user_agent
+        }
+        arg_dict.update(kwargs)
+        arg = "&".join([f"{key}={val}" for key, val in arg_dict.items()])
+        url = f"{self.SEARCH_URL}?{arg}"
+
+        r = self.session.get(url)
+        data = r.json()
+
+        if r.status_code != 200:
+            meta = data['meta']
+            status = meta['status']
+            code = meta['errorCode']
+            msg = meta['errorMessage']
+
+            excmsg = f"{status} {code}: {msg}"
+
+            raise NicoError(excmsg)
+
+        result = [Video(
+            obj['contentId'],
+            obj['title'],
+            obj['description'],
+            User(obj['userId'], None, None),
+            obj['thumbnailUrl'],
+            obj['lengthSeconds']
+        ) for obj in data['data']]
+
+        return result
 
     def play(self, id_):
-        return NicoDMCSong(id_, self)
+        return NicoDMCVideo(id_, self)
 
 
-class NicoDMCSong:
+class NicoDMCVideo:
     WATCH_URL = "https://sp.nicovideo.jp/watch/{}"
     GUEST_API_URL = "https://www.nicovideo.jp/api/watch/v3_guest/{}" +\
                     "?actionTrackId={}"
@@ -87,7 +187,7 @@ class NicoDMCSong:
         self.heartbeat_data = None
 
         self.action_track_id = None
-        self.frontend_id = 3
+        self.frontend_id = 6
         self.video_quality = None
         self.audio_quality = None
         self.heartbeat_interval = None
@@ -124,6 +224,7 @@ class NicoDMCSong:
 
     def get_watch_data(self):
         r = self.session.get(self.WATCH_URL.format(self.id))
+        r.raise_for_status()
         soup = bs(r.content, "lxml")
         data_container = soup.find("div", {"id": "jsDataContainer"})
         self.watch_data = json.loads(data_container['data-context'])
@@ -131,7 +232,7 @@ class NicoDMCSong:
         self.action_track_id = self.watch_data['action_track_id']
         self.frontend_id = self.watch_data['frontend_id']
         self.title = self.watch_data['video_title']
-        self.author = Author(
+        self.author = User(
             self.watch_data['video_author_id'],
             self.watch_data['video_author_name'],
             self.watch_data['video_author_thumbnail_url']
@@ -150,7 +251,7 @@ class NicoDMCSong:
         url = urlbase.format(self.id, self.action_track_id)
         headers = {
             "x-frontend-id": str(self.frontend_id),
-            "x-frontend-version": "0.1.0"
+            "x-frontend-version": "0"
         }
 
         r = self.session.get(url, headers=headers)

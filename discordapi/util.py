@@ -107,10 +107,12 @@ def clear_postdata(data):
     }
 
 
-def get_formdata(data, boundary=None):
-    if boundary is None:
-        randhex = random.randbytes(8).hex()
-        boundary = f"VOCALOIDIA-{randhex}"
+def get_formdata(data, boundary_prefix=None):
+    if boundary_prefix is None:
+        boundary_prefix = "VOCALOIDIA-"
+
+    randhex = random.randbytes(8).hex()
+    boundary = f"{boundary_prefix}{randhex}"
 
     content_type = f"multiplart/form-data;boundary=\"{boundary}\""
 
