@@ -25,6 +25,14 @@ jobs:
           pytest --cov=discordapi --cov-report=xml:coverage-reports/discordapi_coverage-3.9.xml --junit-xml=xunit-reports/xunit-result-3.9.xml
         env:
           TOKEN: ${{ secrets.TESTBOT_TOKEN }}
+      - name: Fix paths
+        run: |
+          for i in coverage-reports/*; do
+            sed -i 's/\/home\/runner\/work\/NicoBot\/nicobot\//\/github\/workspace\//g' $i
+          done
+          for i in xunit-reports/*; do
+            sed -i 's/\/home\/runner\/work\/NicoBot\/nicobot\//\/github\/workspace\//g' $i
+          done
       - name: Sonarqube Scan
         uses: sonarsource/sonarqube-scan-action@master
         env:
