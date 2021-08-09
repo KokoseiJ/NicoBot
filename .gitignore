@@ -178,3 +178,6 @@ token
 nicotest.opus
 # Docs won't be commited for now
 docs/
+
+coverage-reports/
+xunit-reports/
