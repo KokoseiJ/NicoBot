@@ -114,7 +114,7 @@ def get_formdata(data, boundary_prefix=None):
     randhex = random.randbytes(8).hex()
     boundary = f"{boundary_prefix}{randhex}"
 
-    content_type = f"multiplart/form-data;boundary=\"{boundary}\""
+    content_type = f"multipart/form-data;boundary=\"{boundary}\""
 
     body = bytes()
 
@@ -124,7 +124,6 @@ def get_formdata(data, boundary_prefix=None):
 
         if isinstance(value, dict):
             value = json.dumps(value).encode()
-            body += b"\nContent-Type: application/json"
         elif isinstance(value, File):
             name = value.get_name()
             value = value.read()

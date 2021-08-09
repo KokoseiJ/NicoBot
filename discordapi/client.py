@@ -71,18 +71,29 @@ class DiscordClient(DiscordGateway):
         self._activities = ()
         self.ratelimit_handler = RateLimitHandler()
 
+    def get_guilds(self):
+        return self.guilds.copy()
+
     def get_guild(self, id_):
-        return self.guilds.get(id_)
+        return self.get_guilds().get(id_)
+
+    def get_channels(self):
+        return {
+            x: y for guild in self.get_guilds().values()
+            for x, y in guild.channels.items()
+        }
 
     def get_channel(self, id_):
+        return self.get_channels().get(id_)
+
+    def get_users(self):
         return {
-            x: y for guild in self.guilds for x, y in guild.channels.items()
-        }.get(id_)
+            x: y for guild in self.get_guilds().values()
+            for x, y in guild.users.items()
+        }
 
     def get_user(self, id_):
-        return {
-            x: y for guild in self.guilds for x, y in guild.users.items()
-        }.get(id_)
+        return self.get_users().get(id_)
 
     def update_presence(self, activities=None, status=None, afk=False,
                         since=None):
@@ -336,7 +347,7 @@ class DiscordClient(DiscordGateway):
         if isinstance(data, str):
             data = data.encode()
 
-        req_headers = self.headers
+        req_headers = self.headers.copy()
         if headers is not None:
             req_headers.update(headers)
 

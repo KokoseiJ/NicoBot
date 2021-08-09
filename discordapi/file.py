@@ -21,6 +21,8 @@
 from io import BytesIO
 from os.path import split, abspath, exists, isdir
 
+__all__ = ["File"]
+
 
 class File:
     """Represents file and name.

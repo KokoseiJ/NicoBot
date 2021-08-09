@@ -20,6 +20,7 @@
 
 from .file import File
 from .user import User
+from .const import LIB_NAME
 from .message import Message
 from .util import clear_postdata, get_formdata
 from .dictobject import DictObject
@@ -28,6 +29,7 @@ from .voice import DiscordVoiceClient
 
 import json
 import base64
+import logging
 from queue import Queue
 from urllib.parse import quote as urlencode
 
@@ -54,6 +56,8 @@ GUILD_PUBLIC_THREAD = 11
 GUILD_PRIVATE_THREAD = 12
 GUILD_STAGE_VOICE = 13
 
+logger = logging.getLogger(LIB_NAME)
+
 """
 It is recommended to check Official Discord documentation for these methods.
 Almost every arguments in these method represent those in their API doc 1:1,
@@ -75,6 +79,7 @@ def get_channel(client, data, guild=None):
     elif _type == GROUP_DM:
         return GroupDMChannel(client, data)
     else:
+        logger.warning(f"Unknown Channel type {_type}")
         return Channel(client, data)
 
 
@@ -131,6 +136,8 @@ class Channel(DictObject):
              allowed_mentions=EMPTY, reply_to=None,
              components=EMPTY):
         if reply_to is not None:
+            if isinstance(reply_to, Message):
+                reply_to = reply_to.id
             if self.guild_id is not None:
                 guild_id = self.guild_id
             else:
@@ -499,19 +506,24 @@ class GuildVoiceChannel(GuildChannel):
         """
         self.client.voice_queue[self.guild_id] = Queue()
         self.client.update_voice_state(self.guild_id, self.id, mute, deaf)
+
         token = None
         session_id = None
         while token is None or session_id is None:
             event, payload = self.client.voice_queue[self.guild_id].get()
+
             if event == "VOICE_STATE_UPDATE":
                 session_id = payload['session_id']
+
             elif event == "VOICE_SERVER_UPDATE":
                 token = payload['token']
                 endpoint = payload['endpoint']
+
         endpoint = f"wss://{endpoint}?v={VOICE_VER}"
         client = DiscordVoiceClient(
             self.client, endpoint, token, session_id, self.guild_id
         )
         self.client.voice_clients[self.guild_id] = client
+
         client.start()
         return client

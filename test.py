@@ -18,6 +18,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
+import discordapi
 from discordapi.ogg import OggParser
 from discordapi.const import LIB_NAME
 from discordapi.client import DiscordClient
@@ -117,10 +118,13 @@ if __name__ == "__main__":
                         payload.channel.send("That causes error >:( what have you done")
                 elif "?eval" in payload.content and payload.author.id == "378898017249525771":
                     try:
-                        payload.channel.send(str(eval(payload.content.split(" ", 1)[-1])))
+                        result = str(eval(payload.content.split(" ", 1)[-1]))
                     except:
                         logger.exception("wtf")
                         payload.channel.send("that causes error you dumb bitch")
+                        continue
+                    if result:
+                        payload.channel.send(result)
                 elif payload.content == "?disconnect":
                     for client in gw.voice_clients:
                         client.disconnect()

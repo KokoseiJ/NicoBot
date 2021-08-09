@@ -3,6 +3,7 @@ from .client import *
 from .const import *
 from .dictobject import *
 from .exceptions import *
+from .file import *
 from .gateway import *
 from .guild import *
 from .handler import *
