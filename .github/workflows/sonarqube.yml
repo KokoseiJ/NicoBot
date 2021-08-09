@@ -18,11 +18,11 @@ jobs:
           python-version: '3.9'
       - name: Install dependencies
         run: |
-          python -m pip install -U pip pytest
+          python -m pip install -U pip pytest pytest-cov
           pip install -U -r requirements.txt
       - name: Test with pytest
         run: |
-          pytest --junit-xml=coverage-reports/nicobot_coverage-3.9.xml
+          pytest --cov=discordapi --cov-report=xml:coverage-reports/discordapi_coverage-3.9.xml --junit-xml=xunit-reports/xunit-result-3.9.xml
         env:
           TOKEN: ${{ secrets.TESTBOT_TOKEN }}
       - name: Sonarqube Scan
