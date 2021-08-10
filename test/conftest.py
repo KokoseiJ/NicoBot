@@ -59,12 +59,7 @@ def guild(client):
 def channel(guild):
     channel = None
 
-    for obj in guild.channels.values():
-        if obj.name == "test":
-            channel = obj
-            break
-
-    else:
-        pytest.fail("test channel is not present!", False)
+    randid = os.urandom(4).hex()
+    channel = guild.create_channel(f"test_{randid}", 0, topic=randid)
 
     return channel
