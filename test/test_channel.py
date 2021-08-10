@@ -1,5 +1,5 @@
 import pytest
-from .conftest import wanted_env
+from .conftest import wanted_env, unwanted_env
 
 import os
 import sys
@@ -10,6 +10,7 @@ sys.path.insert(0, projpath)
 from discordapi import Channel, Message, File, EMPTY
 
 
+@unwanted_env("NO_GATEWAY")
 @wanted_env("TOKEN")
 class TestChannel:
     def test_modify(self, channel):

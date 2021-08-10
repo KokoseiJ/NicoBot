@@ -19,6 +19,15 @@ def wanted_env(envname, reason=None):
     )
 
 
+def unwanted_env(envname, reason=None):
+    if reason is None:
+        reason = f"Env {envname} is set, skipping..."
+    return pytest.mark.skipif(
+        bool(os.environ.get(envname)),
+        reason=reason
+    )
+
+
 @pytest.fixture(scope="session")
 def client():
     token = os.environ.get("TOKEN")
