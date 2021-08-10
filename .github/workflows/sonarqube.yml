@@ -28,10 +28,10 @@ jobs:
       - name: Fix paths
         run: |
           for i in coverage-reports/*; do
-            sed -i 's/\/home\/runner\/work\/NicoBot\/nicobot\//\/github\/workspace\//g' $i
+            sed -i 's/\/home\/runner\/work\/NicoBot\/NicoBot\//\/github\/workspace\//g' $i
           done
           for i in xunit-reports/*; do
-            sed -i 's/\/home\/runner\/work\/NicoBot\/nicobot\//\/github\/workspace\//g' $i
+            sed -i 's/\/home\/runner\/work\/NicoBot\/NicoBot\//\/github\/workspace\//g' $i
           done
       - name: Sonarqube Scan
         uses: sonarsource/sonarqube-scan-action@master
