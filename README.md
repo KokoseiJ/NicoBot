@@ -1,7 +1,13 @@
-# Nicobot [![Sonarqube Analyze](https://github.com/KokoseiJ/NicoBot/actions/workflows/sonarqube.yml/badge.svg)](https://github.com/KokoseiJ/NicoBot/actions/workflows/sonarqube.yml) [![Reliability Rating](https://sonar.kokoseij.xyz/api/project_badges/measure?project=KokoseiJ_NicoBot&metric=reliability_rating)](https://sonar.kokoseij.xyz/dashboard?id=KokoseiJ_NicoBot) [![Maintainability Rating](https://sonar.kokoseij.xyz/api/project_badges/measure?project=KokoseiJ_NicoBot&metric=sqale_rating)](https://sonar.kokoseij.xyz/dashboard?id=KokoseiJ_NicoBot) [![Security Rating](https://sonar.kokoseij.xyz/api/project_badges/measure?project=KokoseiJ_NicoBot&metric=security_rating)](https://sonar.kokoseij.xyz/dashboard?id=KokoseiJ_NicoBot)
-[![Quality gate](https://sonar.kokoseij.xyz/api/project_badges/quality_gate?project=KokoseiJ_NicoBot)](https://sonar.kokoseij.xyz/dashboard?id=KokoseiJ_NicoBot)
-
+# Nicobot
 Music bot that plays music from Nicovideo, written from the scratch, without using Discord.py.
+
+[![Sonarqube Analyze](https://github.com/KokoseiJ/NicoBot/actions/workflows/sonarqube.yml/badge.svg)](https://github.com/KokoseiJ/NicoBot/actions/workflows/sonarqube.yml) 
+
+[![Lines of Code](https://sonar.kokoseij.xyz/api/project_badges/measure?project=KokoseiJ_NicoBot&metric=ncloc)](https://sonar.kokoseij.xyz/dashboard?id=KokoseiJ_NicoBot) [![Coverage](https://sonar.kokoseij.xyz/api/project_badges/measure?project=KokoseiJ_NicoBot&metric=coverage)](https://sonar.kokoseij.xyz/dashboard?id=KokoseiJ_NicoBot) 
+
+[![Reliability Rating](https://sonar.kokoseij.xyz/api/project_badges/measure?project=KokoseiJ_NicoBot&metric=reliability_rating)](https://sonar.kokoseij.xyz/dashboard?id=KokoseiJ_NicoBot) [![Maintainability Rating](https://sonar.kokoseij.xyz/api/project_badges/measure?project=KokoseiJ_NicoBot&metric=sqale_rating)](https://sonar.kokoseij.xyz/dashboard?id=KokoseiJ_NicoBot) [![Security Rating](https://sonar.kokoseij.xyz/api/project_badges/measure?project=KokoseiJ_NicoBot&metric=security_rating)](https://sonar.kokoseij.xyz/dashboard?id=KokoseiJ_NicoBot)
+
+[![Quality gate](https://sonar.kokoseij.xyz/api/project_badges/quality_gate?project=KokoseiJ_NicoBot)](https://sonar.kokoseij.xyz/dashboard?id=KokoseiJ_NicoBot)
 
 ## What is this bot?
 Just like its name, It plays songs from [Nicovideo](https://nicovideo.jp) server. Streaming-related code is mostly from [`nico.py` module from my previous bot](https://github.com/KokoseiJ/DiscordBot/blob/master/modules/nico.py), while Discord-side API wrapper was completely written from the scratch.
