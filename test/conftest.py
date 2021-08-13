@@ -62,4 +62,13 @@ def channel(guild):
     randid = os.urandom(4).hex()
     channel = guild.create_channel(f"test_{randid}", 0, topic=randid)
 
-    return channel
+    yield channel
+
+    channel.delete()
+
+
+@pytest.fixture(scope="function", autouse=bool(os.environ.get("TOKEN")))
+def chat_report(request, channel):
+    def fin():
+        channel.send(f"```===== {request.node.nodeid} Finished! =====```")
+    request.addfinalizer(fin)

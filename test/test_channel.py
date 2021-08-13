@@ -61,15 +61,6 @@ class TestChannel:
                 parent_id=orig_parent_id
             )
 
-    def test_get_messages(self, channel):
-        limit = 10
-        messages = channel.get_messages(limit=limit)
-
-        assert len(messages) <= limit
-
-        for message in messages:
-            assert isinstance(message, Message)
-
     def test_send(self, channel):
         plain_msg = channel.send(
             content="Testing plain content",
@@ -89,3 +80,62 @@ class TestChannel:
             content="Testing reply_to id behaviour",
             reply_to=plain_msg.id
         )
+
+    def test_edit_message(self, channel):
+        target_content1 = os.urandom(8).hex()
+        target_content2 = os.urandom(8).hex()
+
+        msg1 = channel.send("edit_message obj behaviour")
+        msg2 = channel.send("edit_message id behaviour")
+
+        edit_msg1 = channel.edit_message(msg1, content=target_content1)
+        edit_msg2 = channel.edit_message(msg2.id, content=target_content2)
+
+        assert edit_msg1.content == target_content1
+        assert edit_msg2.content == target_content2
+
+    def test_delete_message(self, channel):
+        msg1 = channel.send("delete_message obj behaviour")
+        msg2 = channel.send("delete_message id behaviour")
+
+        channel.delete_message(msg1)
+        channel.delete_message(msg2.id)
+
+    def test_delete_messages(self, channel):
+        msg1 = channel.send("bulk delete obj behaviour")
+        msg2 = channel.send("bulk delete id behaviour")
+        msglist = (msg1, msg2)
+
+        channel.delete_messages(msglist)
+
+    def test_get_messages(self, channel):
+        limit = 10
+        messages = channel.get_messages(limit=limit)
+
+        assert len(messages) <= limit
+
+        for message in messages:
+            assert isinstance(message, Message)
+
+    def test_typing(self, channel):
+        channel.typing()
+
+    def test_pin_message(self, channel):
+        msg1 = channel.send("pin_message obj behaviour")
+        msg2 = channel.send("pin_message id behaviour")
+
+        channel.pin_message(msg1)
+        channel.pin_message(msg2.id)
+
+        pinned = channel.get_pinned_messages()
+
+        assert msg1 in pinned
+        assert msg2 in pinned
+
+        channel.unpin_message(msg1)
+        channel.unpin_message(msg2.id)
+
+        pinned = channel.get_pinned_messages()
+
+        assert msg1 not in pinned
+        assert msg2 not in pinned
