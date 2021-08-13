@@ -1,7 +1,7 @@
 # Nicobot
 Music bot that plays music from Nicovideo, written from the scratch, without using Discord.py.
 
-[![Sonarqube Analyze](https://github.com/KokoseiJ/NicoBot/actions/workflows/sonarqube.yml/badge.svg)](https://github.com/KokoseiJ/NicoBot/actions/workflows/sonarqube.yml) 
+[![Build Status](https://jenkins.kokoseij.xyz/buildStatus/icon?job=NicoBot)](https://jenkins.kokoseij.xyz/job/NicoBot/)
 
 [![Lines of Code](https://sonar.kokoseij.xyz/api/project_badges/measure?project=KokoseiJ_NicoBot&metric=ncloc)](https://sonar.kokoseij.xyz/dashboard?id=KokoseiJ_NicoBot) [![Coverage](https://sonar.kokoseij.xyz/api/project_badges/measure?project=KokoseiJ_NicoBot&metric=coverage)](https://sonar.kokoseij.xyz/dashboard?id=KokoseiJ_NicoBot) 
 
