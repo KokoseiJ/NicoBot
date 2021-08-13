@@ -62,12 +62,12 @@ class Guild(DictObject):
         self.members = {
             member['user']['id']: Member(client, self, member)
             for member in self.members
-        }
+        } if self.members is not None else None
 
         self.channels = {
             channel['id']: get_channel(client, channel, self)
             for channel in self.channels
-        }
+        } if self.channels is not None else None
 
     def get_preview(self):
         return self.client.get_guild_preiew(self.id)

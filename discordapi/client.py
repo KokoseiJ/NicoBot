@@ -88,8 +88,8 @@ class DiscordClient(DiscordGateway):
 
     def get_users(self):
         return {
-            x: y for guild in self.get_guilds().values()
-            for x, y in guild.users.items()
+            x: y.user for guild in self.get_guilds().values()
+            for x, y in guild.members.items()
         }
 
     def get_user(self, id_):

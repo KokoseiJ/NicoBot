@@ -23,7 +23,6 @@ from .file import File
 
 import os
 import json
-import random
 from select import select
 from threading import Thread, Event
 

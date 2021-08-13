@@ -60,3 +60,10 @@ class DictObject:
 
     def __repr__(self):
         return self.__str__()
+
+    def __eq__(self, other):
+        if getattr(self, "id", None) is not None and\
+                getattr(other, "id", None) is not None:
+            return self.id == other.id
+        else:
+            return False
