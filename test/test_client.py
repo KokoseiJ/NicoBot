@@ -23,6 +23,7 @@ class TestClient:
         }
         client.update_presence(activities=activity, status="dnd")
 
+    @pytest.mark.skip(reason="Known for hanging due to gateway reconnection")
     def test_request_guild_member(self, client, guild):
         client.request_guild_member(guild.id)
 
