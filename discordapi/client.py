@@ -33,8 +33,9 @@ import json
 import time
 import base64
 import logging
+from urllib.parse import urljoin
 from urllib.error import HTTPError
-from urllib.request import Request, urlopen, urljoin
+from urllib.request import Request, urlopen
 
 __all__ = ["DiscordClient"]
 
