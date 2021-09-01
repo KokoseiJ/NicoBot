@@ -12,6 +12,7 @@ from .message import *
 from .ogg import *
 from .player import *
 from .ratelimit import *
+from .slash import *
 from .user import *
 from .util import *
 from .voice import *
