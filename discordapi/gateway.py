@@ -235,7 +235,7 @@ class DiscordGateway(WebSocketThread):
                     })
                 elif event_sub == "DELETE" and \
                         guild.channels.get(_id) is not None:
-                    del guild.channel[_id]
+                    del guild.channels[_id]
 
         elif event == "CHANNEL_PINS_UPDATE":
             guild_id = payload.get("guild_id")
