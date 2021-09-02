@@ -18,13 +18,14 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
-from .user import User
-from .member import Member
-from .const import LIB_NAME
-from .message import Message
-from .dictobject import DictObject
-from .gateway import DiscordGateway
+from ..user import User
+from ..member import Member
+from ..const import LIB_NAME
+from ..message import Message
+from ..dictobject import DictObject
+from ..gateway import DiscordGateway
 
+import json
 import logging
 
 __all__ = ["Context", "Option", "SubCommand", "SubCommandGroup", "String",
@@ -168,6 +169,7 @@ class SlashCommand:
 
     def execute(self, ctx, options):
         logger.info(options)
+        logger.info(ctx.data)
 
     def _json(self):
         data = {
@@ -193,122 +195,6 @@ class SlashCommandManager:
                             f"'{type(client)}'")
         self.client = client
 
-    def _send_request(self, method, route, data=None, expected_code=None,
-                      raise_at_exc=True, baseurl=None, headers=None):
-        route = f"/applications/{self.user.id}{route}"
-        return self.client.send_request(
-            method, route, data, expected_code, raise_at_exc, baseurl, headers
-        )
-
-    def get_global_commands(self):
-        commands = self._send_request(
-            "GET", "/commands"
-        )
-
-        return commands
-
-    def create_global_command(self, command):
-        command = self._send_request(
-            "POST", "/commands", command
-        )
-
-        return command
-
-    def get_global_command(self, id_):
-        command = self._send_request(
-            "GET", f"/commands/{id_}"
-        )
-
-        return command
-
-    def edit_global_command(self, id_, command):
-        command = self._send_request(
-            "PATCH", f"/commands/{id_}", command
-        )
-
-        return command
-
-    def delete_global_command(self, id_):
-        self._send_request(
-            "DELETE", f"/commands/{id_}"
-        )
-
-    def bulk_global_commands(self, commands):
-        commands = self._send_request(
-            "PUT", "/commands", commands
-        )
-
-        return commands
-
-    def get_guild_commands(self, guild):
-        commands = self._send_request(
-            "GET", f"/guilds/{guild.id}/commands"
-        )
-
-        return commands
-
-    def create_guild_command(self, guild, command):
-        command = self._send_request(
-            "POST", f"/guilds/{guild.id}/commands", command
-        )
-
-        return command
-
-    def get_guild_command(self, guild, id_):
-        command = self._send_request(
-            "GET", f"/guilds/{guild.id}/commands/{id_}"
-        )
-
-        return command
-
-    def edit_guild_command(self, guild, id_, command):
-        command = self._send_request(
-            "PATCH", f"/guilds/{guild.id}/commands/{id_}", command
-        )
-
-        return command
-
-    def delete_guild_command(self, guild, id_):
-        self._send_request(
-            "DELETE", f"/guilds/{guild.id}/commands/{id_}"
-        )
-
-    def bulk_guild_commands(self, guild, commands):
-        commands = self._send_request(
-            "PUT", f"/guilds/{guild.id}/commands", commands
-        )
-
-        return commands
-
-    def get_guild_permissions(self, guild):
-        permissions = self._send_request(
-            "GET", f"/guilds/{guild.id}/commands/permissions"
-        )
-
-        return permissions
-
-    def get_command_permissions(self, guild, id_):
-        permissions = self._send_request(
-            "GET", f"/guilds/{guild.id}/commands/{id_}/permissions"
-        )
-
-        return permissions
-
-    def edit_command_permissions(self, guild, id_, permissions):
-        permissions = self._send_request(
-            "GET", f"/guilds/{guild.id}/commands/{id_}/permissions",
-            permissions
-        )
-
-        return permissions
-
-    def batch_command_permissions(self, guild, permissions):
-        permissions = self._send_request(
-            "PUT", f"/guilds/{guild.id}/commands/permissions", permissions
-        )
-
-        return permissions
-
     def register(self, command):
         if not isinstance(command, SlashCommand):
             raise TypeError("command should be SlashCommand, not "
@@ -318,7 +204,16 @@ class SlashCommandManager:
 
     def update(self):
         commands = [command._json() for command in self.map.values()]
-        self.bulk_global_command(commands)
+        self.client.bulk_global_commands(json.dumps(commands))
+
+    def execute(self, ctx):
+        cmdname = ctx.data['name']
+        command = self.map.get(cmdname)
+        if command is None:
+            logger.warning(f"Command '{cmdname}' not found")
+            return
+
+        command.execute(ctx, ctx.data['options'])
 
 
 class Context(DictObject):
