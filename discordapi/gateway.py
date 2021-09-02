@@ -38,6 +38,173 @@ __all__ = []
 logger = logging.getLogger(LIB_NAME)
 
 
+class GatewayEventParser:
+    def __init__(self, client=None):
+        self.client = None
+        if client:
+            self._set_client(client)
+
+    def _set_client(self, client):
+        if not isinstance(client, DiscordGateway):
+            raise TypeError("client should be DiscordGateway, "
+                            f"not '{type(client)}'")
+        self.client = client
+
+    def _handle(self, event, payload):
+        name = "on_" + event.lower()
+        handler = getattr(self, name, None)
+        if handler is None:
+            logger.warning(f"Unimplemented Event {event}")
+            return payload
+
+        value = handler(payload)
+
+        if value is None:
+            value = payload
+
+        return value
+
+    def on_ready(self, payload):
+        self.client.set_ready(
+            payload['user'],
+            payload['guilds'],
+            payload['session_id'],
+            payload['application']
+        )
+
+    def on_resumed(self, payload):
+        self.client.set_ready()
+
+    def on_channel_create(self, payload):
+        obj = get_channel(self.client, payload)
+        
+        guild_id = obj.guild_id
+        if guild_id is None:
+            return obj
+
+        guild = self.guilds.get(guild_id)
+        id_ = obj.id
+
+        guild.channels.update({id_: guild})
+
+        return obj
+
+    def on_channel_update(self, payload):
+        return self.on_channel_create(payload)
+
+    def on_channel_delete(self, payload):
+        obj = get_channel(self.client, payload)
+        
+        guild_id = obj.guild_id
+        if guild_id is None:
+            return obj
+
+        guild = self.guilds.get(guild_id)
+        id_ = obj.id
+
+        if guild.channels.get(id_) is not None:
+            del guild.channels[id_]
+
+        return obj
+
+    def on_channel_pins_update(self, payload):
+        guild_id = payload.get("guild_id")
+        if guild_id is not None:
+            channel_id = payload.get("channel_id")
+            timestamp = payload.get("last_pin_timestamp")
+            guild = self.guilds.get(guild_id)
+            if guild:
+                channel = guild.channels.get(channel_id)
+            channel.last_pin_timestamp = timestamp
+
+    def on_guild_create(self, payload):
+        obj = Guild(self.client, payload)
+        self.guilds[obj.id] = obj
+        return obj
+
+    def on_guild_update(self, payload):
+        return self.on_guild_create(payload)
+
+    def on_guild_delete(self, payload):
+        self.guilds[payload.get("id")] = False
+
+    def on_guild_ban_add(self, payload):
+        guild = self.client.guilds.get(payload.get('guild_id'))
+        if not guild:
+            return
+
+        user_id = payload.get("user").get("id")
+        member = guild.members.get(user_id)
+        if member is not None:
+            del guild.members[user_id]
+
+    def on_guild_emojis_update(self, payload):
+        guild = self.client.guilds.get(payload.get('guild_id'))
+        if not guild:
+            return
+
+        guild.emojis = payload.get('emojis')
+
+    def on_guild_member_add(self, payload):
+        guild = self.client.guilds.get(payload('guild_id'))
+        if not guild:
+            return
+
+        del payload['guild_id']
+        obj = Member(self.client, guild, payload)
+
+        guild.members.append(obj)
+
+        return obj
+
+    def on_guild_member_remove(self, payload):
+        guild = self.client.guilds.get(payload('guild_id'))
+        if not guild:
+            return
+
+        del guild.members[payload.get("user").get("id")]
+
+    def on_guild_member_update(self, payload):
+        guild = self.client.guilds.get(payload('guild_id'))
+        if not guild:
+            return
+
+        user_id = payload.get("user").get("id")
+        del payload['guild_id']
+        member = guild.members.get(user_id)
+        member.__init__(self.client, guild, payload)
+
+    def on_guild_members_chunk(self, payload):
+        guild = self.client.guilds.get(payload('guild_id'))
+        if not guild:
+            return
+
+        memberobjs = payload.get("members")
+        members = {
+            member['user']['id']: Member(self.client, guild, member)
+            for member in memberobjs
+        }
+        guild.members.update(members)
+
+    def on_message_create(self, payload):
+        if payload.get("author") is None:
+            return
+        return Message(self.client, payload)
+
+    def on_message_update(self, payload):
+        return self.on_message_create(payload)
+
+    def on_voice_server_update(self, payload, event="VOICE_SERVER_UPDATE"):
+        guild_id = payload.get("guild_id")
+        self.client.add_voice_queue(guild_id, event, payload)
+
+    def on_voice_state_update(self, payload):
+        if payload['user_id'] == self.client.user.id:
+            self.on_voice_server_update(payload, "VOICE_STATE_UPDATE")
+
+    # Add GUILD_ROLE event
+
+
 class DiscordGateway(WebSocketThread):
     """Gateway Class which defines websocket behaviour and handles events.
 
@@ -55,8 +222,9 @@ class DiscordGateway(WebSocketThread):
     HELLO = 10
     HEARTBEAT_ACK = 11
 
-    def __init__(self, token, handler=None, intents=32509, name="main"):
-        # 32509 is an intent value that omits flags that require verification
+    def __init__(self, token, handler=None, event_parser=None, intents=32509,
+                 name="main"):
+        # 32509 is an intent value that omits flags which require verification
         super(DiscordGateway, self).__init__(
             GATEWAY_URL,
             self._dispatcher,
@@ -65,8 +233,11 @@ class DiscordGateway(WebSocketThread):
 
         if handler is None:
             handler = GeneratorEventHandler
+        if event_parser is None:
+            event_parser = GatewayEventParser
 
         self.set_handler(handler)
+        self.event_parser = event_parser(self)
 
         self.token = token
         self.intents = intents
@@ -83,6 +254,23 @@ class DiscordGateway(WebSocketThread):
         self.guilds = None
         self.session_id = None
         self.application = None
+
+    def set_ready(
+            self, user=None, guilds=None, session_id=None, application=None):
+        if None not in [user, guilds, session_id, application]:
+            self.user = BotUser(self, user)
+            self.guilds = {obj['id']: False for obj in guilds}
+            self.session_id = session_id
+            self.application = application
+        self.ready_to_run.set()
+
+    def add_voice_queue(self, guild_id, event, payload):
+        # Puts data into voice_queue so that GuildVoiceChannel.connect
+        # method can start a voice session
+        if self.voice_queue.get(guild_id) is None:
+            return
+
+        self.voice_queue[guild_id].put((event, payload))
 
     def set_handler(self, handler):
         if isinstance(handler, EventHandler):
@@ -194,7 +382,8 @@ class DiscordGateway(WebSocketThread):
 
         if op == self.DISPATCH:
             self.seq = seq
-            self._event_parser(event, payload)
+            obj = self.event_parser._handle(event, payload)
+            self.handler.handle(event, obj)
 
         elif op == self.INVALID_SESSION or op == self.RECONNECT:
             self.is_reconnect = payload
@@ -207,107 +396,6 @@ class DiscordGateway(WebSocketThread):
         elif op == self.HEARTBEAT_ACK:
             logger.debug("Received Heartbeat ACK!")
             self.heartbeat_ack_received.set()
-
-    def _event_parser(self, event, payload):
-        obj = payload
-
-        if event == "READY":
-            self.user = BotUser(self, payload['user'])
-            self.guilds = {obj['id']: False for obj in payload['guilds']}
-            self.session_id = payload['session_id']
-            self.application = payload['application']
-            self.ready_to_run.set()
-
-        elif event == "RESUMED":
-            self.ready_to_run.set()
-
-        elif event.startswith("CHANNEL") and event != "CHANNEL_PINS_UPDATE":
-            obj = get_channel(self, payload)
-
-            guild_id = obj.guild_id
-            if guild_id is not None:
-                guild = self.guilds.get(guild_id)
-                _id = obj.id
-                event_sub = event.split("_", 1)[-1]
-                if event_sub == "CREATE" or event_sub == "UPDATE":
-                    guild.channels.update({
-                        _id: obj
-                    })
-                elif event_sub == "DELETE" and \
-                        guild.channels.get(_id) is not None:
-                    del guild.channels[_id]
-
-        elif event == "CHANNEL_PINS_UPDATE":
-            guild_id = payload.get("guild_id")
-            if guild_id is not None:
-                channel_id = payload.get("channel_id")
-                timestamp = payload.get("last_pin_timestamp")
-                guild = self.guilds.get(guild_id)
-                channel = guild.channels.get(channel_id)
-                channel.last_pin_timestamp = timestamp
-
-        elif event == "GUILD_CREATE" or event == "GUILD_UPDATE":
-            obj = Guild(self, payload)
-            _id = obj.id
-            self.guilds[_id] = obj
-        
-        elif event == "GUILD_DELETE":
-            _id = payload.get("id")
-            self.guilds[_id] = False
-
-        elif event.startswith("GUILD_"):
-            guild_id = payload.get("guild_id")
-            guild = self.guilds.get(guild_id)
-            if isinstance(guild, Guild):
-                if event == "GUILD_BAN_ADD":
-                    user_id = payload.get("user").get("id")
-                    member = guild.members.get(user_id)
-                    if member is not None:
-                        del guild.members[user_id]
-        
-                elif event == "GUILD_EMOJIS_UPDATE":
-                    guild.emojis = payload.get("emojis")
-        
-                elif event == "GUILD_MEMBER_ADD":
-                    del payload['guild_id']
-                    obj = Member(self, guild, payload)
-                    guild = self.guilds.get(guild_id)
-                    guild.members.append(obj)
-        
-                elif event == "GUILD_MEMBER_REMOVE":
-                    user_id = payload.get("user").get("id")
-                    del guild.members[user_id]
-        
-                elif event == "GUILD_MEMBER_UPDATE":
-                    user_id = payload.get("user").get("id")
-                    del payload['guild_id']
-                    member = guild.members.get(user_id)
-                    member.__init__(self, guild, payload)
-        
-                elif event == "GUILD_MEMBERS_CHUNK":
-                    memberobjs = payload.get("members")
-                    members = {
-                        member['user']['id']: Member(self, guild, member)
-                        for member in memberobjs
-                    }
-                    guild = self.guilds.get(guild_id)
-                    guild.members.update(members)
-
-        elif event == "MESSAGE_CREATE" or event == "MESSAGE_UPDATE":
-            if payload.get("author") is not None:
-                obj = Message(self, payload)
-
-        elif ((event == "VOICE_STATE_UPDATE" and
-              payload['user_id'] == self.user.id) or
-                event == "VOICE_SERVER_UPDATE") and \
-                self.voice_queue.get(payload['guild_id']) is not None:
-            # Puts data into voice_queue so that GuildVoiceChannel.connect
-            # method can start a voice session
-            self.voice_queue[payload['guild_id']].put((event, payload))
-
-        # Add GUILD_ROLE event
-
-        self.handler.handle(event, obj)
 
     def __str__(self):
         class_name = self.__class__.__name__
