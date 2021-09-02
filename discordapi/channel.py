@@ -76,10 +76,13 @@ def get_channel(client, data, guild=None):
         return DMChannel(client, data)
     elif _type == GUILD_VOICE:
         return GuildVoiceChannel(client, data, guild)
+    elif _type == GUILD_CATEGORY:
+        # silence warnings
+        return Channel(client, data)
     elif _type == GROUP_DM:
         return GroupDMChannel(client, data)
     else:
-        logger.warning(f"Unknown Channel type {_type}")
+        logger.debug(f"Unknown Channel type {_type}")
         return Channel(client, data)
 
 
