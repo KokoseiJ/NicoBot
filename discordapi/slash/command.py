@@ -18,15 +18,18 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
+from ..file import File
 from ..user import User
 from ..member import Member
-from ..const import LIB_NAME
 from ..message import Message
+from ..const import LIB_NAME, EMPTY
 from ..dictobject import DictObject
 from ..gateway import DiscordGateway
+from ..util import get_formdata, clear_postdata
 
 import json
 import logging
+from types import GeneratorType
 
 __all__ = ["Context", "Option", "SubCommand", "SubCommandGroup", "String",
            "Integer", "Boolean", "UserOption", "ChannelOption", "RoleOption",
@@ -68,6 +71,7 @@ class Option:
                 if not isinstance(cmd, SlashCommand):
                     raise ValueError("Subcommand should be SlashCommand, "
                                      f"not '{type(cmd)}'")
+            self.subcmds = {cmd.name: cmd for cmd in subcmds}
 
     def _json(self):
         data = {
@@ -85,7 +89,7 @@ class Option:
             data.update({"options": options})
         
         elif self.subcmds is not None:
-            options = [cmd._json() for cmd in self.subcmds]
+            options = [cmd._json() for cmd in self.subcmds.values()]
             data.update({"options": options})
 
         return data
@@ -167,9 +171,44 @@ class SlashCommand:
             return cls(name, desc, func, options)
         return decorator
 
-    def execute(self, ctx, options):
+    def execute(self, ctx, options, manager):
         logger.info(options)
-        logger.info(ctx.data)
+        logger.info(ctx.token)
+
+        ctx.manager = manager
+
+        kwargs = {option: None for option in self.options}
+
+        if options is None:
+            options = []
+
+        for option in options:
+            type_ = option.get('type')
+            name = option.get('name')
+            value = option.get('value')
+            opts = option.get('options')
+            if type_ == SUB_COMMAND:
+                value = self.options[name].cmd.execute(ctx, opts, manager)
+            elif type_ == SUB_COMMAND_GROUP:
+                subopt = option.get('options')
+                if subopt:
+                    subopt = subopt[0]
+                else:
+                    subopt = {}
+                value = self.options[name].subcmds[subopt.get('name')]\
+                    .execute(ctx, subopt.get('options'), manager)
+
+            kwargs[name] = value
+
+        gen = self.func(ctx, **kwargs)
+
+        if isinstance(gen, GeneratorType):
+            for res in gen:
+                yield res
+        else:
+            yield gen
+
+        return
 
     def _json(self):
         data = {
@@ -213,17 +252,73 @@ class SlashCommandManager:
             logger.warning(f"Command '{cmdname}' not found")
             return
 
-        command.execute(ctx, ctx.data['options'])
+        gen = command.execute(ctx, ctx.data.get('options'), self)
+
+        self.respond(ctx, 5)
+
+        for res in gen:
+            self.edit(ctx, content=res)
+
+    def respond(self, ctx, type_, message=None):
+        postdata = {
+            "type": type_
+        }
+        if message is not None:
+            postdata.update({"data": message})
+
+        self.client.send_request(
+            "POST", f"/interactions/{ctx.id}/{ctx.token}/callback", postdata
+        )
+
+    def edit(self, ctx, content=EMPTY, file=None, embeds=EMPTY,
+             allowed_mentions=EMPTY, components=EMPTY):
+        
+        postdata = {
+            "content": content,
+            "embeds": embeds,
+            "allowed_mentions": allowed_mentions,
+            "components": components
+        }
+        postdata = clear_postdata(postdata)
+
+        if file is not None:
+            if not isinstance(file, File):
+                raise ValueError(f"file should be File, not {type(file)}")
+
+            content_type, formdata = get_formdata({
+                "file": file,
+                "payload_json": postdata
+            })
+
+            headers = {"Content-Type": content_type}
+
+            message = self.client.send_request(
+                "PATCH",
+                f"/webhooks/{self.client.user.id}/{ctx.token}"
+                "/messages/@original",
+                formdata, headers=headers
+            )
+        else:
+            message = self.client.send_request(
+                "PATCH",
+                f"/webhooks/{self.client.user.id}/{ctx.token}"
+                "/messages/@original",
+                postdata
+            )
+
+        return Message(self.client, message)
 
 
 class Context(DictObject):
     def __init__(self, client, data):
         super().__init__(data, CTX_KEYLIST)
         self.client = client
+        self.manager = None
 
         if self.user is not None:
             self.user = User(client, self.user)
-        if self.member is not None:
-            self.member = Member(client, self.member)
+        if self.member is not None and self.guild_id is not None:
+            guild = client.get_guild(self.guild_id)
+            self.member = Member(client, guild, self.member)
         if self.message is not None:
             self.message = Message(client, self.message)

@@ -1,6 +1,7 @@
 from discordapi.const import LIB_NAME
-from discordapi.slash import SlashCommand, String, Integer, DiscordInteractionClient
+from discordapi.slash import SlashCommand, String, Integer, DiscordInteractionClient, SubCommandGroup
 import sys
+import time
 import json
 import logging
 from logging import StreamHandler
@@ -19,12 +20,42 @@ else:
     handler.setLevel("DEBUG")
 
 
-@SlashCommand.create("Command for testing", (
+@SlashCommand.create("meow mhm", (
     String("lmao", "zzlol~"),
     Integer("number_for_test", ".")
 ))
 def testcmd(ctx, lmao, number_for_test):
-    return
+    return f"1st arg was {lmao}, 2nd arg was {number_for_test}!"
+
+
+@SlashCommand.create("Updates Command list to Discord", ())
+def update(ctx):
+    if ctx.user is not None:
+        user = ctx.user
+    elif ctx.member is not None:
+        user = ctx.member.user
+
+    if user.id == "378898017249525771":
+        ctx.manager.update()
+        return "Sent update request successfully!"
+    else:
+        return "だれ？"
+
+
+@SlashCommand.create("testing subcommand group", (
+    SubCommandGroup("meow", "lolol", (testcmd, update)),
+))
+def testsubgroup(ctx, meow):
+    return meow
+
+
+@SlashCommand.create("Testing yield/edit", (
+    Integer("interval", "Interval to wait", required=True),
+))
+def testyield(ctx, interval):
+    yield f"I will respond again after {interval} seconds..."
+    time.sleep(interval)
+    yield "... and Here I am!"
 
 
 print(type(testcmd))
@@ -35,7 +66,9 @@ gw = DiscordInteractionClient(
     intents=32767
 )
 
-gw.command_manager.register(testcmd)
+gw.command_manager.register(testsubgroup)
+gw.command_manager.register(update)
+gw.command_manager.register(testyield)
 
 gw.start()
 gw.ready_to_run.wait()

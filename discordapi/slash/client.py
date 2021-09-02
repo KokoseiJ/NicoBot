@@ -170,4 +170,4 @@ class InteractionEventParser(GatewayEventParser):
 
 class InteractionEventHandler(MethodEventHandler):
     def on_interaction_create(self, obj):
-        self.command_manager.execute(obj)
+        self.client.command_manager.execute(obj)
