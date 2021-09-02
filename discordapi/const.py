@@ -19,7 +19,7 @@
 #
 
 LIB_NAME = "nicobot"
-LIB_VER = "a20210725"
+LIB_VER = "a20210901"
 LIB_URL = "https://github.com/KokoseiJ/NicoBot"
 
 GATEWAY_VER = 9
