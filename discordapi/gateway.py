@@ -410,4 +410,8 @@ class GatewayEventParser:
         if payload['user_id'] == self.client.user.id:
             self.on_voice_server_update(payload, "VOICE_STATE_UPDATE")
 
+    def on_presence_update(self, payload):
+        # Silencing frequent warning
+        pass
+
     # Add GUILD_ROLE event
