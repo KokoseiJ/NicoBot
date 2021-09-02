@@ -82,10 +82,10 @@ class GatewayEventParser:
         if guild_id is None:
             return obj
 
-        guild = self.guilds.get(guild_id)
+        guild = self.client.guilds.get(guild_id)
         id_ = obj.id
 
-        guild.channels.update({id_: guild})
+        guild.channels.update({id_: obj})
 
         return obj
 
@@ -99,7 +99,7 @@ class GatewayEventParser:
         if guild_id is None:
             return obj
 
-        guild = self.guilds.get(guild_id)
+        guild = self.client.guilds.get(guild_id)
         id_ = obj.id
 
         if guild.channels.get(id_) is not None:
@@ -112,21 +112,21 @@ class GatewayEventParser:
         if guild_id is not None:
             channel_id = payload.get("channel_id")
             timestamp = payload.get("last_pin_timestamp")
-            guild = self.guilds.get(guild_id)
+            guild = self.client.guilds.get(guild_id)
             if guild:
                 channel = guild.channels.get(channel_id)
             channel.last_pin_timestamp = timestamp
 
     def on_guild_create(self, payload):
         obj = Guild(self.client, payload)
-        self.guilds[obj.id] = obj
+        self.client.guilds[obj.id] = obj
         return obj
 
     def on_guild_update(self, payload):
         return self.on_guild_create(payload)
 
     def on_guild_delete(self, payload):
-        self.guilds[payload.get("id")] = False
+        self.client.guilds[payload.get("id")] = False
 
     def on_guild_ban_add(self, payload):
         guild = self.client.guilds.get(payload.get('guild_id'))
