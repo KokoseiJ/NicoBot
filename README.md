@@ -24,6 +24,7 @@ I just wanted to understand its underlying protocols, as well as practice to wri
 
 Also, since `Discord.py` heavily depends on coroutine which coufuses the hell out of beginners and make them write a spaghetti,
 I thought we might need a corountine-less library. That's why I didn't use a famous `websockets` library, and went with `websocket-client` instead. [They stated that its purpose is to provide a convenient asynchronous API, not synchronous one.](https://github.com/aaugustin/websockets/issues/173)
+
 And... well, as of August 2021, Discord.py is no longer being maintained. so... yeah.
 
 ## Using threading instead of multiprocessing?! Cast it into the fire, DESTROY IT!!
