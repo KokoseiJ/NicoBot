@@ -136,7 +136,7 @@ class MethodEventHandler(EventHandler):
         method_name = f"on_{event.lower()}"
         handler = getattr(self, method_name, None)
         if handler is not None:
-            handler(event, obj)
+            handler(obj)
 
 
 class DecoratorEventHandler(EventHandler):
@@ -148,9 +148,8 @@ class DecoratorEventHandler(EventHandler):
     You can use @handler.on("event_name") to assign the handler.
 
     function to be assigned should receive a single arguments- the object
-    returned from the gateway. Additional context such as client object should
-    be provided separately.
-    being provided as a purpose of giving context.
+    returned from the gateway. Handler is being provided in a second argument
+    as a purpose of giving context.
 
     Other than decorator, This handler behaves similar to MethodEventHandler.
     """
@@ -184,7 +183,7 @@ class ThreadedMethodEventHandler(MethodEventHandler):
         method_name = f"on_{event.lower()}"
         handler = getattr(self, method_name, None)
         if handler is not None:
-            Thread(target=handler, args=(event, obj)).start()
+            Thread(target=handler, args=(obj,)).start()
 
 
 class ThreadedDecoratorEventHandler(DecoratorEventHandler):
@@ -197,11 +196,4 @@ class ThreadedDecoratorEventHandler(DecoratorEventHandler):
         method_name = f"on_{event.lower()}"
         handler = getattr(self, method_name, None)
         if handler is not None:
-            Thread(target=handler, args=(obj,)).start()
-
-    def on(self, event):
-        def decorator(func):
-            method_name = f"on_{event.lower()}"
-            setattr(self, method_name, func)
-            return func
-        return decorator
+            Thread(target=handler, args=(obj, self)).start()
