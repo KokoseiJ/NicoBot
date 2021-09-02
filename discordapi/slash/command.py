@@ -208,8 +208,6 @@ class SlashCommand:
         else:
             yield gen
 
-        return
-
     def _json(self):
         data = {
             "type": 1,
