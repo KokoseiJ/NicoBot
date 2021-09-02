@@ -79,7 +79,8 @@ handler = GeneratorEventHandler()
 
 gw = DiscordClient(
     open("token").read(),
-    handler
+    handler,
+    intents=32767
 )
 
 gw.start()

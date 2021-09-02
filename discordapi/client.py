@@ -146,7 +146,7 @@ class DiscordClient(DiscordGateway):
 
         self.send(data)
 
-    def request_guild_member(self, guild_id, query=EMPTY, limit=EMPTY,
+    def request_guild_member(self, guild_id, query="", limit=0,
                              presences=EMPTY, user_ids=EMPTY, nonce=EMPTY):
         data = self._get_payload(
             self.REQUEST_GUILD_MEMBERS,
