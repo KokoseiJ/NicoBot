@@ -18,6 +18,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
+from .gateway import DiscordGateway
 from queue import Queue
 from threading import Thread
 
@@ -40,6 +41,9 @@ class EventHandler:
 
         Required to provide client-side interface and contexts to handlers.
         """
+        if not isinstance(client, DiscordGateway):
+            raise TypeError("client should be DiscordGateway, "
+                            f"not '{type(client)}'")
         self.client = client
 
     def handle(self, event, obj):
