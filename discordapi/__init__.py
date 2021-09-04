@@ -1,6 +1,7 @@
 from .slash import *
 from .channel import *
 from .client import *
+from .command import *
 from .const import *
 from .dictobject import *
 from .exceptions import *
