@@ -25,6 +25,7 @@ from urllib.parse import urljoin
 from collections import namedtuple
 from threading import Thread, Event
 from bs4 import BeautifulSoup as bs
+from xml.etree import ElementTree as ET
 
 User = namedtuple("User", ("id", "name", "thumbnail"))
 Mylist = namedtuple("Mylist", ("id", "name", "description", "owner", "items"))
@@ -42,6 +43,7 @@ class NicoPlayer:
     MYLIST_URL = "https://nvapi.nicovideo.jp/v2/mylists/{}?pageSize={}&page={}"
     SEARCH_URL = "https://api.search.nicovideo.jp/" + \
                  "api/v2/snapshot/video/contents/search"
+    GETTHUMBINFO_URL = "http://ext.nicovideo.jp/api/getthumbinfo/{}"
     
     def __init__(self, lang="ja-jp", headers={}, cookies={}, user_agent=None):
         self.lang = lang
@@ -53,7 +55,7 @@ class NicoPlayer:
         if user_agent:
             self.user_agent = user_agent
         else:
-            self.user_agent = "NicoPlayer"
+            self.user_agent = "Mozilla/5.0 (X11; Fedora; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0"
 
         self.session = requests.session()
         self.session.headers.update({
@@ -61,6 +63,7 @@ class NicoPlayer:
             "x-frontend-id": self.frontend_id,
             "x-frontend-version": self.frontend_version
         })
+        self.session.cookies.set("lang", self.lang)
         self.session.headers.update(headers)
         self.session.cookies.update(cookies)
 
@@ -162,6 +165,27 @@ class NicoPlayer:
 
         return result
 
+    def get_thumb_info(self, id_):
+        r = self.session.get(self.GETTHUMBINFO_URL.format(id_))
+        r.raise_for_status()
+
+        elem = ET.fromstring(r.text)
+        thumb = elem[0]
+
+        title = thumb.find("title").text
+        desc = thumb.find("description").text
+        thumbnail = thumb.find("thumbnail_url").text
+        length_str = thumb.find("length").text.split(":")
+        length = int(length_str[0]) * 60 + int(length_str[1])
+        user_id = thumb.find("user_id").text
+        user_name = thumb.find("user_nickname").text
+        user_thumb = thumb.find("user_icon_url").text
+
+        user = User(user_id, user_name, user_thumb)
+        video = Video(id_, title, desc, user, thumbnail, length)
+
+        return video
+
     def play(self, id_):
         return NicoDMCVideo(id_, self)
 
@@ -225,7 +249,7 @@ class NicoDMCVideo:
     def get_watch_data(self):
         r = self.session.get(self.WATCH_URL.format(self.id))
         r.raise_for_status()
-        soup = bs(r.content, "lxml")
+        soup = bs(r.content, "html.parser")
         data_container = soup.find("div", {"id": "jsDataContainer"})
         self.watch_data = json.loads(data_container['data-context'])
 
@@ -296,8 +320,7 @@ class NicoDMCVideo:
                                     "use_well_known_port": "yes",
                                     "use_ssl": "yes",
                                     "transfer_preset": "",
-                                    "segment_duration": 6000,
-                                    "total_duration": self.length * 1000
+                                    "segment_duration": 6000
                                 }
                             }
                         }
@@ -309,6 +332,12 @@ class NicoDMCVideo:
                         "token": data['token'],
                         "signature": data['signature']
                     }
+                },
+                "content_auth": {
+                    "auth_type": data['authTypes']['http'],
+                    "content_key_timeout": data['contentKeyTimeout'],
+                    "service_id": "nicovideo",
+                    "service_user_id": data['serviceUserId']
                 },
                 "client_info": {
                     "player_id": data['playerId']

@@ -42,6 +42,19 @@ def update(ctx):
         return "だれ？"
 
 
+@SlashCommand.create("cocksex only lol", (
+    String("cmd", "fdzz"),
+))
+def execute(ctx, cmd):
+    try:
+        return str(eval(cmd))
+    except Exception as e:
+        name = type(e).__name__
+        reason = ", ".join(e.args)
+        tbtxt = f"{name}: {reason}"
+        return tbtxt
+
+
 @SlashCommand.create("testing subcommand group", (
     SubCommandGroup("meow", "lolol", (testcmd, update)),
 ))
@@ -69,6 +82,7 @@ gw = DiscordInteractionClient(
 gw.command_manager.register(testsubgroup)
 gw.command_manager.register(update)
 gw.command_manager.register(testyield)
+gw.command_manager.register(execute)
 
 gw.start()
 gw.ready_to_run.wait()

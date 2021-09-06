@@ -41,11 +41,11 @@ fmt = logging.Formatter("[%(levelname)s]|%(asctime)s|%(threadName)s|"
 handler.setFormatter(fmt)
 logger.addHandler(handler)
 if __name__ != "__main__":
-    logger.setLevel("DEBUG")
-    handler.setLevel("DEBUG")
+    logger.setLevel("INFO")
+    handler.setLevel("INFO")
 else:
-    logger.setLevel("DEBUG")
-    handler.setLevel("DEBUG")
+    logger.setLevel("INFO")
+    handler.setLevel("INFO")
 
 
 def vc_test(vc, filename):
@@ -55,14 +55,14 @@ def vc_test(vc, filename):
     ffmpeg_args = [
         "ffmpeg", "-vn",
         "-i", filename,
-        "-f", "opus",
+        "-c:a", "libopus",
         "-ar", "48000",
         "-ac", "2",
         "-b:a", "96K",
         "-filter:a", "volume=0.5",
         "-"
     ]
-    process = Popen(ffmpeg_args, stdin=PIPE, stdout=PIPE, stderr=DEVNULL)
+    process = Popen(ffmpeg_args, stdin=PIPE, stdout=PIPE)#, stderr=DEVNULL)
     opus = OggParser(process.stdout)
     vc.speak()
     for packet in opus.packet_iter():
@@ -109,9 +109,9 @@ if __name__ == "__main__":
                         if file.startswith("yt_http"):
                             url = check_output(["youtube-dl", "--get-url", "-f", "bestaudio", file[3:]])
                             file = url.decode()
-
                         source = FFMPEGAudioSource(file)
                         player = SingleAudioPlayer(vc, source)
+                        vc.ready_to_run.wait()
                         player.play()
 
                     except:
