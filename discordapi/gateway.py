@@ -22,7 +22,7 @@ from .guild import Guild
 from .user import BotUser
 from .member import Member
 from .message import Message
-from .channel import get_channel
+from .channel import get_channel, GuildVoiceChannel
 from .websocket import WebSocketThread
 from .const import LIB_NAME, GATEWAY_URL
 from .handler import EventHandler, GeneratorEventHandler
@@ -409,6 +409,18 @@ class GatewayEventParser:
     def on_voice_state_update(self, payload):
         if payload['user_id'] == self.client.user.id:
             self.on_voice_server_update(payload, "VOICE_STATE_UPDATE")
+
+        if payload.get('guild_id') is not None:
+            guild = self.client.get_guild(payload['guild_id'])
+            channel_id = payload['channel_id']
+            if channel_id is not None:
+                channel = guild.get_channel(channel_id)
+            else:
+                channel = None
+
+            guild.voice_state.update({
+                payload['member']['user']['id']: channel
+            })
 
     def on_presence_update(self, payload):
         # Silencing frequent warning
