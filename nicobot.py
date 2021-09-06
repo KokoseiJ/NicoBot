@@ -5,6 +5,7 @@ from niconico import NicoPlayer
 import os
 import re
 import sys
+import random
 import logging
 from logging import StreamHandler
 
@@ -121,7 +122,7 @@ class NicoBot(CommandManager):
         if len(sources) == 1:
             yield f"Added {videos[0].title} to the queue!"
         else:
-            yield f"Added mylist {mylist.title} to the queue!"
+            yield f"Added mylist {mylist.name} to the queue!"
 
         music_player.add_to_queue(sources)
         music_player.play()
@@ -135,9 +136,38 @@ class NicoBot(CommandManager):
                 "I am not connected to VC!"
             )
 
+        music_player.queue.clear()
         music_player.stop()
 
         return "Stopped playing!"
+
+    def skip(self, cmd, message):
+        music_player = self.players.get(message.guild.id)
+        if music_player is None:
+            raise CommandError(
+                cmd,
+                "Failed to play!",
+                "I am not connected to VC!"
+            )
+
+        title = music_player.source.video.title
+
+        music_player.stop()
+
+        return f"Skipped {title}!"
+
+    def shuffle(self, cmd, message):
+        music_player = self.players.get(message.guild.id)
+        if music_player is None:
+            raise CommandError(
+                cmd,
+                "Failed to play!",
+                "I am not connected to VC!"
+            )
+
+        random.shuffle(music_player.queue)
+
+        return "Shuffled the queue!"
 
     def pause(self, cmd, message):
         music_player = self.players.get(message.guild.id)
