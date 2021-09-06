@@ -87,11 +87,9 @@ class CommandEventHandler(MethodEventHandler):
 
         try:
             gen = self.manager.execute_cmd(msg, message)
-            # title = msg.split(" ", 1)[0]
             for content in gen:
                 message.channel.send(content=content)
         except CommandError as e:
-            # title = e.title
             content = e.message
             message.channel.send(content=content)
 

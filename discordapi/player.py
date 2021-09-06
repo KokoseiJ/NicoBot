@@ -123,7 +123,7 @@ class FFMPEGAudioSource(AudioSource):
         args = [self.FFMPEG] + self.inputargs + ["-i", self.filename] +\
             self.outputargs + ["-"]
 
-        self.proc = subprocess.Popen(args, stdout=PIPE)#, stderr=DEVNULL)
+        self.proc = subprocess.Popen(args, stdout=PIPE, stderr=DEVNULL)
         self.parser = OggParser(self.proc.stdout)
         self.gen = self.parser.packet_iter()
 
