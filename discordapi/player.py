@@ -106,7 +106,8 @@ class FFMPEGAudioSource(AudioSource):
             "-f", "opus",
             "-ar", "48000",
             "-ac", "2",
-            "-b:a", "96K"
+            "-b:a", "96K",
+            "-filter:a", "volume=0.5"
         ]
         if outputargs is not None:
             self.outputargs.extend(outputargs)
