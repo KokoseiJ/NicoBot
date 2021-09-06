@@ -18,10 +18,12 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
-from .handler import MethodEventHandler
+from .gateway import DiscordGateway
+from .handler import MethodEventHandler, ThreadedMethodEventHandler
 from types import GeneratorType
 
-__all__ = ["CommandError", "CommandManager", "CommandEventHandler"]
+__all__ = ["CommandError", "CommandManager", "CommandEventHandler",
+           "ThreadedCommandEventHandler"]
 
 
 class CommandError(Exception):
@@ -34,13 +36,23 @@ class CommandError(Exception):
 class CommandManager:
     def __init__(self, client=None):
         self.client = None
-        self._set_client(client)
+
+        if client is not None:
+            self._set_client(client)
+
+    def _set_client(self, client):
+        if not isinstance(client, DiscordGateway):
+            raise TypeError("client should be DiscordGateway, "
+                            f"not {type(client)}")
+        self.client = client
 
     def execute_cmd(self, cmdinput, message):
         cmdsplit = cmdinput.split(" ", 1)
         cmd = cmdsplit[0].lower()
         if len(cmdsplit) == 2:
             args = cmdsplit[1]
+        else:
+            args = ""
 
         handler = getattr(self, cmd, None)
         gen = handler(args, message)
@@ -60,10 +72,13 @@ class CommandEventHandler(MethodEventHandler):
         self._set_manager(manager)
 
     def _set_manager(self, manager):
-        if not isinstance(manager, CommandManager):
+        if isinstance(manager, CommandManager):
+            self.manager = manager
+        elif issubclass(manager, CommandManager):
+            self.manager = manager()
+        else:
             raise TypeError("manager should be CommandManager, "
                             f"not {type(manager)}")
-        self.manager = manager
 
     def on_message_create(self, message):
         if not message.content.startswith(self.prefix) or message.author.bot:
@@ -72,10 +87,15 @@ class CommandEventHandler(MethodEventHandler):
 
         try:
             gen = self.manager.execute_cmd(msg, message)
-            title = msg.split(" ", 1)[0]
-            content = gen
+            # title = msg.split(" ", 1)[0]
+            for content in gen:
+                message.channel.send(content=content)
         except CommandError as e:
-            title = e.title
+            # title = e.title
             content = e.message
+            message.channel.send(content=content)
 
-        message.channel.send_message(content)
+
+class ThreadedCommandEventHandler(
+        CommandEventHandler, ThreadedMethodEventHandler):
+    pass
