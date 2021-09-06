@@ -222,7 +222,7 @@ class DiscordVoiceClient(WebSocketThread):
                 break
             elif not self.heartbeat_ack_received.is_set():
                 logger.error("No HEARTBEAT_ACK received within time!")
-                self.sock.close(STATUS_ABNORMAL_CLOSED)
+                self._sock.close(STATUS_ABNORMAL_CLOSED)
 
             self.heartbeat_ack_received.clear()
 
@@ -260,6 +260,7 @@ class DiscordVoiceClient(WebSocketThread):
         elif op == self.READY:
             self.ssrc = payload['ssrc']
             self.server_addr = (payload['ip'], payload['port'])
+            self.udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self.udp_sock.connect(self.server_addr)
             self.modes = payload['modes']
             self.got_ready.set()
