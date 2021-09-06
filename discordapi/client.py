@@ -87,7 +87,7 @@ class DiscordClient(DiscordGateway):
     def get_channels(self):
         return {
             x: y for guild in self.get_guilds().values()
-            for x, y in guild.channels.items()
+            for x, y in guild.get_channels().items()
         }
 
     def get_channel(self, id_):
@@ -96,7 +96,8 @@ class DiscordClient(DiscordGateway):
     def get_users(self):
         return {
             x: y.user for guild in self.get_guilds().values()
-            for x, y in guild.members.items()
+            for x, y in guild.get_members().items()
+            if guild.get_members() is not None
         }
 
     def get_user(self, id_):

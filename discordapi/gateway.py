@@ -204,7 +204,7 @@ class DiscordGateway(WebSocketThread):
     def cleanup(self):
         self.is_heartbeat_ready.clear()
 
-        for client in self.voice_clients:
+        for client in self.voice_clients.values():
             client.stop()
 
     def _dispatcher(self, data):

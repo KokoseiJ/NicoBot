@@ -105,6 +105,15 @@ class SubCommandGroup(Option):
         super().__init__(
             SUB_COMMAND_GROUP, name, desc, None, None, subcmds, required)
 
+    def execute(self, ctx, options, manager):
+        if options:
+            options = options[0]
+        else:
+            options = {}
+        handler = self.subcmds[options.get('name')]
+        if handler is not None:
+            return handler.execute(ctx, options.get('options'), manager)
+
 
 class String(Option):
     def __init__(self, name, desc, choices=None, required=False):
@@ -147,11 +156,12 @@ class Number(Option):
 
 
 class SlashCommand:
-    def __init__(self, name, desc, func, options):
+    def __init__(self, name, desc, func, options, default_permission):
         self.name = name
         self.desc = desc
         self.func = func
         self.options = {option.name: option for option in options}
+        self.default_permission = default_permission
 
         func_args = get_func_args(func)
 
@@ -165,10 +175,10 @@ class SlashCommand:
                                  f"function '{func.__code__.co_name}'")
 
     @classmethod
-    def create(cls, desc, options):
+    def create(cls, desc, options, default_permission=True):
         def decorator(func):
             name = func.__code__.co_name
-            return cls(name, desc, func, options)
+            return cls(name, desc, func, options, default_permission)
         return decorator
 
     def execute(self, ctx, options, manager):
@@ -190,13 +200,7 @@ class SlashCommand:
             if type_ == SUB_COMMAND:
                 value = self.options[name].cmd.execute(ctx, opts, manager)
             elif type_ == SUB_COMMAND_GROUP:
-                subopt = option.get('options')
-                if subopt:
-                    subopt = subopt[0]
-                else:
-                    subopt = {}
-                value = self.options[name].subcmds[subopt.get('name')]\
-                    .execute(ctx, subopt.get('options'), manager)
+                value = self.options[name].execute(ctx, opts, manager)
 
             kwargs[name] = value
 
@@ -213,7 +217,8 @@ class SlashCommand:
             "type": 1,
             "name": self.name,
             "description": self.desc,
-            "options": [option._json() for option in self.options.values()]
+            "options": [option._json() for option in self.options.values()],
+            "default_permission": self.default_permission
         }
 
         return data
@@ -224,7 +229,8 @@ class SlashCommandManager:
         self.client = None
         self.map = dict()
 
-        self._set_client(client)
+        if client is not None:
+            self._set_client(client)
 
     def _set_client(self, client):
         if not isinstance(client, DiscordGateway):
@@ -240,6 +246,13 @@ class SlashCommandManager:
         self.map.update({command.name: command})
 
     def update(self):
+        prev_raw = self.client.get_global_commands()
+        prev = {cmd['name']: cmd['id'] for cmd in prev_raw}
+
+        for cmd in prev:
+            if cmd not in self.map:
+                self.client.delete_global_command(prev[cmd])
+
         commands = [command._json() for command in self.map.values()]
         self.client.bulk_global_commands(json.dumps(commands))
 
@@ -255,6 +268,9 @@ class SlashCommandManager:
         self.respond(ctx, 5)
 
         for res in gen:
+            if not res:
+                self.delete(ctx)
+                break
             self.edit(ctx, content=res)
 
     def respond(self, ctx, type_, message=None):
@@ -305,6 +321,12 @@ class SlashCommandManager:
             )
 
         return Message(self.client, message)
+
+    def delete(self, ctx):
+        self.client.send_request(
+            "DELETE",
+            f"/webhooks/{self.client.user.id}/{ctx.token}/messages/@original"
+        )
 
 
 class Context(DictObject):

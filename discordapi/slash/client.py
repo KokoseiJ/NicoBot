@@ -28,8 +28,8 @@ __all__ = ["DiscordInteractionClient", "InteractionEventHandler",
 
 
 class DiscordInteractionClient(DiscordClient):
-    def __init__(self, token, handler=None, event_parser=None,
-                 command_manager=None, intents=32509, name="main"):
+    def __init__(self, token, command_manager=None, handler=None,
+                 event_parser=None, intents=32509, name="main"):
         if handler is None:
             handler = InteractionEventHandler
         if event_parser is None:
@@ -44,6 +44,16 @@ class DiscordInteractionClient(DiscordClient):
             name=name)
 
         self.command_manager = command_manager(self)
+
+    def _set_command_manager(self, manager):
+        if isinstance(manager, SlashCommandManager):
+            self.command_manager = manager
+            self.command_manager._set_client(self)
+        elif issubclass(manager, SlashCommandManager):
+            self.command_manager = manager(self)
+        else:
+            raise TypeError("command_manager is neither a subclass or instance"
+                            " of SlashCommandManager.")
 
     def __send_request(self, method, route, data=None, expected_code=None,
                        raise_at_exc=True, baseurl=None, headers=None):

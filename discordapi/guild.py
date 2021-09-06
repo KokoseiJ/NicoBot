@@ -69,6 +69,18 @@ class Guild(DictObject):
             for channel in self.channels
         } if self.channels is not None else None
 
+        self.voice_state = dict()
+
+    def get_channels(self):
+        return self.channels.copy()
+
+    def get_channel(self, id_):
+        return self.get_channels().get(id_)
+
+    def get_members(self):
+        if self.members is not None:
+            return self.members.copy()
+
     def get_preview(self):
         return self.client.get_guild_preiew(self.id)
 
