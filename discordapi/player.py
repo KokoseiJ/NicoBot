@@ -23,6 +23,7 @@ from .util import StoppableThread
 from .voice import DiscordVoiceClient
 
 import time
+import logging
 import subprocess
 from threading import Event
 from subprocess import PIPE, DEVNULL
@@ -33,6 +34,8 @@ __all__ = ["AudioSource", "FFMPEGAudioSource", "AudioPlayer",
 SILENCE = b"\xf8\xff\xfe"
 
 DELAY = 20 / 1000
+
+logger = logging.getLogger("nicobot")
 
 
 class AudioSource:
@@ -93,10 +96,11 @@ class FFMPEGAudioSource(AudioSource):
         """
         self.filename = filename
 
-        if inputargs:
-            self.inputargs = inputargs
-        else:
-            self.inputargs = list()
+        self.inputargs = [
+            "-vn"
+        ]
+        if inputargs is not None:
+            self.inputargs.extend(inputargs)
 
         self.outputargs = [
             "-f", "opus",
@@ -118,7 +122,7 @@ class FFMPEGAudioSource(AudioSource):
         args = [self.FFMPEG] + self.inputargs + ["-i", self.filename] +\
             self.outputargs + ["-"]
 
-        self.proc = subprocess.Popen(args, stdout=PIPE, stderr=DEVNULL)
+        self.proc = subprocess.Popen(args, stdout=PIPE)#, stderr=DEVNULL)
         self.parser = OggParser(self.proc.stdout)
         self.gen = self.parser.packet_iter()
 
@@ -179,6 +183,7 @@ class AudioPlayer(StoppableThread):
         self.client = None
         self.source = None
         self.callback = None
+        self.spoken = False
 
         self._resumed = Event()
         self._ready = Event()
@@ -228,14 +233,15 @@ class AudioPlayer(StoppableThread):
         if self.source is None:
             raise RuntimeError("Source is not set.")
 
+        if self._ready.is_set():
+            return
+
         self.source.prepare()
         self._prepare_play()
         self._ready.set()
 
         if not self.is_alive():
             self.start()
-
-        self.client.speak(1)
 
     def stop(self):
         self._source_is_finished()
@@ -248,13 +254,13 @@ class AudioPlayer(StoppableThread):
     def resume(self):
         self._prepare_play()
         self._resumed.set()
-        self.client.speak(1)
 
     def _prepare_play(self):
         """Initializes needed attributes to start playing."""
-        self.start_time = time.perf_counter()
         self.loop = 0
         self._sent_silence = False
+        self.spoken = False
+        self.start_time = None
         self._resumed.set()
 
     def run(self):
@@ -302,17 +308,22 @@ class AudioPlayer(StoppableThread):
                 break
 
     def _send_and_wait(self, data):
+        if not self.spoken:
+            self.client.speak(1)
+            self.spoken = True
+            self.start_time = time.perf_counter()
         self.client._send_voice(data)
         self.loop += 1
 
-        wait_until = self.start_time + DELAY * self.loop
+        wait_until = self.start_time + DELAY * (self.loop + 1)
         # Do this since it can result in negative integer
         delay = max(0, wait_until - time.perf_counter())
         time.sleep(delay)
 
     def _source_is_finished(self):
         self._ready.clear()
-        self.source.cleanup()
+        if self.source is not None:
+            self.source.cleanup()
         if self.callback is not None:
             self.callback()
 
@@ -358,7 +369,9 @@ class QueuedAudioPlayer(AudioPlayer):
             self.set_source(source)
         if self.client is None:
             raise RuntimeError("Client is not set.")
-        
+        if self._ready.is_set():
+            return
+
         self._update_source()
         self.source.prepare()
         self._prepare_play()
@@ -369,10 +382,7 @@ class QueuedAudioPlayer(AudioPlayer):
             self.start()
 
     def _source_is_finished(self):
-        self._ready.clear()
-        self.source.cleanup()
-        if self.callback is not None:
-            self.callback()
+        super()._source_is_finished()
         if len(self.queue) > 0:
             self._update_source()
             self.source.prepare()
