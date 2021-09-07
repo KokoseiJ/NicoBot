@@ -55,6 +55,9 @@ class CommandManager:
             args = ""
 
         handler = getattr(self, cmd, None)
+        if handler is None:
+            return None
+
         gen = handler(args, message)
         
         if isinstance(gen, GeneratorType):
@@ -87,6 +90,8 @@ class CommandEventHandler(MethodEventHandler):
 
         try:
             gen = self.manager.execute_cmd(msg, message)
+            if not gen:
+                return
             for content in gen:
                 message.channel.send(content=content)
         except CommandError as e:
