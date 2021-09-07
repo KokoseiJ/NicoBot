@@ -113,7 +113,13 @@ class NicoBot(CommandManager):
             mylist = player.get_mylist(val)
             videos = mylist.items
         elif type_ == 0:
-            videos = [player.search(val, _limit=1)[0]]
+            videos = player.search(val, _limit=1)[:1]
+            if len(videos) == 0:
+                raise CommandError(
+                    cmd,
+                    "Video not found!",
+                    "Video was not found. please try different keywords."
+                )
         elif type_ == 1:
             videos = [player.get_thumb_info(val)]
 
