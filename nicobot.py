@@ -227,6 +227,8 @@ client = DiscordClient(
 
 try:
     client.start()
+    client.ready_to_run.wait()
+    client.update_presence(activities=[{'type': 2, 'name': 'Orangestar'}])
     client.join()
 except KeyboardInterrupt:
     client.stop()
