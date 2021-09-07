@@ -205,7 +205,8 @@ class DiscordGateway(WebSocketThread):
         self.is_heartbeat_ready.clear()
 
         for client in self.voice_clients.values():
-            client.stop()
+            if client is not None:
+                client.stop()
 
     def _dispatcher(self, data):
         op = data['op']
@@ -354,7 +355,7 @@ class GatewayEventParser:
         guild.emojis = payload.get('emojis')
 
     def on_guild_member_add(self, payload):
-        guild = self.client.guilds.get(payload('guild_id'))
+        guild = self.client.guilds.get(payload.get('guild_id'))
         if not guild:
             return
 
@@ -366,14 +367,14 @@ class GatewayEventParser:
         return obj
 
     def on_guild_member_remove(self, payload):
-        guild = self.client.guilds.get(payload('guild_id'))
+        guild = self.client.guilds.get(payload.get('guild_id'))
         if not guild:
             return
 
         del guild.members[payload.get("user").get("id")]
 
     def on_guild_member_update(self, payload):
-        guild = self.client.guilds.get(payload('guild_id'))
+        guild = self.client.guilds.get(payload.get('guild_id'))
         if not guild:
             return
 
@@ -383,7 +384,7 @@ class GatewayEventParser:
         member.__init__(self.client, guild, payload)
 
     def on_guild_members_chunk(self, payload):
-        guild = self.client.guilds.get(payload('guild_id'))
+        guild = self.client.guilds.get(payload.get('guild_id'))
         if not guild:
             return
 
