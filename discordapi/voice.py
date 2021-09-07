@@ -111,7 +111,11 @@ class DiscordVoiceClient(WebSocketThread):
             delay=0,
             ssrc=self.ssrc
         )
-        self.send(payload)
+
+        try:
+            self.send(payload)
+        except Exception:
+            logger.exception("An exception occured while sending voice data.")
 
     def disconnect(self):
         self.stop()
