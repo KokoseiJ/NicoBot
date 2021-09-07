@@ -120,7 +120,7 @@ class DiscordVoiceClient(WebSocketThread):
     def _send_voice(self, data):
         header = VOICE_STRUCT.pack(
             b"\x80", b"\x78",
-            self.voice_sequence,
+            self.voice_sequence % 65536,
             self.timestamp,
             self.ssrc
         )
