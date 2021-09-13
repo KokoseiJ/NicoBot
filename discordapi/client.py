@@ -300,6 +300,7 @@ class DiscordClient(DiscordGateway):
             resdata = json.loads(rawdata)
         
         logger.debug(f"Received from HTTP API: {resdata}")
+        logger.debug(f"HTTP Header: {res.headers}")
 
         if code == 429:
             limit = time.time() + resdata['retry_after']
