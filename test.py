@@ -40,12 +40,8 @@ fmt = logging.Formatter("[%(levelname)s]|%(asctime)s|%(threadName)s|"
                         "%(funcName)s|: %(message)s")
 handler.setFormatter(fmt)
 logger.addHandler(handler)
-if __name__ != "__main__":
-    logger.setLevel("INFO")
-    handler.setLevel("INFO")
-else:
-    logger.setLevel("INFO")
-    handler.setLevel("INFO")
+handler.setLevel("DEBUG")
+logger.setLevel("DEBUG")
 
 
 def vc_test(vc, filename):
