@@ -28,7 +28,7 @@ if id_ and pw:
 id_check = re.compile("[a-z]{2}[0-9]+")
 mylist_check = re.compile(
     "(?:https?\:\/\/)?(?:www.)?nicovideo.jp\/"
-    "(?:user\/[0-9]+\/)mylist\/([0-9]+)"
+    "(?:user\/[0-9]+\/)?mylist\/([0-9]+)"
 )
 watch_check = re.compile(
     "(?:https?\:\/\/)?(?:www.)?nicovideo.jp\/watch\/([a-z]{2}?[0-9]+)"
