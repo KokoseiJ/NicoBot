@@ -30,7 +30,7 @@ KEYLIST = ["title", "type", "description", "url", "timestamp", "color",
 class Embed(DictObject):
     def __init__(self, *args, **kwargs):
         kwargs.update(dict(zip(KEYLIST[:len(args)], args[:len(KEYLIST)])))
-        self.__init__(self, kwargs, KEYLIST)
+        super().__init__(self, kwargs, KEYLIST)
 
         if self.fields is not None and not isinstance(self.fields, list):
             raise TypeError(f"fields should be list, not {type(self.fields)}")
