@@ -18,8 +18,6 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
-from .const import EMPTY
-from .util import clear_postdata
 from .dictobject import DictObject
 
 __all__ = ["Embed"]

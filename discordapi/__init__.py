@@ -4,6 +4,7 @@ from .client import *
 from .command import *
 from .const import *
 from .dictobject import *
+from .embed import *
 from .exceptions import *
 from .file import *
 from .gateway import *
