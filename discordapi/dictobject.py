@@ -40,13 +40,11 @@ class DictObject:
         self._json = data
         
         for key in keylist:
-            try:
-                getattr(self, key)
-            except AttributeError:
+            value = data.get(key)
+            if value is not None:
+                setattr(self, key, value)
+            elif getattr(self, key, None) is None:
                 setattr(self, key, None)
-
-        for key, value in data.items():
-            setattr(self, key, value)
 
     def _get_str(self, class_, id_, repr=None):
         if repr is not None:
