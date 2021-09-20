@@ -22,7 +22,7 @@ from .guild import Guild
 from .user import BotUser
 from .member import Member
 from .message import Message
-from .channel import get_channel, GuildVoiceChannel
+from .channel import get_channel
 from .websocket import WebSocketThread
 from .const import LIB_NAME, GATEWAY_URL
 from .handler import EventHandler, GeneratorEventHandler

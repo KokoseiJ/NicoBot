@@ -136,7 +136,7 @@ class Guild(DictObject):
     def leave(self):
         return self.client.user.leave_guild(self)
 
-    def get_channels(self):
+    def fetch_channels(self):
         if self.channels is not None:
             return self.channels
         
