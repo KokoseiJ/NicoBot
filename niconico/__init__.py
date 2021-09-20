@@ -55,7 +55,7 @@ class NicoPlayer:
         if user_agent:
             self.user_agent = user_agent
         else:
-            self.user_agent = "Mozilla/5.0 (X11; Fedora; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0"
+            self.user_agent = "NicoPlayer (NicoBot)"
 
         self.session = requests.session()
         self.session.headers.update({
