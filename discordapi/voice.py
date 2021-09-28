@@ -68,11 +68,8 @@ class DiscordVoiceClient(WebSocketThread):
         )
 
         self.client = client
-        self.endpoint = endpoint
-        self.token = token
-        self.session_id = session_id
-        self.server_id = server_id
         self.user_id = client.user.id
+        self._set_info(endpoint, token, session_id, server_id)
 
         self.got_ready = Event()
         self.is_heartbeat_ready = Event()
@@ -90,6 +87,17 @@ class DiscordVoiceClient(WebSocketThread):
         self.secret_key = None
 
         self.udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+    def _set_info(self, endpoint, token, session_id, server_id=None):
+        self.url = endpoint
+        self.token = token
+        self.session_id = session_id
+        if server_id is not None:
+            self.server_id = server_id
+
+    def reapply_info(self, endpoint, token, session_id, server_id=None):
+        self._set_info(endpoint, token, session_id, server_id)
+        self.reconnect(status=1000)
 
     def speak(self, speaking=1):
         """Send SPEAKING event to the gateway.
