@@ -40,20 +40,16 @@ class Message(DictObject):
         self.client = client
 
         if self.channel_id:
-            if self.guild_id is not None:
+            try:
                 self.guild = client.guilds.get(self.guild_id)
-                if self.guild is not None:
-                    self.channel = self.guild.channels.get(self.channel_id)
-            else:
-                self.channel = client.get_channel(self.channel_id)
+                self.channel = self.guild.channels.get(self.channel_id)
+            except KeyError:
+                self.channel = client.fetch_channel(self.channel_id)
 
         if self.author is not None:
             self.author = User(client, self.author)
-        if self.guild_id is not None and self.member is not None:
-            guild = client.guilds.get(self.guild_id)
-            if guild is None:
-                guild = client.get_guild(self.guild_id)
-            self.member = Member(client, guild, self.member)
+        if self.member is not None:
+            self.member = Member(client, self.guild, self.member)
             self.member.user = self.author
         if self.mentions is not None:
             self.mentions = [User(client, user) for user in self.mentions]
