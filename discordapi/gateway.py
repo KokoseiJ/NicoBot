@@ -22,9 +22,11 @@ from .guild import Guild
 from .user import BotUser
 from .member import Member
 from .message import Message
+from .util import filter_dict
 from .channel import get_channel
+from .voice import DiscordVoiceClient
 from .websocket import WebSocketThread
-from .const import LIB_NAME, GATEWAY_URL
+from .const import LIB_NAME, GATEWAY_URL, VOICE_VER
 from .handler import EventHandler, GeneratorEventHandler
 
 import sys
@@ -80,7 +82,6 @@ class DiscordGateway(WebSocketThread):
         self.is_heartbeat_ready = Event()
         self.heartbeat_ack_received = Event()
         self.is_reconnect = False
-        self.voice_queue = {}
         self.voice_clients = {}
 
         self.user = None
@@ -96,14 +97,6 @@ class DiscordGateway(WebSocketThread):
             self.session_id = session_id
             self.application = application
         self.ready_to_run.set()
-
-    def add_voice_queue(self, guild_id, event, payload):
-        # Puts data into voice_queue so that GuildVoiceChannel.connect
-        # method can start a voice session
-        if self.voice_queue.get(guild_id) is None:
-            return
-
-        self.voice_queue[guild_id].put((event, payload))
 
     def set_handler(self, handler):
         if isinstance(handler, EventHandler):
@@ -252,6 +245,8 @@ class GatewayEventParser:
         self.client = None
         if client:
             self._set_client(client)
+
+        self.voice_data = {}
 
     def _set_client(self, client):
         if not isinstance(client, DiscordGateway):
@@ -405,11 +400,25 @@ class GatewayEventParser:
 
     def on_voice_server_update(self, payload, event="VOICE_SERVER_UPDATE"):
         guild_id = payload.get("guild_id")
-        self.client.add_voice_queue(guild_id, event, payload)
 
+        data = self.voice_data.get(guild_id)
+        if data is None:
+            data = self.voice_data[guild_id] = VoiceData()
+
+        arglist = ("endpoint", "guild_id", "session_id", "token")
+        data.set(**filter_dict(payload, arglist))
+
+        if data.is_ready():
+            client = DiscordVoiceClient(self.client, **data._dict())
+            self.client.voice_clients[self.guild_id] = client
+            client.start()
+                
     def on_voice_state_update(self, payload):
         if payload['user_id'] == self.client.user.id:
-            self.on_voice_server_update(payload, "VOICE_STATE_UPDATE")
+            if payload['channel_id'] is not None:        
+                self.on_voice_server_update(payload, "VOICE_STATE_UPDATE")
+            else:
+                self.client.voice_clients[payload['guild_id']].disconnect()
 
         if payload.get('guild_id') is not None:
             guild = self.client.get_guild(payload['guild_id'])
@@ -427,4 +436,38 @@ class GatewayEventParser:
         # Silencing frequent warning
         pass
 
+    def on_typing(self, payload):
+        pass
+
     # Add GUILD_ROLE event
+
+
+class VoiceData:
+    def __init__(self):
+        self.endpoint = None
+        self.server_id = None
+        self.session_id = None
+        self.token = None
+
+    def set(self, endpoint=None, guild_id=None, session_id=None, token=None):
+        if endpoint is not None:
+            self.endpoint = f"wss://{endpoint}?v={VOICE_VER}"
+        if guild_id is not None:
+            self.server_id = guild_id
+        if session_id is not None:
+            self.session_id = session_id
+        if token is not None:
+            self.token = token
+
+    def is_ready(self):
+        return None not in {
+            self.endpoint, self.server_id, self.session_id, self.token
+        }
+
+    def _dict(self):
+        return {
+            "endpoint": self.endpoint,
+            "server_id": self.server_id,
+            "session_id": self.session_id,
+            "token": self.token
+        }

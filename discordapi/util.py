@@ -106,6 +106,10 @@ def clear_postdata(data):
     }
 
 
+def filter_dict(data, keys):
+    return {key: value for key, value in data.items() if key in keys}
+
+
 def get_formdata(data, boundary_prefix=None):
     if boundary_prefix is None:
         boundary_prefix = "VOCALOIDIA-"
