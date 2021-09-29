@@ -33,7 +33,7 @@ except (FileNotFoundError, IndexError):
     commit = None
 
 LIB_NAME = "nicobot"
-LIB_VER = commit if commit else "a20210901"
+LIB_VER = f"git.{commit}" if commit else "a20210930"
 LIB_URL = "https://github.com/KokoseiJ/NicoBot"
 
 GATEWAY_VER = 9
