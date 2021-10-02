@@ -15,8 +15,8 @@ fmt = logging.Formatter("[%(levelname)s]|%(asctime)s|%(threadName)s|"
                         "%(funcName)s|: %(message)s")
 handler.setFormatter(fmt)
 logger.addHandler(handler)
-logger.setLevel("INFO")
-handler.setLevel("INFO")
+logger.setLevel("DEBUG")
+handler.setLevel("DEBUG")
 
 id_ = os.environ.get("ID")
 pw = os.environ.get("PW")
@@ -216,6 +216,11 @@ class NicoBot(CommandManager):
         self.clients[message.guild.id] = None
 
         return "Successfully disconnected!"
+
+    def eval(self, cmd, message):
+        if not message.author.id == "378898017249525771":
+            return
+        return str(eval(cmd))
 
 
 handler = ThreadedCommandEventHandler(NicoBot, "?")
