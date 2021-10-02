@@ -134,7 +134,7 @@ class Channel(DictObject):
 
         return Message(self.client, message)
 
-    def send(self, content=EMPTY, tts=EMPTY, file=None, embeds=EMPTY,
+    def send(self, content=EMPTY, tts=EMPTY, file=None, embeds=None,
              allowed_mentions=EMPTY, reply_to=None,
              components=EMPTY):
         if reply_to is not None:
@@ -151,6 +151,8 @@ class Channel(DictObject):
             })
         else:
             msg_ref = EMPTY
+
+        embeds = [embed._json for embed in embeds]
 
         postdata = {
             "content": content,
