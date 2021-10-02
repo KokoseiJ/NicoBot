@@ -24,13 +24,12 @@ from .const import LIB_NAME
 from .message import Message
 from .util import clear_postdata, get_formdata
 from .dictobject import DictObject
-from .const import EMPTY, VOICE_VER
-from .voice import DiscordVoiceClient
+from .const import EMPTY
 
 import json
 import base64
 import logging
-from queue import Queue
+from threading import Event
 from urllib.parse import quote as urlencode
 
 __all__ = ["get_channel", "Channel", "DMChannel", "GroupDMChannel",
@@ -497,7 +496,7 @@ class GuildVoiceChannel(GuildChannel):
 
         return super(GuildVoiceChannel, self).modify(postdata)
 
-    def connect(self, mute=False, deaf=False):
+    def connect(self, mute=False, deaf=False, timeout=10):
         """Connects the bot to the voice channel.
 
         This method will fire a Gateway event to initialize connection to the
@@ -507,26 +506,18 @@ class GuildVoiceChannel(GuildChannel):
         gets returned- please check its availability using .is_ready method or
         .ready_to_run Event attribute. AudioPlayer will also check this.
         """
-        self.client.voice_queue[self.guild_id] = Queue()
+        self.client.voice_queue[self.guild_id] = event = Event()
         self.client.update_voice_state(self.guild_id, self.id, mute, deaf)
+        if not event.wait(timeout):
+            raise TimeoutError(
+                f"Voice Client failed to be created within {timeout} seconds, "
+                "check log for possible details."
+            )
 
-        token = None
-        session_id = None
-        while token is None or session_id is None:
-            event, payload = self.client.voice_queue[self.guild_id].get()
+        del self.client.voice_queue[self.guild_id]
 
-            if event == "VOICE_STATE_UPDATE":
-                session_id = payload['session_id']
+        client = self.client.voice_clients.get(self.guild_id)
+        if client is None:
+            raise RuntimeError("Voice client has not been created!!!")
 
-            elif event == "VOICE_SERVER_UPDATE":
-                token = payload['token']
-                endpoint = payload['endpoint']
-
-        endpoint = f"wss://{endpoint}?v={VOICE_VER}"
-        client = DiscordVoiceClient(
-            self.client, endpoint, token, session_id, self.guild_id
-        )
-        self.client.voice_clients[self.guild_id] = client
-
-        client.start()
         return client
