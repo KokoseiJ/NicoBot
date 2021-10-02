@@ -415,9 +415,9 @@ class GatewayEventParser:
                 client = DiscordVoiceClient(self.client, **data._dict())
                 self.client.voice_clients[guild_id] = client
                 client.start()
-                event = self.client.voice_queue.get(guild_id)
-                if event is not None:
-                    event.set()
+                voice_event = self.client.voice_queue.get(guild_id)
+                if voice_event is not None:
+                    voice_event.set()
             else:
                 client.reapply_info(**data._dict())
                 
