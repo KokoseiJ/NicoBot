@@ -18,12 +18,14 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
+from .embed import Embed
 from .gateway import DiscordGateway
 from .handler import MethodEventHandler, ThreadedMethodEventHandler
+
 from types import GeneratorType
 
-__all__ = ["CommandError", "CommandManager", "CommandEventHandler",
-           "ThreadedCommandEventHandler"]
+__all__ = ["CommandError", "CommandManager", "EmbedCommandManager",
+           "CommandEventHandler", "ThreadedCommandEventHandler"]
 
 
 class CommandError(Exception):
@@ -67,6 +69,31 @@ class CommandManager:
             yield gen
 
 
+class EmbedCommandManager(CommandManager):
+    def __init__(self, client=None):
+        super().__init__(client)
+
+        self.color = None
+
+    def set_color(self, color):
+        self.color = color
+
+    def execute_cmd(self, cmdinput, message):
+        print("meow")
+        gen = super().execute_cmd(cmdinput, message)
+        cmdsplit = cmdinput.split(" ", 1)
+        cmd = cmdsplit[0].lower()
+        title = cmd.capitalize()
+
+        try:
+            for content in gen:
+                embed = Embed(title, content, color=self.color)
+                yield embed
+        except CommandError as e:
+            embed = Embed(e.title, e.message, color=0xFF0000)
+            yield embed
+
+
 class CommandEventHandler(MethodEventHandler):
     def __init__(self, manager, prefix):
         self.manager = None
@@ -93,9 +120,12 @@ class CommandEventHandler(MethodEventHandler):
             if not gen:
                 return
             for content in gen:
-                message.channel.send(content=content)
+                message.channel.send(embeds=(content,))
         except CommandError as e:
             content = e.message
+            message.channel.send(content=content)
+        except Exception as e:
+            content = type(e) + ": " + ",".join(e.args)
             message.channel.send(content=content)
 
 
