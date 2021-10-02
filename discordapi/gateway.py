@@ -83,6 +83,7 @@ class DiscordGateway(WebSocketThread):
         self.heartbeat_ack_received = Event()
         self.is_reconnect = False
         self.voice_clients = {}
+        self.voice_queue = {}
 
         self.user = None
         self.guilds = None
@@ -409,19 +410,30 @@ class GatewayEventParser:
         data.set(**filter_dict(payload, arglist))
 
         if data.is_ready():
-            client = DiscordVoiceClient(self.client, **data._dict())
-            self.client.voice_clients[self.guild_id] = client
-            client.start()
+            client = self.client.voice_clients.get(guild_id)
+            if client is None:
+                client = DiscordVoiceClient(self.client, **data._dict())
+                self.client.voice_clients[guild_id] = client
+                client.start()
+                event = self.client.voice_queue.get(guild_id)
+                if event is not None:
+                    event.set()
+            else:
+                client.reapply_info(**data._dict())
                 
     def on_voice_state_update(self, payload):
+        guild_id = payload['guild_id']
         if payload['user_id'] == self.client.user.id:
             if payload['channel_id'] is not None:        
                 self.on_voice_server_update(payload, "VOICE_STATE_UPDATE")
             else:
-                self.client.voice_clients[payload['guild_id']].disconnect()
+                client = self.client.voice_clients.get(guild_id)
+                if client is not None:
+                    client.disconenct()
+                    del self.client.voice_clients.get[guild_id]
 
-        if payload.get('guild_id') is not None:
-            guild = self.client.get_guild(payload['guild_id'])
+        if payload.get(guild_id) is not None:
+            guild = self.client.get_guild(guild_id)
             channel_id = payload['channel_id']
             if channel_id is not None:
                 channel = guild.get_channel(channel_id)
