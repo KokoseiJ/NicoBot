@@ -294,17 +294,10 @@ class AudioPlayer(StoppableThread):
 
             # Check if client is ready to play
             if not self.client.is_ready():
-                if self.client.stop_flag.is_set():
-                    # If the client is dead, try to determine a new client for
-                    # the guild, and keep on playing to that client
-                    # Do nothing if failed to do so
-                    guild_id = self.client.server_id
-                    gw_client = self.client.client
-                    new_client = gw_client.voice_clients.get(guild_id)
-                    if new_client is not None:
-                        self.set_client(new_client)
-                self.client.ready_to_run.wait(1)
-                continue
+                if self.client.ready_to_run.wait(1):
+                    self._prepare_play()
+                else:
+                    continue
 
             data = self.source.read()
 
