@@ -1,4 +1,4 @@
-from discordapi import DiscordClient, CommandError, CommandManager, \
+from discordapi import DiscordClient, CommandError, EmbedCommandManager, \
                        ThreadedCommandEventHandler, QueuedAudioPlayer, \
                        FFMPEGAudioSource
 from niconico import NicoPlayer
@@ -66,12 +66,14 @@ class NicoAudioSource(FFMPEGAudioSource):
         super().cleanup()
 
 
-class NicoBot(CommandManager):
+class NicoBot(EmbedCommandManager):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.channels = dict()
         self.clients = dict()
         self.players = dict()
+
+        self.color = 0xffbe97
 
     def execute_cmd(self, cmdinput, message):
         if message.guild is None:
