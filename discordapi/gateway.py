@@ -410,8 +410,11 @@ class GatewayEventParser:
         data.set(**filter_dict(payload, arglist))
 
         if data.is_ready():
+            logger.debug(f"**Voice data for {data.session_id} ready!**")
+            logger.debug(self.client.voice_clients)
             client = self.client.voice_clients.get(guild_id)
             if client is None:
+                logger.debug("**New client**")
                 client = DiscordVoiceClient(self.client, **data._dict())
                 self.client.voice_clients[guild_id] = client
                 client.start()
@@ -419,20 +422,24 @@ class GatewayEventParser:
                 if voice_event is not None:
                     voice_event.set()
             else:
+                logger.debug("**Updating existing client**")
                 client.reapply_info(**data._dict())
+
+            del self.voice_data[guild_id]
                 
     def on_voice_state_update(self, payload):
         guild_id = payload['guild_id']
         if payload['user_id'] == self.client.user.id:
-            if payload['channel_id'] is not None:        
+            if payload['channel_id'] is not None:
                 self.on_voice_server_update(payload, "VOICE_STATE_UPDATE")
             else:
                 client = self.client.voice_clients.get(guild_id)
                 if client is not None:
-                    client.disconenct()
-                    del self.client.voice_clients.get[guild_id]
+                    logger.debug("Client disconnected, running .disconnect")
+                    client.disconnect()
+                    del self.client.voice_clients[guild_id]
 
-        if payload.get(guild_id) is not None:
+        if payload.get("guild_id") is not None:
             guild = self.client.get_guild(guild_id)
             channel_id = payload['channel_id']
             if channel_id is not None:

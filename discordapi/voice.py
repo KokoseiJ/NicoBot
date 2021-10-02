@@ -28,7 +28,7 @@ import struct
 import socket
 import logging
 from threading import Event
-from websocket import STATUS_ABNORMAL_CLOSED
+from websocket import STATUS_ABNORMAL_CLOSED, WebSocketException
 
 __all__ = ["DiscordVoiceClient"]
 
@@ -86,7 +86,7 @@ class DiscordVoiceClient(WebSocketThread):
         self.port = None
         self.secret_key = None
 
-        self.udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.udp_sock = None
 
     def _set_info(self, endpoint, token, session_id, server_id=None):
         self.url = endpoint
@@ -96,6 +96,7 @@ class DiscordVoiceClient(WebSocketThread):
             self.server_id = server_id
 
     def reapply_info(self, endpoint, token, session_id, server_id=None):
+        logger.debug("Reconnecting session")
         self._set_info(endpoint, token, session_id, server_id)
         self.reconnect(status=1000)
 
@@ -149,6 +150,7 @@ class DiscordVoiceClient(WebSocketThread):
         return header + enc
 
     def init_connection(self):
+        self.udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.send_identify()
         self.got_ready.wait()
         self.got_ready.clear()
@@ -245,7 +247,10 @@ class DiscordVoiceClient(WebSocketThread):
             self.HEARTBEAT,
             d=time.time()
         )
-        self.send(payload)
+        try:
+            self.send(payload)
+        except WebSocketException:
+            logger.exception("Exception occured while sending heartbeat.")
 
     def _get_payload(self, op, d=None, **data):
         return {
@@ -254,12 +259,11 @@ class DiscordVoiceClient(WebSocketThread):
         }
 
     def on_close(self, code, reason):
-        if code == 4014:
-            self.stop()
+        pass
 
     def cleanup(self):
-        self.client.voice_clients[self.server_id] = None
         self.udp_sock.close()
+        self.heartbeat_ack_received.set()
 
     def _dispatcher(self, data):
         op = data['op']
