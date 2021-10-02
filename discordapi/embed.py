@@ -22,15 +22,15 @@ from .dictobject import DictObject
 
 __all__ = ["Embed"]
 
-KEYLIST = ["title", "type", "description", "url", "timestamp", "color",
-           "footer", "image", "thumbnail", "video", "provider", "author",
-           "fields"]
+KEYLIST = ["title", "description", "url", "timestamp", "color", "footer",
+           "image", "thumbnail", "video", "provider", "author", "fields",
+           "type"]
 
 
 class Embed(DictObject):
     def __init__(self, *args, **kwargs):
         kwargs.update(dict(zip(KEYLIST[:len(args)], args[:len(KEYLIST)])))
-        super().__init__(self, kwargs, KEYLIST)
+        super().__init__(kwargs, KEYLIST)
 
         if self.fields is not None and not isinstance(self.fields, list):
             raise TypeError(f"fields should be list, not {type(self.fields)}")
@@ -44,6 +44,8 @@ class Embed(DictObject):
             "inline": inline
         })
 
+        self._json.update({"fields", self.fields})
+
     def set_footer(self, text, icon=None):
         self.footer = {
             "text": text
@@ -51,6 +53,8 @@ class Embed(DictObject):
 
         if icon is not None:
             self.footer.update({"icon_url": icon})
+
+        self._json.update({"footer", self.footer})
 
     def set_author(self, name, url=None, icon=None):
         self.author = {
@@ -61,3 +65,5 @@ class Embed(DictObject):
             self.author.update({"url": url})
         if icon is not None:
             self.author.update({"icon_url": icon})
+
+        self._json.update({"author", self.author})
