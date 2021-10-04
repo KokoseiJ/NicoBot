@@ -33,7 +33,7 @@ except (FileNotFoundError, IndexError):
     commit = None
 
 LIB_NAME = "nicobot"
-LIB_VER = f"git.{commit}" if commit else "a20210930"
+LIB_VER = f"git.{commit}" if commit else "a20211003"
 LIB_URL = "https://github.com/KokoseiJ/NicoBot"
 
 GATEWAY_VER = 9
@@ -41,6 +41,8 @@ GATEWAY_URL = f"wss://gateway.discord.gg/?v={GATEWAY_VER}&encoding=json"
 
 API_VER = 9
 API_URL = f"https://discord.com/api/v{API_VER}/"
+
+CDN_URL = "https://cdn.discordapp.com/"
 
 VOICE_VER = 4
 

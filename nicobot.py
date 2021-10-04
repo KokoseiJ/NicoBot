@@ -1,6 +1,6 @@
 from discordapi import DiscordClient, CommandError, EmbedCommandManager, \
                        ThreadedCommandEventHandler, QueuedAudioPlayer, \
-                       FFMPEGAudioSource
+                       FFMPEGAudioSource, Embed, CDN_URL
 from niconico import NicoPlayer
 import os
 import re
@@ -8,6 +8,7 @@ import sys
 import random
 import logging
 from logging import StreamHandler
+from urllib.parse import urljoin
 
 logger = logging.getLogger("nicobot")
 handler = StreamHandler(sys.stdout)
@@ -49,6 +50,10 @@ def check_type(arg):
         return 0, arg
 
 
+def get_user_avatar(user):
+    return urljoin(CDN_URL, f"avatars/{user.id}/{user.avatar}.png")
+
+
 class NicoAudioSource(FFMPEGAudioSource):
     def __init__(self, video, *args, **kwargs):
         super().__init__(None, *args, **kwargs)
@@ -75,10 +80,31 @@ class NicoBot(EmbedCommandManager):
 
         self.color = 0xffbe97
 
+    def _callback(self, player):
+        if len(player.queue) < 1:
+            return
+        song = player.queue[0]
+        channel = player.client.get_channel()
+        textchannel = self.channels.get(player.client.server_id)
+        self.send_nowplaying(song, channel, textchannel)
+
+    def send_nowplaying(self, song, channel, textchannel):
+        songname = song.video.title
+        songid = song.video.id
+        songurl = f"https://www.nicovideo.jp/watch/{songid}"
+        songthumb = song.video.thumbnail
+        embed = Embed(
+            "Play",
+            f"**`{channel.name}`: Now Playing [{songname}]({songurl}).**",
+            color=self.color
+        )
+        embed.set_thumbnail(songthumb)
+        textchannel.send(embed=embed)
+
     def execute_cmd(self, cmdinput, message):
         if message.guild is None:
             return
-        self.channels.update({message.guild.id: message.channel.id})
+        self.channels.update({message.guild.id: message.channel})
 
         return super().execute_cmd(cmdinput, message)
 
@@ -94,7 +120,7 @@ class NicoBot(EmbedCommandManager):
             )
 
         vc = channel.connect()
-        player = QueuedAudioPlayer(vc)
+        player = QueuedAudioPlayer(vc, callback=self._callback)
 
         self.clients.update({message.guild.id: vc})
         self.players.update({message.guild.id: player})
@@ -128,9 +154,22 @@ class NicoBot(EmbedCommandManager):
         sources = [NicoAudioSource(video) for video in videos]
 
         if len(sources) == 1:
-            yield f"Added {videos[0].title} to the queue!"
+            video = videos[0]
+            url = f"https://www.nicovideo.jp/watch/{video.id}"
+            desc = f"Added [{video.title}]({url}) to the queue!"
         else:
-            yield f"Added mylist {mylist.name} to the queue!"
+            url = f"https://www.nicovideo.jp/mylist/{val}"
+            desc = f"Added mylist [{mylist.name}]({url}) to the queue!"
+
+        user = message.author
+        username = f"{user.username}#{user.discriminator}"
+        useravatar = get_user_avatar(user)
+
+        embed = Embed("Play", desc, color=self.color)
+        embed.set_footer(username, useravatar)
+        embed.set_thumbnail(videos[0].thumbnail)
+
+        yield embed
 
         music_player.add_to_queue(sources)
         music_player.play()
