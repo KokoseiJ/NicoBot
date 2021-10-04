@@ -35,6 +35,12 @@ class Embed(DictObject):
         if self.fields is not None and not isinstance(self.fields, list):
             raise TypeError(f"fields should be list, not {type(self.fields)}")
 
+    def set_thumbnail(self, url, height=None, width=None):
+        self.thumbnail = {"url": url}
+        if height is not None and width is not None:
+            self.thumbnail.update({"height": height, "width": width})
+        self._json.update({"thumbnail": self.thumbnail})
+
     def add_field(self, name, value, inline=False):
         if self.fields is None:
             self.fields = []
@@ -44,7 +50,7 @@ class Embed(DictObject):
             "inline": inline
         })
 
-        self._json.update({"fields", self.fields})
+        self._json.update({"fields": self.fields})
 
     def set_footer(self, text, icon=None):
         self.footer = {
@@ -54,7 +60,7 @@ class Embed(DictObject):
         if icon is not None:
             self.footer.update({"icon_url": icon})
 
-        self._json.update({"footer", self.footer})
+        self._json.update({"footer": self.footer})
 
     def set_author(self, name, url=None, icon=None):
         self.author = {
@@ -66,4 +72,4 @@ class Embed(DictObject):
         if icon is not None:
             self.author.update({"icon_url": icon})
 
-        self._json.update({"author", self.author})
+        self._json.update({"author": self.author})

@@ -79,7 +79,6 @@ class EmbedCommandManager(CommandManager):
         self.color = color
 
     def execute_cmd(self, cmdinput, message):
-        print("meow")
         gen = super().execute_cmd(cmdinput, message)
         cmdsplit = cmdinput.split(" ", 1)
         cmd = cmdsplit[0].lower()
@@ -87,8 +86,9 @@ class EmbedCommandManager(CommandManager):
 
         try:
             for content in gen:
-                embed = Embed(title, content, color=self.color)
-                yield embed
+                if isinstance(content, str):
+                    content = Embed(title, content, color=self.color)
+                yield content
         except CommandError as e:
             embed = Embed(e.title, e.message, color=0xFF0000)
             yield embed
@@ -120,13 +120,17 @@ class CommandEventHandler(MethodEventHandler):
             if not gen:
                 return
             for content in gen:
-                message.channel.send(embeds=(content,))
+                if isinstance(content, Embed):
+                    message.channel.send(embed=content)
+                else:
+                    message.channel.send(content=content)
         except CommandError as e:
             content = e.message
             message.channel.send(content=content)
         except Exception as e:
-            content = type(e) + ": " + ",".join(e.args)
+            content = str(type(e)) + ": " + ",".join(e.args)
             message.channel.send(content=content)
+            raise
 
 
 class ThreadedCommandEventHandler(

@@ -152,10 +152,10 @@ class Channel(DictObject):
         else:
             msg_ref = EMPTY
 
-        if embeds is not None:
-            embeds = [embed._json for embed in embeds]
-        elif embed is not None:
+        if embed is not None:
             embeds = [embed._json]
+        elif embeds is not None:
+            embeds = [embed._json for embed in embeds]
 
         postdata = {
             "content": content,
@@ -188,13 +188,18 @@ class Channel(DictObject):
 
         return Message(self.client, message)
 
-    def edit_message(self, message, content=EMPTY, file=None, embeds=EMPTY,
-                     flags=EMPTY, allowed_mentions=EMPTY, attachments=EMPTY,
-                     components=EMPTY):
+    def edit_message(self, message, content=EMPTY, file=None, embeds=None,
+                     embed=None, flags=EMPTY, allowed_mentions=EMPTY,
+                     attachments=EMPTY, components=EMPTY):
         # TODO: implement multipart/form-data
 
         if isinstance(message, Message):
             message = message.id
+
+        if embed is not None:
+            embeds = [embed._json]
+        elif embeds is not None:
+            embeds = [embed._json for embed in embeds]
 
         postdata = {
             "content": content,
