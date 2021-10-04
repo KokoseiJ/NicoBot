@@ -303,6 +303,7 @@ class DiscordClient(DiscordGateway):
             except JSONDecodeError:
                 logger.error("Failed to decode JSON from the gateway. "
                              f"Content: {rawdata}")
+                return None
         
         logger.debug(f"Received from HTTP API: {resdata}")
         # logger.debug(f"HTTP Header: {res.headers}")
