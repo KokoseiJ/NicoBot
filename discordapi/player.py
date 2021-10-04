@@ -178,7 +178,7 @@ class AudioPlayer(StoppableThread):
                 Source to play with.
             callback:
                 A function to be called after the song finishes playing. this
-                function receives no arguments.
+                function receives a single argument which is player object.
         """
         super(AudioPlayer, self).__init__()
         self.client = None
@@ -294,10 +294,8 @@ class AudioPlayer(StoppableThread):
 
             # Check if client is ready to play
             if not self.client.is_ready():
-                if self.client.ready_to_run.wait(1):
-                    self._prepare_play()
-                else:
-                    continue
+                self._prepare_play()
+                continue
 
             data = self.source.read()
 
@@ -322,11 +320,12 @@ class AudioPlayer(StoppableThread):
         time.sleep(delay)
 
     def _source_is_finished(self):
+        self.client.speak(0)
         self._ready.clear()
         if self.source is not None:
             self.source.cleanup()
         if self.callback is not None:
-            self.callback()
+            self.callback(self)
 
 
 class SingleAudioPlayer(AudioPlayer):

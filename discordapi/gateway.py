@@ -408,10 +408,11 @@ class GatewayEventParser:
 
         arglist = ("endpoint", "guild_id", "session_id", "token")
         data.set(**filter_dict(payload, arglist))
+        logger.debug("Voice data set!")
+        logger.debug(data._dict())
 
         if data.is_ready():
             logger.debug(f"**Voice data for {data.session_id} ready!**")
-            logger.debug(self.client.voice_clients)
             client = self.client.voice_clients.get(guild_id)
             if client is None:
                 logger.debug("**New client**")

@@ -100,6 +100,10 @@ class DiscordVoiceClient(WebSocketThread):
         self._set_info(endpoint, token, session_id, server_id)
         self.reconnect(status=1000)
 
+    def get_channel(self):
+        guild = self.client.get_guild(self.server_id)
+        return guild.voice_state.get(self.client.user.id)
+
     def speak(self, speaking=1):
         """Send SPEAKING event to the gateway.
 
@@ -257,9 +261,6 @@ class DiscordVoiceClient(WebSocketThread):
             "op": op,
             "d": data if d is None else d
         }
-
-    def on_close(self, code, reason):
-        pass
 
     def cleanup(self):
         self.udp_sock.close()
