@@ -33,6 +33,7 @@ import json
 import time
 import base64
 import logging
+from json import JSONDecodeError
 from urllib.parse import urljoin
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
@@ -297,7 +298,11 @@ class DiscordClient(DiscordGateway):
         if not rawdata:
             resdata = None
         else:
-            resdata = json.loads(rawdata)
+            try:
+                resdata = json.loads(rawdata)
+            except JSONDecodeError:
+                logger.error("Failed to decode JSON from the gateway. "
+                             f"Content: {rawdata}")
         
         logger.debug(f"Received from HTTP API: {resdata}")
         # logger.debug(f"HTTP Header: {res.headers}")
