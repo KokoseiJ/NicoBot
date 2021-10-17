@@ -11,13 +11,16 @@ from logging import StreamHandler
 from urllib.parse import urljoin
 
 logger = logging.getLogger("nicobot")
-handler = StreamHandler(sys.stdout)
 fmt = logging.Formatter("[%(levelname)s]|%(asctime)s|%(threadName)s|"
                         "%(funcName)s|: %(message)s")
+handler = StreamHandler(sys.stdout)
 handler.setFormatter(fmt)
 logger.addHandler(handler)
-logger.setLevel("DEBUG")
-handler.setLevel("DEBUG")
+handler.setLevel("INFO")
+file_handler = logging.FileHandler("nicobot.log")
+file_handler.setFormatter(fmt)
+logger.addHandler(file_handler)
+file_handler.setLevel("DEBUG")
 
 id_ = os.environ.get("ID")
 pw = os.environ.get("PW")
