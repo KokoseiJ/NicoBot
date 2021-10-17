@@ -295,6 +295,7 @@ class AudioPlayer(StoppableThread):
             # Check if client is ready to play
             if not self.client.is_ready():
                 self._prepare_play()
+                self.client.ready_to_run.wait(1)
                 continue
 
             data = self.source.read()
