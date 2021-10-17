@@ -264,7 +264,16 @@ class NicoBot(EmbedCommandManager):
         return str(eval(cmd))
 
 
-handler = ThreadedCommandEventHandler(NicoBot, "?")
+class NicobotHandler(ThreadedCommandEventHandler):
+    def on_ready(self, obj):
+        self.client.update_presence(
+            activities=[{'type': 2, 'name': 'Orangestar'}])
+
+    def on_resume(self, obj):
+        self.on_ready(self, obj)
+
+
+handler = NicobotHandler(NicoBot, "?")
 
 client = DiscordClient(
     open("token").read(),
