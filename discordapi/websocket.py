@@ -110,6 +110,7 @@ class WebSocketThread(StoppableThread):
                 self._sock.connect(self.url)
             except Exception:
                 logger.exception("Failed to connect to Gateway.")
+                continue
 
             self.run_init_connection()
 
@@ -219,6 +220,8 @@ class WebSocketThread(StoppableThread):
         except SSLError:
             logger.exception("SSLError while sending data! retrying...")
             return self.send(data)
+        except Exception:
+            logger.exception("Unexpected error while sending data!")
 
     def is_ready(self):
         return self.ready_to_run.is_set()
