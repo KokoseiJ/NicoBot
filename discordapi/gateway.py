@@ -196,11 +196,12 @@ class DiscordGateway(WebSocketThread):
         }
 
     def cleanup(self):
-        self.is_heartbeat_ready.clear()
+        self.is_heartbeat_ready.set()
 
-        for client in self.voice_clients.values():
-            if client is not None:
-                client.stop()
+        if self.stop_flag.is_set():
+            for client in self.voice_clients.values():
+                if client is not None:
+                    client.stop()
 
     def _dispatcher(self, data):
         op = data['op']
