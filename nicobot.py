@@ -7,20 +7,21 @@ import re
 import sys
 import random
 import logging
-from logging import StreamHandler
+from logging import StreamHandler, FileHandler
 from urllib.parse import urljoin
 
 logger = logging.getLogger("nicobot")
+logger.setLevel("DEBUG")
 fmt = logging.Formatter("[%(levelname)s]|%(asctime)s|%(threadName)s|"
                         "%(funcName)s|: %(message)s")
 handler = StreamHandler(sys.stdout)
 handler.setFormatter(fmt)
-logger.addHandler(handler)
 handler.setLevel("INFO")
-file_handler = logging.FileHandler("nicobot.log")
+logger.addHandler(handler)
+file_handler = FileHandler("nicobot.log")
 file_handler.setFormatter(fmt)
-logger.addHandler(file_handler)
 file_handler.setLevel("DEBUG")
+logger.addHandler(file_handler)
 
 id_ = os.environ.get("ID")
 pw = os.environ.get("PW")
