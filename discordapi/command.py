@@ -18,6 +18,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
+from .const import LIB_URL
 from .embed import Embed
 from .gateway import DiscordGateway
 from .handler import MethodEventHandler, ThreadedMethodEventHandler
@@ -92,6 +93,19 @@ class EmbedCommandManager(CommandManager):
         except CommandError as e:
             embed = Embed(e.title, e.message, color=0xFF0000)
             yield embed
+        except Exception as e:
+            content = type(e).__name__ + ": " + ",".join(e.args)
+            embed = Embed(
+                "An error has been occured!",
+                f"```{content}```",
+                fields=[{
+                    "name": "⠀",
+                    "value": f"Please [report the issue]({LIB_URL}/issues) "
+                            "if the problem persists."
+                }],
+                color=0xFF0000
+            )
+            yield embed
 
 
 class CommandEventHandler(MethodEventHandler):
@@ -120,6 +134,8 @@ class CommandEventHandler(MethodEventHandler):
             if not gen:
                 return
             for content in gen:
+                if not content:
+                    continue
                 if isinstance(content, Embed):
                     message.channel.send(embed=content)
                 else:
@@ -128,7 +144,7 @@ class CommandEventHandler(MethodEventHandler):
             content = e.message
             message.channel.send(content=content)
         except Exception as e:
-            content = str(type(e)) + ": " + ",".join(e.args)
+            content = type(e).__name__ + ": " + ",".join(e.args)
             message.channel.send(content=content)
             raise
 
