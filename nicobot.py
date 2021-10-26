@@ -274,7 +274,7 @@ class NicobotHandler(ThreadedCommandEventHandler):
             activities=[{'type': 2, 'name': 'Orangestar'}])
 
     def on_resume(self, obj):
-        self.on_ready(self, obj)
+        self.on_ready(obj)
 
 
 handler = NicobotHandler(NicoBot, "?")
