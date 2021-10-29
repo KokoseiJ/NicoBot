@@ -154,6 +154,8 @@ class DiscordVoiceClient(WebSocketThread):
         return header + enc
 
     def init_connection(self):
+        if self.heartbeat_thread is None:
+            self.run_heartbeat()
         self.udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.send_identify()
         self.got_ready.wait()
@@ -238,9 +240,11 @@ class DiscordVoiceClient(WebSocketThread):
 
             if stop_flag.wait(deadline - time.time()):
                 break
+
             elif not self.heartbeat_ack_received.is_set():
                 logger.error("No HEARTBEAT_ACK received within time!")
                 self._sock.close(STATUS_ABNORMAL_CLOSED)
+                break
 
             self.heartbeat_ack_received.clear()
 
@@ -264,7 +268,12 @@ class DiscordVoiceClient(WebSocketThread):
 
     def cleanup(self):
         self.udp_sock.close()
-        self.heartbeat_ack_received.set()
+        
+        self.heartbeat_thread.stop()
+        self.heartbeat_thread.join()
+        self.heartbeat_thread = None
+
+        self.is_heartbeat_ready.clear()
 
     def _dispatcher(self, data):
         op = data['op']

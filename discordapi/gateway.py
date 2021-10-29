@@ -179,6 +179,7 @@ class DiscordGateway(WebSocketThread):
             if not self.heartbeat_ack_received.is_set():
                 logger.error("No HEARTBEAT_ACK received within time!")
                 self._sock.close(STATUS_ABNORMAL_CLOSED)
+                break
 
             self.heartbeat_ack_received.clear()
 
