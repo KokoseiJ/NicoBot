@@ -177,9 +177,7 @@ class WebSocketThread(StoppableThread):
             except WebSocketConnectionClosedException:
                 break
             except OSError as e:
-                if e.args[0] == 9:
-                    break
-                else:
+                if e.args[0] != 9:
                     raise
             except Exception:
                 logger.exception(

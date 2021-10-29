@@ -110,6 +110,8 @@ class DiscordGateway(WebSocketThread):
         self.handler.set_client(self)
 
     def init_connection(self):
+        if self.heartbeat_thread is None:
+            self.run_heartbeat()
         self.is_heartbeat_ready.wait()
         if not self.is_reconnect:
             self.send_identify()
@@ -196,7 +198,11 @@ class DiscordGateway(WebSocketThread):
         }
 
     def cleanup(self):
-        self.is_heartbeat_ready.set()
+        self.heartbeat_thread.stop()
+        self.heartbeat_thread.join()
+        self.heartbeat_thread = None
+
+        self.is_heartbeat_ready.clear()
 
         if self.stop_flag.is_set():
             for client in self.voice_clients.values():
