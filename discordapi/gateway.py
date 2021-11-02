@@ -206,6 +206,7 @@ class DiscordGateway(WebSocketThread):
         self.is_heartbeat_ready.clear()
 
         if self.stop_flag.is_set():
+            logger.debug("Triggering voice client shutdown...")
             for client in self.voice_clients.values():
                 if client is not None:
                     client.stop()
@@ -223,7 +224,7 @@ class DiscordGateway(WebSocketThread):
 
         elif op == self.INVALID_SESSION or op == self.RECONNECT:
             self.is_reconnect = payload
-            self._sock.close()
+            self.reconnect()
 
         elif op == self.HELLO:
             self.heartbeat_interval = payload['heartbeat_interval'] / 1000
