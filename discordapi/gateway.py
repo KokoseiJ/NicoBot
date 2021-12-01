@@ -33,7 +33,6 @@ import sys
 import time
 import logging
 from threading import Event
-from websocket import STATUS_ABNORMAL_CLOSED
 
 __all__ = []
 
@@ -110,9 +109,6 @@ class DiscordGateway(WebSocketThread):
         self.handler.set_client(self)
 
     def init_connection(self):
-        if self.heartbeat_thread is None:
-            self.run_heartbeat()
-        self.is_heartbeat_ready.wait()
         if not self.is_reconnect:
             self.send_identify()
             self.is_reconnect = True
@@ -161,25 +157,22 @@ class DiscordGateway(WebSocketThread):
         self.send(data)
 
     def do_heartbeat(self):
-        self.is_heartbeat_ready.wait()
-
+        ready_flag = self.is_heartbeat_ready
         stop_flag = self.heartbeat_thread.stop_flag
+        ack_flag = self.heartbeat_ack_received
         wait_time = self.heartbeat_interval
 
-        while not stop_flag.is_set() and self.is_heartbeat_ready.wait():
-            logger.debug("Sending heartbeat...")
-            sendtime = time.time()
+        while stop_flag.is_set():
+            ready_flag.wait()
             self.send_heartbeat()
+            sendtime = time.time()
+            logger.debug("Sending heartbeat...")
 
             deadline = sendtime + wait_time
 
-            if stop_flag.wait(deadline - time.time()):
-                break
-
-            if not self.heartbeat_ack_received.is_set():
-                logger.error("No HEARTBEAT_ACK received within time!")
-                self._sock.close(STATUS_ABNORMAL_CLOSED)
-                break
+            if not ack_flag.wait(deadline - time.time()):
+                logger.error("Warning! No HEARTBEAT_ACK received within time!")
+                self.reconnect()
 
             self.heartbeat_ack_received.clear()
 
@@ -199,11 +192,8 @@ class DiscordGateway(WebSocketThread):
         }
 
     def cleanup(self):
-        self.heartbeat_thread.stop()
-        self.heartbeat_thread.join()
-        self.heartbeat_thread = None
-
         self.is_heartbeat_ready.clear()
+        self.heartbeat_ack_received.set()
 
         if self.stop_flag.is_set():
             logger.debug("Triggering voice client shutdown...")
