@@ -202,13 +202,16 @@ class WebSocketThread(StoppableThread):
             # Most likely reached this because len(close_frame_data.data) < 2
             return [None, None]
 
-    def send(self, data):
+    def send(self, data, retry=5, i=0):
         """serializes data to json if dict, and send it through the socket.
 
         I strongly encourage you to use this method instead of _sock.send, 
         because this method is meant to solve the SSLError caused by ssl module
         by catching the exception and running the method recursively.
         """
+        if i == retry:
+            return False
+
         if isinstance(data, dict):
             data = json.dumps(data)
 
@@ -217,7 +220,8 @@ class WebSocketThread(StoppableThread):
             return self._sock.send(data)
         except SSLError:
             logger.exception("SSLError while sending data! retrying...")
-            return self.send(data)
+            time.sleep(3)
+            return self.send(data, retry, i+1)
         except Exception:
             logger.exception("Unexpected error while sending data!")
 
