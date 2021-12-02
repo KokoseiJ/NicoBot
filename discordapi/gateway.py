@@ -160,6 +160,9 @@ class DiscordGateway(WebSocketThread):
         ready_flag = self.is_heartbeat_ready
         stop_flag = self.heartbeat_thread.stop_flag
         ack_flag = self.heartbeat_ack_received
+
+        ready_flag.wait()
+
         wait_time = self.heartbeat_interval
 
         while not stop_flag.is_set():
