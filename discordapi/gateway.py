@@ -162,7 +162,7 @@ class DiscordGateway(WebSocketThread):
         ack_flag = self.heartbeat_ack_received
         wait_time = self.heartbeat_interval
 
-        while stop_flag.is_set():
+        while not stop_flag.is_set():
             ready_flag.wait()
             self.send_heartbeat()
             sendtime = time.time()
