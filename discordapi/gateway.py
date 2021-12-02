@@ -177,6 +177,9 @@ class DiscordGateway(WebSocketThread):
                 logger.error("Warning! No HEARTBEAT_ACK received within time!")
                 self.reconnect()
 
+            if stop_flag.wait(deadline - time.time()):
+                break
+
             self.heartbeat_ack_received.clear()
 
         logger.debug("Terminating heartbeat thread...")
