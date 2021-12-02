@@ -270,8 +270,8 @@ class DiscordVoiceClient(WebSocketThread):
     def cleanup(self):
         self.udp_sock.close()
 
-        self.heartbeat_ack_received.set()
         self.is_heartbeat_ready.clear()
+        self.heartbeat_ack_received.set()
 
     def _dispatcher(self, data):
         op = data['op']
