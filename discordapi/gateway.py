@@ -173,11 +173,12 @@ class DiscordGateway(WebSocketThread):
 
             deadline = sendtime + wait_time
 
-            if not ack_flag.wait(deadline - time.time()):
+            if not ack_flag.wait(max(deadline - time.time(), 0)):
                 logger.error("Warning! No HEARTBEAT_ACK received within time!")
+                ready_flag.clear()
                 self.reconnect()
 
-            if stop_flag.wait(deadline - time.time()):
+            if stop_flag.wait(max(deadline - time.time(), 0)):
                 break
 
             self.heartbeat_ack_received.clear()
@@ -223,6 +224,8 @@ class DiscordGateway(WebSocketThread):
             self.reconnect()
 
         elif op == self.HELLO:
+            if not self.is_reconnect and self.seq != 0:
+                self.seq = 0
             self.heartbeat_interval = payload['heartbeat_interval'] / 1000
             self.is_heartbeat_ready.set()
 

@@ -229,6 +229,7 @@ class WebSocketThread(StoppableThread):
         return self.ready_to_run.is_set()
 
     def reconnect(self, status=1006, *args, **kwargs):
+        logger.debug(f"Attempting reconnect: code {status}")
         self._sock.close(status=1006, *args, **kwargs)
 
     def stop(self, status=1000):
