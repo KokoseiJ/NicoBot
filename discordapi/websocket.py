@@ -157,6 +157,7 @@ class WebSocketThread(StoppableThread):
         while self._sock.connected:
             rl, _, _ = select.select((self._sock.sock,), (), ())
             if self._sock.sock not in rl:
+                logger.warning("Select empty")
                 continue
             try:
                 opcode, data = self._sock.recv_data()
@@ -170,7 +171,8 @@ class WebSocketThread(StoppableThread):
                     self.on_close(code, reason)
                     break
                 elif not data:
-                    continue
+                    logger.warning("No Data! Gateway Connection Dropped?")
+                    break
                 parsed_data = json.loads(data)
             except json.JSONDecodeError:
                 logger.error(f"Gateway returned invalid JSON data:\n{data}")
