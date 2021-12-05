@@ -2,13 +2,16 @@ from discordapi import DiscordClient, CommandError, EmbedCommandManager, \
                        ThreadedCommandEventHandler, QueuedAudioPlayer, \
                        FFMPEGAudioSource, Embed, CDN_URL
 from niconico import NicoPlayer
+
 import os
 import re
 import sys
 import random
 import logging
-from logging import StreamHandler, FileHandler
+
+from websocket import enableTrace
 from urllib.parse import urljoin
+from logging import StreamHandler, FileHandler
 
 logger = logging.getLogger("nicobot")
 logger.setLevel("DEBUG")
@@ -22,6 +25,8 @@ file_handler = FileHandler("nicobot.log")
 file_handler.setFormatter(fmt)
 file_handler.setLevel("DEBUG")
 logger.addHandler(file_handler)
+
+enableTrace(True, file_handler)
 
 id_ = os.environ.get("ID")
 pw = os.environ.get("PW")
