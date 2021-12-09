@@ -35,6 +35,8 @@ __all__ = []
 
 logger = logging.getLogger(LIB_NAME)
 
+SELECT_TIMEOUT = 5
+
 
 class WebSocketThread(StoppableThread):
     """Base class for running WebSocket connection.
@@ -155,10 +157,15 @@ class WebSocketThread(StoppableThread):
         """Receives from _socket, parses it to JSON and passes it to dispatcher.
         """
         while self._sock.connected:
-            rl, _, _ = select.select((self._sock.sock,), (), ())
+            rl, _, _ = select.select(
+                (self._sock.sock,), (), (), SELECT_TIMEOUT)
+
             if self._sock.sock not in rl:
-                logger.warning("Select empty")
-                continue
+                if not self._sock.sock:
+                    logger.warning("Gateway connection severed!")
+                    break
+                else:
+                    continue
             try:
                 opcode, data = self._sock.recv_data()
                 if opcode == ABNF.OPCODE_TEXT:
