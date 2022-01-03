@@ -19,6 +19,7 @@
 #
 
 import os.path
+from types import SimpleNamespace
 
 try:
     path = os.path.dirname(os.path.abspath(__file__))
@@ -46,6 +47,15 @@ CDN_URL = "https://cdn.discordapp.com/"
 
 VOICE_VER = 4
 
-EMPTY = 1337
+
+class EmptyClass:
+    def __str__(self):
+        return "EMPTY"
+
+    def __repr__(self):
+        return self.__str__()
+
+
+EMPTY = EmptyClass()
 
 del os, path, data, commit
