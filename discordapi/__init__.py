@@ -1,3 +1,5 @@
+# pylint: disable=W,C,R
+
 from .slash import *
 from .channel import *
 from .client import *
