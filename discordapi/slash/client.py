@@ -23,13 +23,23 @@ from ..handler import MethodEventHandler
 from ..client import DiscordClient
 from .command import Context, SlashCommandManager
 
-__all__ = ["DiscordInteractionClient", "InteractionEventHandler",
-           "InteractionEventParser"]
+__all__ = [
+    "DiscordInteractionClient",
+    "InteractionEventHandler",
+    "InteractionEventParser",
+]
 
 
 class DiscordInteractionClient(DiscordClient):
-    def __init__(self, token, command_manager=None, handler=None,
-                 event_parser=None, intents=32509, name="main"):
+    def __init__(
+        self,
+        token,
+        command_manager=None,
+        handler=None,
+        event_parser=None,
+        intents=32509,
+        name="main",
+    ):
         if handler is None:
             handler = InteractionEventHandler
         if event_parser is None:
@@ -41,7 +51,8 @@ class DiscordInteractionClient(DiscordClient):
             handler=handler,
             event_parser=event_parser,
             intents=intents,
-            name=name)
+            name=name,
+        )
 
         self.command_manager = command_manager(self)
 
@@ -52,60 +63,56 @@ class DiscordInteractionClient(DiscordClient):
         elif issubclass(manager, SlashCommandManager):
             self.command_manager = manager(self)
         else:
-            raise TypeError("command_manager is neither a subclass or instance"
-                            " of SlashCommandManager.")
+            raise TypeError(
+                "command_manager is neither a subclass or instance"
+                " of SlashCommandManager."
+            )
 
-    def __send_request(self, method, route, data=None, expected_code=None,
-                       raise_at_exc=True, baseurl=None, headers=None):
+    def __send_request(
+        self,
+        method,
+        route,
+        data=None,
+        expected_code=None,
+        raise_at_exc=True,
+        baseurl=None,
+        headers=None,
+    ):
         route = f"/applications/{self.user.id}{route}"
         return self.send_request(
             method, route, data, expected_code, raise_at_exc, baseurl, headers
         )
 
     def get_global_commands(self):
-        commands = self.__send_request(
-            "GET", "/commands"
-        )
+        commands = self.__send_request("GET", "/commands")
 
         return commands
 
     def create_global_command(self, command):
-        command = self.__send_request(
-            "POST", "/commands", command
-        )
+        command = self.__send_request("POST", "/commands", command)
 
         return command
 
     def get_global_command(self, id_):
-        command = self.__send_request(
-            "GET", f"/commands/{id_}"
-        )
+        command = self.__send_request("GET", f"/commands/{id_}")
 
         return command
 
     def edit_global_command(self, id_, command):
-        command = self.__send_request(
-            "PATCH", f"/commands/{id_}", command
-        )
+        command = self.__send_request("PATCH", f"/commands/{id_}", command)
 
         return command
 
     def delete_global_command(self, id_):
-        self.__send_request(
-            "DELETE", f"/commands/{id_}"
-        )
+        self.__send_request("DELETE", f"/commands/{id_}")
 
     def bulk_global_commands(self, commands):
-        commands = self.__send_request(
-            "PUT", "/commands", commands
-        )
+        commands = self.__send_request("PUT", "/commands", commands)
 
         return commands
 
     def get_guild_commands(self, guild):
-        commands = self.__send_request(
-            "GET", f"/guilds/{guild.id}/commands"
-        )
+        commands = self.__send_request("GET", f"/guilds/{guild.id}/commands")
 
         return commands
 
@@ -131,9 +138,7 @@ class DiscordInteractionClient(DiscordClient):
         return command
 
     def delete_guild_command(self, guild, id_):
-        self.__send_request(
-            "DELETE", f"/guilds/{guild.id}/commands/{id_}"
-        )
+        self.__send_request("DELETE", f"/guilds/{guild.id}/commands/{id_}")
 
     def bulk_guild_commands(self, guild, commands):
         commands = self.__send_request(
@@ -158,8 +163,9 @@ class DiscordInteractionClient(DiscordClient):
 
     def edit_command_permissions(self, guild, id_, permissions):
         permissions = self.__send_request(
-            "GET", f"/guilds/{guild.id}/commands/{id_}/permissions",
-            permissions
+            "GET",
+            f"/guilds/{guild.id}/commands/{id_}/permissions",
+            permissions,
         )
 
         return permissions

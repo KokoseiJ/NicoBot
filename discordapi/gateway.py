@@ -44,6 +44,7 @@ class DiscordGateway(WebSocketThread):
 
     Event related operations are done within this class.
     """
+
     DISPATCH = 0
     HEARTBEAT = 1
     IDENTIFY = 2
@@ -56,13 +57,17 @@ class DiscordGateway(WebSocketThread):
     HELLO = 10
     HEARTBEAT_ACK = 11
 
-    def __init__(self, token, handler=None, event_parser=None, intents=32509,
-                 name="main"):
+    def __init__(
+        self,
+        token,
+        handler=None,
+        event_parser=None,
+        intents=32509,
+        name="main",
+    ):
         # 32509 is an intent value that omits flags which require verification
         super(DiscordGateway, self).__init__(
-            GATEWAY_URL,
-            self._dispatcher,
-            name
+            GATEWAY_URL, self._dispatcher, name
         )
 
         if handler is None:
@@ -90,10 +95,11 @@ class DiscordGateway(WebSocketThread):
         self.application = None
 
     def set_ready(
-            self, user=None, guilds=None, session_id=None, application=None):
+        self, user=None, guilds=None, session_id=None, application=None
+    ):
         if None not in [user, guilds, session_id, application]:
             self.user = BotUser(self, user)
-            self.guilds = {obj['id']: False for obj in guilds}
+            self.guilds = {obj["id"]: False for obj in guilds}
             self.session_id = session_id
             self.application = application
         self.ready_to_run.set()
@@ -131,19 +137,21 @@ class DiscordGateway(WebSocketThread):
             properties={
                 "$os": sys.platform,
                 "$browser": LIB_NAME,
-                "$device": LIB_NAME
+                "$device": LIB_NAME,
             },
         )
 
         if activities:
-            data.update({
-                "presence": {
-                    "since": time.time() * 1000,
-                    "activities": activities,
-                    "afk": False,
-                    "status": None
+            data.update(
+                {
+                    "presence": {
+                        "since": time.time() * 1000,
+                        "activities": activities,
+                        "afk": False,
+                        "status": None,
+                    }
                 }
-            })
+            )
 
         self.send(data)
 
@@ -152,7 +160,7 @@ class DiscordGateway(WebSocketThread):
             self.RESUME,
             token=self.token,
             session_id=self.session_id,
-            seq=self.seq
+            seq=self.seq,
         )
         self.send(data)
 
@@ -187,16 +195,12 @@ class DiscordGateway(WebSocketThread):
 
     def send_heartbeat(self):
         data = self._get_payload(
-            self.HEARTBEAT,
-            d=self.seq if self.seq else None
+            self.HEARTBEAT, d=self.seq if self.seq else None
         )
         self.send(data)
 
     def _get_payload(self, op, d=None, **data):
-        return {
-            "op": op,
-            "d": data if d is None else d
-        }
+        return {"op": op, "d": data if d is None else d}
 
     def cleanup(self):
         self.is_heartbeat_ready.clear()
@@ -209,10 +213,10 @@ class DiscordGateway(WebSocketThread):
                     client.stop()
 
     def _dispatcher(self, data):
-        op = data['op']
-        payload = data['d']
-        seq = data['s']
-        event = data['t']
+        op = data["op"]
+        payload = data["d"]
+        seq = data["s"]
+        event = data["t"]
 
         if op == self.DISPATCH:
             self.seq = seq
@@ -226,7 +230,7 @@ class DiscordGateway(WebSocketThread):
         elif op == self.HELLO:
             if not self.is_reconnect and self.seq != 0:
                 self.seq = 0
-            self.heartbeat_interval = payload['heartbeat_interval'] / 1000
+            self.heartbeat_interval = payload["heartbeat_interval"] / 1000
             self.is_heartbeat_ready.set()
 
         elif op == self.HEARTBEAT_ACK:
@@ -259,8 +263,9 @@ class GatewayEventParser:
 
     def _set_client(self, client):
         if not isinstance(client, DiscordGateway):
-            raise TypeError("client should be DiscordGateway, "
-                            f"not '{type(client)}'")
+            raise TypeError(
+                "client should be DiscordGateway, " f"not '{type(client)}'"
+            )
         self.client = client
 
     def _handle(self, event, payload):
@@ -279,10 +284,10 @@ class GatewayEventParser:
 
     def on_ready(self, payload):
         self.client.set_ready(
-            payload['user'],
-            payload['guilds'],
-            payload['session_id'],
-            payload['application']
+            payload["user"],
+            payload["guilds"],
+            payload["session_id"],
+            payload["application"],
         )
 
     def on_resumed(self, payload):
@@ -290,7 +295,7 @@ class GatewayEventParser:
 
     def on_channel_create(self, payload):
         obj = get_channel(self.client, payload)
-        
+
         guild_id = obj.guild_id
         if guild_id is None:
             return obj
@@ -307,7 +312,7 @@ class GatewayEventParser:
 
     def on_channel_delete(self, payload):
         obj = get_channel(self.client, payload)
-        
+
         guild_id = obj.guild_id
         if guild_id is None:
             return obj
@@ -342,7 +347,7 @@ class GatewayEventParser:
         self.client.guilds[payload.get("id")] = False
 
     def on_guild_ban_add(self, payload):
-        guild = self.client.guilds.get(payload.get('guild_id'))
+        guild = self.client.guilds.get(payload.get("guild_id"))
         if not guild:
             return
 
@@ -352,18 +357,18 @@ class GatewayEventParser:
             del guild.members[user_id]
 
     def on_guild_emojis_update(self, payload):
-        guild = self.client.guilds.get(payload.get('guild_id'))
+        guild = self.client.guilds.get(payload.get("guild_id"))
         if not guild:
             return
 
-        guild.emojis = payload.get('emojis')
+        guild.emojis = payload.get("emojis")
 
     def on_guild_member_add(self, payload):
-        guild = self.client.guilds.get(payload.get('guild_id'))
+        guild = self.client.guilds.get(payload.get("guild_id"))
         if not guild:
             return
 
-        del payload['guild_id']
+        del payload["guild_id"]
         obj = Member(self.client, guild, payload)
 
         guild.members.append(obj)
@@ -371,30 +376,30 @@ class GatewayEventParser:
         return obj
 
     def on_guild_member_remove(self, payload):
-        guild = self.client.guilds.get(payload.get('guild_id'))
+        guild = self.client.guilds.get(payload.get("guild_id"))
         if not guild:
             return
 
         del guild.members[payload.get("user").get("id")]
 
     def on_guild_member_update(self, payload):
-        guild = self.client.guilds.get(payload.get('guild_id'))
+        guild = self.client.guilds.get(payload.get("guild_id"))
         if not guild:
             return
 
         user_id = payload.get("user").get("id")
-        del payload['guild_id']
+        del payload["guild_id"]
         member = guild.members.get(user_id)
         member.__init__(self.client, guild, payload)
 
     def on_guild_members_chunk(self, payload):
-        guild = self.client.guilds.get(payload.get('guild_id'))
+        guild = self.client.guilds.get(payload.get("guild_id"))
         if not guild:
             return
 
         memberobjs = payload.get("members")
         members = {
-            member['user']['id']: Member(self.client, guild, member)
+            member["user"]["id"]: Member(self.client, guild, member)
             for member in memberobjs
         }
         guild.members.update(members)
@@ -435,11 +440,11 @@ class GatewayEventParser:
                 client.reapply_info(**data._dict())
 
             del self.voice_data[guild_id]
-                
+
     def on_voice_state_update(self, payload):
-        guild_id = payload['guild_id']
-        if payload['user_id'] == self.client.user.id:
-            if payload['channel_id'] is not None:
+        guild_id = payload["guild_id"]
+        if payload["user_id"] == self.client.user.id:
+            if payload["channel_id"] is not None:
                 self.on_voice_server_update(payload, "VOICE_STATE_UPDATE")
             else:
                 client = self.client.voice_clients.get(guild_id)
@@ -450,15 +455,15 @@ class GatewayEventParser:
 
         if payload.get("guild_id") is not None:
             guild = self.client.get_guild(guild_id)
-            channel_id = payload['channel_id']
+            channel_id = payload["channel_id"]
             if channel_id is not None:
                 channel = guild.get_channel(channel_id)
             else:
                 channel = None
 
-            guild.voice_state.update({
-                payload['member']['user']['id']: channel
-            })
+            guild.voice_state.update(
+                {payload["member"]["user"]["id"]: channel}
+            )
 
     def on_presence_update(self, payload):
         # Silencing frequent warning
@@ -489,7 +494,10 @@ class VoiceData:
 
     def is_ready(self):
         return None not in {
-            self.endpoint, self.server_id, self.session_id, self.token
+            self.endpoint,
+            self.server_id,
+            self.session_id,
+            self.token,
         }
 
     def _dict(self):
@@ -497,5 +505,5 @@ class VoiceData:
             "endpoint": self.endpoint,
             "server_id": self.server_id,
             "session_id": self.session_id,
-            "token": self.token
+            "token": self.token,
         }

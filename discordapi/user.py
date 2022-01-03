@@ -27,9 +27,21 @@ import base64
 
 __all__ = ["User"]
 
-KEYLIST = ["id", "username", "discriminator", "avatar", "bot", "system",
-           "mfa_enabled", "locale", "verified", "email", "flags",
-           "premium_type", "public_flags"]
+KEYLIST = [
+    "id",
+    "username",
+    "discriminator",
+    "avatar",
+    "bot",
+    "system",
+    "mfa_enabled",
+    "locale",
+    "verified",
+    "email",
+    "flags",
+    "premium_type",
+    "public_flags",
+]
 
 """
 It is recommended to check Official Discord documentation for these methods.
@@ -61,15 +73,10 @@ class BotUser(User):
                 raise ValueError(f"avatar should be File, not {type(avatar)}")
             avatar = base64.b64encode(avatar.read()).decode()
 
-        postdata = {
-            "username": username,
-            "avatar": avatar
-        }
+        postdata = {"username": username, "avatar": avatar}
         postdata = clear_postdata(postdata)
 
-        user = self._send_request(
-            "PATCH", "", postdata
-        )
+        user = self._send_request("PATCH", "", postdata)
 
         self.__init__(self.client, user)
 
@@ -77,37 +84,39 @@ class BotUser(User):
 
     def leave_guild(self, guild):
         from .guild import Guild
+
         if isinstance(guild, Guild):
             guild = guild.id
 
-        self._send_request(
-            "DELETE", f"/guilds/{guild}"
-        )
+        self._send_request("DELETE", f"/guilds/{guild}")
 
     def create_dm(self, user):
         from .channel import get_channel
+
         if isinstance(user, User):
             user = user.id
 
-        postdata = {
-            "recipient_id": user
-        }
+        postdata = {"recipient_id": user}
 
-        channel = self._send_request(
-            "POST", "/channels", postdata
-        )
+        channel = self._send_request("POST", "/channels", postdata)
 
         return get_channel(self.client, channel)
 
     def get_connections(self):
-        connections = self._send_request(
-            "GET", "/connections"
-        )
+        connections = self._send_request("GET", "/connections")
 
         return connections
 
-    def _send_request(self, method, route, data=None, expected_code=None,
-                      raise_at_exc=True, baseurl=None, headers=None):
+    def _send_request(
+        self,
+        method,
+        route,
+        data=None,
+        expected_code=None,
+        raise_at_exc=True,
+        baseurl=None,
+        headers=None,
+    ):
         route = f"/users/@me{route}"
         return self.client.send_request(
             method, route, data, expected_code, raise_at_exc, baseurl, headers

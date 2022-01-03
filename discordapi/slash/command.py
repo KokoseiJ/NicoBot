@@ -31,12 +31,35 @@ import json
 import logging
 from types import GeneratorType
 
-__all__ = ["Context", "Option", "SubCommand", "SubCommandGroup", "String",
-           "Integer", "Boolean", "UserOption", "ChannelOption", "RoleOption",
-           "Mentionable", "Number", "SlashCommand"]
+__all__ = [
+    "Context",
+    "Option",
+    "SubCommand",
+    "SubCommandGroup",
+    "String",
+    "Integer",
+    "Boolean",
+    "UserOption",
+    "ChannelOption",
+    "RoleOption",
+    "Mentionable",
+    "Number",
+    "SlashCommand",
+]
 
-CTX_KEYLIST = ["id", "application_id", "type", "data", "guild_id",
-               "channel_id", "member", "user", "token", "version", "message"]
+CTX_KEYLIST = [
+    "id",
+    "application_id",
+    "type",
+    "data",
+    "guild_id",
+    "channel_id",
+    "member",
+    "user",
+    "token",
+    "version",
+    "message",
+]
 
 SUB_COMMAND = 1
 SUB_COMMAND_GROUP = 2
@@ -53,7 +76,7 @@ logger = logging.getLogger(LIB_NAME)
 
 
 def get_func_args(func):
-    return func.__code__.co_varnames[:func.__code__.co_argcount]
+    return func.__code__.co_varnames[: func.__code__.co_argcount]
 
 
 class Option:
@@ -69,8 +92,10 @@ class Option:
         if subcmds is not None:
             for cmd in subcmds:
                 if not isinstance(cmd, SlashCommand):
-                    raise ValueError("Subcommand should be SlashCommand, "
-                                     f"not '{type(cmd)}'")
+                    raise ValueError(
+                        "Subcommand should be SlashCommand, "
+                        f"not '{type(cmd)}'"
+                    )
             self.subcmds = {cmd.name: cmd for cmd in subcmds}
 
     def _json(self):
@@ -78,7 +103,7 @@ class Option:
             "type": self.type,
             "name": self.name,
             "description": self.desc,
-            "required": self.required
+            "required": self.required,
         }
 
         if self.choices is not None:
@@ -87,7 +112,7 @@ class Option:
         if self.cmd is not None:
             options = self.cmd.options
             data.update({"options": options})
-        
+
         elif self.subcmds is not None:
             options = [cmd._json() for cmd in self.subcmds.values()]
             data.update({"options": options})
@@ -103,16 +128,17 @@ class SubCommand(Option):
 class SubCommandGroup(Option):
     def __init__(self, name, desc, subcmds, required=False):
         super().__init__(
-            SUB_COMMAND_GROUP, name, desc, None, None, subcmds, required)
+            SUB_COMMAND_GROUP, name, desc, None, None, subcmds, required
+        )
 
     def execute(self, ctx, options, manager):
         if options:
             options = options[0]
         else:
             options = {}
-        handler = self.subcmds[options.get('name')]
+        handler = self.subcmds[options.get("name")]
         if handler is not None:
-            return handler.execute(ctx, options.get('options'), manager)
+            return handler.execute(ctx, options.get("options"), manager)
 
 
 class String(Option):
@@ -167,18 +193,22 @@ class SlashCommand:
 
         for option in self.options.values():
             if not isinstance(option, Option):
-                raise ValueError("option should be Option, "
-                                 f"not '{type(option)}'")
+                raise ValueError(
+                    "option should be Option, " f"not '{type(option)}'"
+                )
 
             if option.name not in func_args:
-                raise ValueError(f"Argument '{option.name}' not present in "
-                                 f"function '{func.__code__.co_name}'")
+                raise ValueError(
+                    f"Argument '{option.name}' not present in "
+                    f"function '{func.__code__.co_name}'"
+                )
 
     @classmethod
     def create(cls, desc, options, default_permission=True):
         def decorator(func):
             name = func.__code__.co_name
             return cls(name, desc, func, options, default_permission)
+
         return decorator
 
     def execute(self, ctx, options, manager):
@@ -193,10 +223,10 @@ class SlashCommand:
             options = []
 
         for option in options:
-            type_ = option.get('type')
-            name = option.get('name')
-            value = option.get('value')
-            opts = option.get('options')
+            type_ = option.get("type")
+            name = option.get("name")
+            value = option.get("value")
+            opts = option.get("options")
             if type_ == SUB_COMMAND:
                 value = self.options[name].cmd.execute(ctx, opts, manager)
             elif type_ == SUB_COMMAND_GROUP:
@@ -218,7 +248,7 @@ class SlashCommand:
             "name": self.name,
             "description": self.desc,
             "options": [option._json() for option in self.options.values()],
-            "default_permission": self.default_permission
+            "default_permission": self.default_permission,
         }
 
         return data
@@ -234,20 +264,22 @@ class SlashCommandManager:
 
     def _set_client(self, client):
         if not isinstance(client, DiscordGateway):
-            raise TypeError("client should be DiscordGateway, not "
-                            f"'{type(client)}'")
+            raise TypeError(
+                "client should be DiscordGateway, not " f"'{type(client)}'"
+            )
         self.client = client
 
     def register(self, command):
         if not isinstance(command, SlashCommand):
-            raise TypeError("command should be SlashCommand, not "
-                            f"'{type(command)}'")
+            raise TypeError(
+                "command should be SlashCommand, not " f"'{type(command)}'"
+            )
 
         self.map.update({command.name: command})
 
     def update(self):
         prev_raw = self.client.get_global_commands()
-        prev = {cmd['name']: cmd['id'] for cmd in prev_raw}
+        prev = {cmd["name"]: cmd["id"] for cmd in prev_raw}
 
         for cmd in prev:
             if cmd not in self.map:
@@ -257,13 +289,13 @@ class SlashCommandManager:
         self.client.bulk_global_commands(json.dumps(commands))
 
     def execute(self, ctx):
-        cmdname = ctx.data['name']
+        cmdname = ctx.data["name"]
         command = self.map.get(cmdname)
         if command is None:
             logger.warning(f"Command '{cmdname}' not found")
             return
 
-        gen = command.execute(ctx, ctx.data.get('options'), self)
+        gen = command.execute(ctx, ctx.data.get("options"), self)
 
         self.respond(ctx, 5)
 
@@ -274,9 +306,7 @@ class SlashCommandManager:
             self.edit(ctx, content=res)
 
     def respond(self, ctx, type_, message=None):
-        postdata = {
-            "type": type_
-        }
+        postdata = {"type": type_}
         if message is not None:
             postdata.update({"data": message})
 
@@ -284,14 +314,21 @@ class SlashCommandManager:
             "POST", f"/interactions/{ctx.id}/{ctx.token}/callback", postdata
         )
 
-    def edit(self, ctx, content=EMPTY, file=None, embeds=EMPTY,
-             allowed_mentions=EMPTY, components=EMPTY):
-        
+    def edit(
+        self,
+        ctx,
+        content=EMPTY,
+        file=None,
+        embeds=EMPTY,
+        allowed_mentions=EMPTY,
+        components=EMPTY,
+    ):
+
         postdata = {
             "content": content,
             "embeds": embeds,
             "allowed_mentions": allowed_mentions,
-            "components": components
+            "components": components,
         }
         postdata = clear_postdata(postdata)
 
@@ -299,10 +336,9 @@ class SlashCommandManager:
             if not isinstance(file, File):
                 raise ValueError(f"file should be File, not {type(file)}")
 
-            content_type, formdata = get_formdata({
-                "file": file,
-                "payload_json": postdata
-            })
+            content_type, formdata = get_formdata(
+                {"file": file, "payload_json": postdata}
+            )
 
             headers = {"Content-Type": content_type}
 
@@ -310,14 +346,15 @@ class SlashCommandManager:
                 "PATCH",
                 f"/webhooks/{self.client.user.id}/{ctx.token}"
                 "/messages/@original",
-                formdata, headers=headers
+                formdata,
+                headers=headers,
             )
         else:
             message = self.client.send_request(
                 "PATCH",
                 f"/webhooks/{self.client.user.id}/{ctx.token}"
                 "/messages/@original",
-                postdata
+                postdata,
             )
 
         return Message(self.client, message)
@@ -325,7 +362,7 @@ class SlashCommandManager:
     def delete(self, ctx):
         self.client.send_request(
             "DELETE",
-            f"/webhooks/{self.client.user.id}/{ctx.token}/messages/@original"
+            f"/webhooks/{self.client.user.id}/{ctx.token}/messages/@original",
         )
 
 

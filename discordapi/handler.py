@@ -30,6 +30,7 @@ class EventHandler:
     Attributes:
         self.client
     """
+
     def __init__(self, client=None):
         self.client = None
         if client is not None:
@@ -41,9 +42,11 @@ class EventHandler:
         Required to provide client-side interface and contexts to handlers.
         """
         from .gateway import DiscordGateway
+
         if not isinstance(client, DiscordGateway):
-            raise TypeError("client should be DiscordGateway, "
-                            f"not '{type(client)}'")
+            raise TypeError(
+                "client should be DiscordGateway, " f"not '{type(client)}'"
+            )
         self.client = client
 
     def handle(self, event, obj):
@@ -80,6 +83,7 @@ class GeneratorEventHandler(EventHandler):
         self.event_queue:
             Queue object storing events.
     """
+
     def __init__(self, client=None):
         super(GeneratorEventHandler, self).__init__(client)
         self.event_queue = Queue()
@@ -103,7 +107,7 @@ class GeneratorEventHandler(EventHandler):
         >>> gen = handler.event_generator()
         >>> event, obj = next(gen)
         >>> print(f"{event}: {obj}")
-        >>> # Rinse and repeat 
+        >>> # Rinse and repeat
         ```
 
         Additionally, This generator silences KeyboardInterrupt exception.
@@ -132,6 +136,7 @@ class MethodEventHandler(EventHandler):
     No method other than .handle comes predefined, You have to either
     inherit this method or assign functions as attributes to use this.
     """
+
     def handle(self, event, obj):
         method_name = f"on_{event.lower()}"
         handler = getattr(self, method_name, None)
@@ -153,6 +158,7 @@ class DecoratorEventHandler(EventHandler):
 
     Other than decorator, This handler behaves similar to MethodEventHandler.
     """
+
     def handle(self, event, obj):
         method_name = f"on_{event.lower()}"
         handler = getattr(self, method_name, None)
@@ -164,6 +170,7 @@ class DecoratorEventHandler(EventHandler):
             method_name = f"on_{event.lower()}"
             setattr(self, method_name, func)
             return func
+
         return decorator
 
 
@@ -179,6 +186,7 @@ class ThreadedMethodEventHandler(MethodEventHandler):
     placed whatsoever, and could be critical to performance. I recommend
     implementing your own handler with appropriate safety measures in place.
     """
+
     def handle(self, event, obj):
         method_name = f"on_{event.lower()}"
         handler = getattr(self, method_name, None)
@@ -192,6 +200,7 @@ class ThreadedDecoratorEventHandler(DecoratorEventHandler):
     Refer to ThreadMethodEventHandler for details, those cautions apply here
     too.
     """
+
     def handle(self, event, obj):
         method_name = f"on_{event.lower()}"
         handler = getattr(self, method_name, None)

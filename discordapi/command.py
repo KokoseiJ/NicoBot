@@ -25,8 +25,13 @@ from .handler import MethodEventHandler, ThreadedMethodEventHandler
 
 from types import GeneratorType
 
-__all__ = ["CommandError", "CommandManager", "EmbedCommandManager",
-           "CommandEventHandler", "ThreadedCommandEventHandler"]
+__all__ = [
+    "CommandError",
+    "CommandManager",
+    "EmbedCommandManager",
+    "CommandEventHandler",
+    "ThreadedCommandEventHandler",
+]
 
 
 class CommandError(Exception):
@@ -45,8 +50,9 @@ class CommandManager:
 
     def _set_client(self, client):
         if not isinstance(client, DiscordGateway):
-            raise TypeError("client should be DiscordGateway, "
-                            f"not {type(client)}")
+            raise TypeError(
+                "client should be DiscordGateway, " f"not {type(client)}"
+            )
         self.client = client
 
     def execute_cmd(self, cmdinput, message):
@@ -62,7 +68,7 @@ class CommandManager:
             return None
 
         gen = handler(args, message)
-        
+
         if isinstance(gen, GeneratorType):
             for x in gen:
                 yield x
@@ -98,12 +104,14 @@ class EmbedCommandManager(CommandManager):
             embed = Embed(
                 "An error has been occured!",
                 f"```{content}```",
-                fields=[{
-                    "name": "⠀",
-                    "value": f"Please [report the issue]({LIB_URL}/issues) "
-                            "if the problem persists."
-                }],
-                color=0xFF0000
+                fields=[
+                    {
+                        "name": "⠀",
+                        "value": f"Please [report the issue]({LIB_URL}/issues) "
+                        "if the problem persists.",
+                    }
+                ],
+                color=0xFF0000,
             )
             yield embed
 
@@ -121,13 +129,14 @@ class CommandEventHandler(MethodEventHandler):
         elif issubclass(manager, CommandManager):
             self.manager = manager()
         else:
-            raise TypeError("manager should be CommandManager, "
-                            f"not {type(manager)}")
+            raise TypeError(
+                "manager should be CommandManager, " f"not {type(manager)}"
+            )
 
     def on_message_create(self, message):
         if not message.content.startswith(self.prefix) or message.author.bot:
             return
-        msg = message.content[len(self.prefix):]
+        msg = message.content[len(self.prefix) :]
 
         try:
             gen = self.manager.execute_cmd(msg, message)
@@ -150,5 +159,6 @@ class CommandEventHandler(MethodEventHandler):
 
 
 class ThreadedCommandEventHandler(
-        CommandEventHandler, ThreadedMethodEventHandler):
+    CommandEventHandler, ThreadedMethodEventHandler
+):
     pass

@@ -39,6 +39,7 @@ VOICE_STRUCT = struct.Struct(">ccHII")
 
 try:
     import nacl.secret
+
     AVAILABLE = True
 except ImportError:
     logger.warning("PyNaCl not found, Voice unavailable")
@@ -62,9 +63,7 @@ class DiscordVoiceClient(WebSocketThread):
         if not AVAILABLE:
             raise DiscordError("PyNaCl not found!")
         super(DiscordVoiceClient, self).__init__(
-            endpoint,
-            self._dispatcher,
-            f"voice_{session_id}"
+            endpoint, self._dispatcher, f"voice_{session_id}"
         )
 
         self.client = client
@@ -119,10 +118,7 @@ class DiscordVoiceClient(WebSocketThread):
             speaking = 0
 
         payload = self._get_payload(
-            self.SPEAKING,
-            speaking=speaking,
-            delay=0,
-            ssrc=self.ssrc
+            self.SPEAKING, speaking=speaking, delay=0, ssrc=self.ssrc
         )
 
         try:
@@ -136,10 +132,11 @@ class DiscordVoiceClient(WebSocketThread):
 
     def _send_voice(self, data):
         header = VOICE_STRUCT.pack(
-            b"\x80", b"\x78",
+            b"\x80",
+            b"\x78",
             self.voice_sequence % 65536,
             self.timestamp,
-            self.ssrc
+            self.ssrc,
         )
         payload = self.xsalsa20_poly1305(header, data)
 
@@ -167,14 +164,14 @@ class DiscordVoiceClient(WebSocketThread):
                 logger.warning("IP Discovery data mismatch!")
                 continue
         self.send_protocol()
-        
+
     def send_identify(self):
         payload = self._get_payload(
             self.IDENTIFY,
             server_id=self.server_id,
             user_id=self.user_id,
             session_id=self.session_id,
-            token=self.token
+            token=self.token,
         )
         self.send(payload)
 
@@ -184,7 +181,7 @@ class DiscordVoiceClient(WebSocketThread):
             70,
             self.ssrc,
             self.server_addr[0].encode(),
-            self.server_addr[1]
+            self.server_addr[1],
         )
 
         self.send_udp(payload)
@@ -198,7 +195,7 @@ class DiscordVoiceClient(WebSocketThread):
         )
         if not (typ == 0x2 and leng == 70 and ssrc == self.ssrc):
             raise RuntimeError("Packet Error")
-        
+
         ip = addr.replace(b"\x00", b"").decode()
 
         return ip, port
@@ -218,8 +215,8 @@ class DiscordVoiceClient(WebSocketThread):
             data={
                 "address": self.ip,
                 "port": self.port,
-                "mode": "xsalsa20_poly1305"
-            }
+                "mode": "xsalsa20_poly1305",
+            },
         )
         self.send(payload)
 
@@ -252,20 +249,14 @@ class DiscordVoiceClient(WebSocketThread):
         logger.debug("Terminating heartbeat thread...")
 
     def send_heartbeat(self):
-        payload = self._get_payload(
-            self.HEARTBEAT,
-            d=time.time()
-        )
+        payload = self._get_payload(self.HEARTBEAT, d=time.time())
         try:
             self.send(payload)
         except WebSocketException:
             logger.exception("Exception occured while sending heartbeat.")
 
     def _get_payload(self, op, d=None, **data):
-        return {
-            "op": op,
-            "d": data if d is None else d
-        }
+        return {"op": op, "d": data if d is None else d}
 
     def cleanup(self):
         self.udp_sock.close()
@@ -274,23 +265,23 @@ class DiscordVoiceClient(WebSocketThread):
         self.heartbeat_ack_received.set()
 
     def _dispatcher(self, data):
-        op = data['op']
-        payload = data['d']
+        op = data["op"]
+        payload = data["d"]
 
         if op == self.HELLO:
-            self.heartbeat_interval = payload['heartbeat_interval'] / 1000
+            self.heartbeat_interval = payload["heartbeat_interval"] / 1000
             self.is_heartbeat_ready.set()
 
         elif op == self.READY:
-            self.ssrc = payload['ssrc']
-            self.server_addr = (payload['ip'], payload['port'])
+            self.ssrc = payload["ssrc"]
+            self.server_addr = (payload["ip"], payload["port"])
             self.udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self.udp_sock.connect(self.server_addr)
-            self.modes = payload['modes']
+            self.modes = payload["modes"]
             self.got_ready.set()
 
         elif op == self.SESSION_DESCRIPTION:
-            self.secret_key = bytes(payload['secret_key'])
+            self.secret_key = bytes(payload["secret_key"])
             logger.debug("Received secret key, generating SecretBox...")
             self.secret_box = nacl.secret.SecretBox(self.secret_key)
             self.ready_to_run.set()

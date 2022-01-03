@@ -27,7 +27,7 @@ HEADER_STRUCT = struct.Struct("<BBQIIIB")
 
 class OggParser:
     """Yields packet from the Ogg filestream.
-    
+
     Attributes:
         pipe:
             BytesIO object which has .read method that can read arbitary
@@ -35,6 +35,7 @@ class OggParser:
             ffmpeg stream in mind. To use this class with files, you can just
             pass the file object.
     """
+
     def __init__(self, pipe):
         self.pipe = pipe
 
@@ -57,8 +58,15 @@ class OggParser:
             raise ValueError("Invalid Ogg Header")
 
     def _packet_iter(self):
-        version, flag, granule_pos, serial, page_seq, checksum, page_seg = \
-            HEADER_STRUCT.unpack(self.pipe.read(HEADER_STRUCT.size))
+        (
+            version,
+            flag,
+            granule_pos,
+            serial,
+            page_seq,
+            checksum,
+            page_seg,
+        ) = HEADER_STRUCT.unpack(self.pipe.read(HEADER_STRUCT.size))
         seg_table = self.pipe.read(page_seg)
 
         packet_size = 0

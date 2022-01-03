@@ -68,6 +68,7 @@ class WebSocketThread(StoppableThread):
             ._event_loop method could run parellelly. This thread is expected
             to run quick and quit shortly after.
     """
+
     def __init__(self, url, dispatcher, name):
         """
         Args:
@@ -84,7 +85,7 @@ class WebSocketThread(StoppableThread):
         self.dispatcher = dispatcher
         self.ready_to_run = Event()
         self.name = str(name)
-        
+
         self._sock = None
 
         self.heartbeat_thread = None
@@ -101,8 +102,7 @@ class WebSocketThread(StoppableThread):
         call ._sock.stop method to stop the socket and reconnect.
         """
         self._sock = WebSocket(
-            enable_multithread=True,
-            skip_utf8_validation=True
+            enable_multithread=True, skip_utf8_validation=True
         )
         self.run_heartbeat()
 
@@ -140,25 +140,23 @@ class WebSocketThread(StoppableThread):
     def run_heartbeat(self):
         logger.debug("Starting heartbeat thread.")
         self.heartbeat_thread = StoppableThread(
-            target=self.do_heartbeat,
-            name=f"{self.name}_heartbeat"
+            target=self.do_heartbeat, name=f"{self.name}_heartbeat"
         )
         self.heartbeat_thread.start()
 
     def run_init_connection(self):
         logger.debug("Starting init thread.")
         self.init_thread = StoppableThread(
-            target=self.init_connection,
-            name=f"{self.name}_init"
+            target=self.init_connection, name=f"{self.name}_init"
         )
         self.init_thread.start()
 
     def _event_loop(self):
-        """Receives from _socket, parses it to JSON and passes it to dispatcher.
-        """
+        """Receives from _socket, parses it to JSON and passes it to dispatcher."""
         while self._sock.connected:
             rl, _, _ = select.select(
-                (self._sock.sock,), (), (), SELECT_TIMEOUT)
+                (self._sock.sock,), (), (), SELECT_TIMEOUT
+            )
 
             if self._sock.sock not in rl:
                 if not self._sock.sock:
@@ -173,8 +171,10 @@ class WebSocketThread(StoppableThread):
                 elif opcode == ABNF.OPCODE_CLOSE:
                     code, reason = self._get_close_args(data)
                     if code:
-                        logger.warning("Gateway connection closed with Code "
-                                       f"{code}: {reason}")
+                        logger.warning(
+                            "Gateway connection closed with Code "
+                            f"{code}: {reason}"
+                        )
                     self.on_close(code, reason)
                     break
                 elif not data:
@@ -190,14 +190,16 @@ class WebSocketThread(StoppableThread):
                     raise
             except Exception:
                 logger.exception(
-                    "Exception occured while receiving data from the gateway.")
+                    "Exception occured while receiving data from the gateway."
+                )
 
             try:
                 logger.debug("Received " + data)
                 self.dispatcher(parsed_data)
             except Exception:
                 logger.exception(
-                    "Exception occured while running dispatcher function.")
+                    "Exception occured while running dispatcher function."
+                )
 
     def _get_close_args(self, close_frame):
         if close_frame is None:
@@ -205,7 +207,7 @@ class WebSocketThread(StoppableThread):
 
         if close_frame and len(close_frame) >= 2:
             close_status_code = 256 * close_frame[0] + close_frame[1]
-            reason = close_frame[2:].decode('utf-8')
+            reason = close_frame[2:].decode("utf-8")
             return [close_status_code, reason]
         else:
             # Most likely reached this because len(close_frame_data.data) < 2
@@ -214,7 +216,7 @@ class WebSocketThread(StoppableThread):
     def send(self, data, retry=5, i=0):
         """serializes data to json if dict, and send it through the socket.
 
-        I strongly encourage you to use this method instead of _sock.send, 
+        I strongly encourage you to use this method instead of _sock.send,
         because this method is meant to solve the SSLError caused by ssl module
         by catching the exception and running the method recursively.
         """
@@ -230,7 +232,7 @@ class WebSocketThread(StoppableThread):
         except SSLError:
             logger.exception("SSLError while sending data! retrying...")
             time.sleep(3)
-            return self.send(data, retry, i+1)
+            return self.send(data, retry, i + 1)
         except Exception:
             logger.exception("Unexpected error while sending data!")
 

@@ -62,19 +62,27 @@ class DiscordClient(DiscordGateway):
         ratelimit_handler:
             handler used to handle rate limit accordingly.
     """
-    def __init__(self, token, handler=None, event_parser=None, intents=32509,
-                 name="main"):
+
+    def __init__(
+        self,
+        token,
+        handler=None,
+        event_parser=None,
+        intents=32509,
+        name="main",
+    ):
         super(DiscordClient, self).__init__(
             token=token,
             handler=handler,
             event_parser=event_parser,
             intents=intents,
-            name=name)
+            name=name,
+        )
 
         self.headers = {
             "User-Agent": f"{LIB_NAME} ({LIB_URL}, {LIB_VER})",
             "Authorization": f"Bot {self.token}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
         }
         self._activities = ()
         self.ratelimit_handler = RateLimitHandler()
@@ -87,7 +95,8 @@ class DiscordClient(DiscordGateway):
 
     def get_channels(self):
         return {
-            x: y for guild in self.get_guilds().values()
+            x: y
+            for guild in self.get_guilds().values()
             for x, y in guild.get_channels().items()
         }
 
@@ -96,7 +105,8 @@ class DiscordClient(DiscordGateway):
 
     def get_users(self):
         return {
-            x: y.user for guild in self.get_guilds().values()
+            x: y.user
+            for guild in self.get_guilds().values()
             for x, y in guild.get_members().items()
             if guild.get_members() is not None
         }
@@ -104,8 +114,9 @@ class DiscordClient(DiscordGateway):
     def get_user(self, id_):
         return self.get_users().get(id_)
 
-    def update_presence(self, activities=None, status=None, afk=False,
-                        since=None):
+    def update_presence(
+        self, activities=None, status=None, afk=False, since=None
+    ):
         """Updates the presence- This includes its status and activities.
 
         You can use this method to change the bot's status, as well as its
@@ -135,27 +146,35 @@ class DiscordClient(DiscordGateway):
             activities=self._activities,
             status=status,
             afk=afk,
-            since=since
+            since=since,
         )
 
-        data['d'] = clear_postdata(data['d'])
+        data["d"] = clear_postdata(data["d"])
 
         self.send(data)
 
-    def update_voice_state(self, guild_id, channel_id=None, mute=False,
-                           deaf=False):
+    def update_voice_state(
+        self, guild_id, channel_id=None, mute=False, deaf=False
+    ):
         data = self._get_payload(
             self.VOICE_STATE_UPDATE,
             guild_id=guild_id,
             channel_id=channel_id,
             self_mute=mute,
-            self_deaf=deaf
+            self_deaf=deaf,
         )
 
         self.send(data)
 
-    def request_guild_member(self, guild_id, query="", limit=0,
-                             presences=EMPTY, user_ids=EMPTY, nonce=EMPTY):
+    def request_guild_member(
+        self,
+        guild_id,
+        query="",
+        limit=0,
+        presences=EMPTY,
+        user_ids=EMPTY,
+        nonce=EMPTY,
+    ):
         data = self._get_payload(
             self.REQUEST_GUILD_MEMBERS,
             guild_id=guild_id,
@@ -163,10 +182,10 @@ class DiscordClient(DiscordGateway):
             limit=limit,
             presences=presences,
             user_ids=user_ids,
-            nonce=nonce
+            nonce=nonce,
         )
 
-        data['d'] = clear_postdata(data['d'])
+        data["d"] = clear_postdata(data["d"])
 
         self.send(data)
 
@@ -190,18 +209,29 @@ class DiscordClient(DiscordGateway):
         channel_obj = self.send_request("GET", f"/channels/{id_}")
         return _get_channel(self, channel_obj)
 
-    def create_guild(self, name, icon=None, verification_level=EMPTY,
-                     default_message_notifications=EMPTY,
-                     explicit_content_filter=EMPTY, roles=EMPTY,
-                     channels=EMPTY, afk_channel_id=EMPTY, afk_timeout=EMPTY,
-                     system_channel_id=EMPTY, system_channel_flags=EMPTY):
+    def create_guild(
+        self,
+        name,
+        icon=None,
+        verification_level=EMPTY,
+        default_message_notifications=EMPTY,
+        explicit_content_filter=EMPTY,
+        roles=EMPTY,
+        channels=EMPTY,
+        afk_channel_id=EMPTY,
+        afk_timeout=EMPTY,
+        system_channel_id=EMPTY,
+        system_channel_flags=EMPTY,
+    ):
         if icon is not None:
             if not isinstance(icon, File):
                 raise ValueError(f"icon should be File, not {type(icon)}")
             icon = base64.b64encode(icon.read()).decode()
 
-        channels = [channel._json if isinstance(channel, Channel) else channel
-                    for channel in channels]
+        channels = [
+            channel._json if isinstance(channel, Channel) else channel
+            for channel in channels
+        ]
 
         postdata = {
             "name": name,
@@ -219,9 +249,7 @@ class DiscordClient(DiscordGateway):
 
         postdata = clear_postdata(postdata)
 
-        guild = self.send_request(
-            "POST", "/guilds", postdata
-        )
+        guild = self.send_request("POST", "/guilds", postdata)
 
         return Guild(self, guild)
 
@@ -239,14 +267,20 @@ class DiscordClient(DiscordGateway):
         return Guild(self, guild)
 
     def get_guild_preview(self, id_):
-        preview = self.send_request(
-            "GET", f"/guilds/{id_}/preview"
-        )
+        preview = self.send_request("GET", f"/guilds/{id_}/preview")
 
         return preview
 
-    def send_request(self, method, route, data=None, expected_code=None,
-                     raise_at_exc=True, baseurl=API_URL, headers=None):
+    def send_request(
+        self,
+        method,
+        route,
+        data=None,
+        expected_code=None,
+        raise_at_exc=True,
+        baseurl=API_URL,
+        headers=None,
+    ):
         """Sends HTTP API request.
 
         It sends the request, parses result data, checks ratelimit, and returns
@@ -286,7 +320,7 @@ class DiscordClient(DiscordGateway):
             baseurl = API_URL
 
         self.ratelimit_handler.check(route)
-        
+
         res, exc = self._send_request(method, route, data, baseurl, headers)
 
         try:
@@ -301,36 +335,46 @@ class DiscordClient(DiscordGateway):
             try:
                 resdata = json.loads(rawdata)
             except JSONDecodeError:
-                logger.error("Failed to decode JSON from the gateway. "
-                             f"Content: {rawdata}")
+                logger.error(
+                    "Failed to decode JSON from the gateway. "
+                    f"Content: {rawdata}"
+                )
                 return None
-        
+
         logger.debug(f"Received from HTTP API: {resdata}")
         # logger.debug(f"HTTP Header: {res.headers}")
 
         if code == 429:
-            limit = time.time() + resdata['retry_after']
-            _route = "global" if resdata['global'] else route
+            limit = time.time() + resdata["retry_after"]
+            _route = "global" if resdata["global"] else route
             self.ratelimit_handler.set_limit(_route, limit)
 
-            return self.send_request(method, route, data, expected_code,
-                                     raise_at_exc, baseurl, headers)
+            return self.send_request(
+                method,
+                route,
+                data,
+                expected_code,
+                raise_at_exc,
+                baseurl,
+                headers,
+            )
 
         bucket = res.headers.get("X-RateLimit-Bucket")
-        if bucket is not None and\
-                not self.ratelimit_handler.is_in_bucket_map(route):
+        if bucket is not None and not self.ratelimit_handler.is_in_bucket_map(
+            route
+        ):
             self.ratelimit_handler.register_bucket(route, bucket)
 
-        if raise_at_exc and \
-                ((expected_code is not None and code != expected_code) or exc):
-            raise DiscordHTTPError(
-                resdata['code'], resdata['message'], res
-            )
+        if raise_at_exc and (
+            (expected_code is not None and code != expected_code) or exc
+        ):
+            raise DiscordHTTPError(resdata["code"], resdata["message"], res)
 
         return resdata
 
-    def _send_request(self, method, route, data=None, baseurl=API_URL,
-                      headers=None):
+    def _send_request(
+        self, method, route, data=None, baseurl=API_URL, headers=None
+    ):
         """Returns Response object directly.
 
         Args:

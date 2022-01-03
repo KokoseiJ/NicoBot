@@ -22,8 +22,8 @@ __all__ = ["DiscordError", "DiscordHTTPError"]
 
 
 class DiscordError(Exception):
-    '''Base Exception for Discord Errors.
-    '''
+    """Base Exception for Discord Errors."""
+
     pass
 
 
@@ -38,6 +38,7 @@ class DiscordHTTPError(DiscordError):
         response:
             http.cilent.HTTPResponse object containing the error
     """
+
     def __init__(self, code, message, response):
         super(DiscordHTTPError, self).__init__(self, code, message, response)
         self.code = code

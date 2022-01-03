@@ -25,13 +25,38 @@ from .dictobject import DictObject
 
 __all__ = ["Message"]
 
-KEYLIST = ["id", "channel_id", "guild_id", "author", "member", "content",
-           "timestamp", "edited_timestamp", "tts", "mention_everyone",
-           "mentions", "mention_roles", "mention_channels", "attachments",
-           "embeds", "reactions", "nonce", "pinned", "webhook_id", "type",
-           "activity", "application", "application_id", "message_reference",
-           "flags", "stickers", "referenced_message", "interaction", "thread",
-           "components"]
+KEYLIST = [
+    "id",
+    "channel_id",
+    "guild_id",
+    "author",
+    "member",
+    "content",
+    "timestamp",
+    "edited_timestamp",
+    "tts",
+    "mention_everyone",
+    "mentions",
+    "mention_roles",
+    "mention_channels",
+    "attachments",
+    "embeds",
+    "reactions",
+    "nonce",
+    "pinned",
+    "webhook_id",
+    "type",
+    "activity",
+    "application",
+    "application_id",
+    "message_reference",
+    "flags",
+    "stickers",
+    "referenced_message",
+    "interaction",
+    "thread",
+    "components",
+]
 
 
 class Message(DictObject):
@@ -77,10 +102,26 @@ class Message(DictObject):
     def delete_all_reactions_for_emoji(self, emoji, urlencoded=False):
         self.channel.delete_all_reactions_for_emoji(self, emoji, urlencoded)
 
-    def edit(self, content=EMPTY, file=None, embeds=EMPTY, flags=EMPTY,
-             allowed_mentions=EMPTY, attachments=EMPTY, components=EMPTY):
-        self.channel.edit_message(self, content, file, embeds, flags,
-                                  allowed_mentions, attachments, components)
+    def edit(
+        self,
+        content=EMPTY,
+        file=None,
+        embeds=EMPTY,
+        flags=EMPTY,
+        allowed_mentions=EMPTY,
+        attachments=EMPTY,
+        components=EMPTY,
+    ):
+        self.channel.edit_message(
+            self,
+            content,
+            file,
+            embeds,
+            flags,
+            allowed_mentions,
+            attachments,
+            components,
+        )
 
     def delete(self):
         self.channel.delete_message(self)

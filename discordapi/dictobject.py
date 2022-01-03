@@ -28,17 +28,18 @@ class DictObject:
         _json:
             The original dict object in which the class was constructed from.
     """
+
     def __init__(self, data, keylist=[]):
         """Constructs the class from the data.
 
         This automatically sets the attributes from the dict. additionally,
         keys in keylist will be set as an attribute with the value of None
-        when the attribute doesn't exist- this is to ensure that it won't 
+        when the attribute doesn't exist- this is to ensure that it won't
         overwrite the existing keys when running __init__ in already
         initialized instance.
         """
         self._json = data
-        
+
         for key in keylist:
             value = data.get(key)
             if value is not None:
@@ -60,8 +61,10 @@ class DictObject:
         return self.__str__()
 
     def __eq__(self, other):
-        if getattr(self, "id", None) is not None and\
-                getattr(other, "id", None) is not None:
+        if (
+            getattr(self, "id", None) is not None
+            and getattr(other, "id", None) is not None
+        ):
             return self.id == other.id
         else:
             return False

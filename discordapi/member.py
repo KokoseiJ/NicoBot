@@ -24,8 +24,17 @@ from .dictobject import DictObject
 
 __all__ = ["Member"]
 
-KEYLIST = ["user", "nick", "roles", "joined_at", "premium_since",
-           "deaf", "mute", "pending", "permissions"]
+KEYLIST = [
+    "user",
+    "nick",
+    "roles",
+    "joined_at",
+    "premium_since",
+    "deaf",
+    "mute",
+    "pending",
+    "permissions",
+]
 
 
 class Member(DictObject):
@@ -37,8 +46,9 @@ class Member(DictObject):
         if self.user is not None:
             self.user = User(client, self.user)
 
-    def modify(self, nick=EMPTY, roles=EMPTY, mute=EMPTY, deaf=EMPTY,
-               channel_id=EMPTY):
+    def modify(
+        self, nick=EMPTY, roles=EMPTY, mute=EMPTY, deaf=EMPTY, channel_id=EMPTY
+    ):
         self.guild.modify_member(self, nick, roles, mute, deaf, channel_id)
 
     def add_role(self, role):

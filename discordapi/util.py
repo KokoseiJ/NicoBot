@@ -51,6 +51,7 @@ class SelectableEvent:
         _write_fd:
             same as _read_fd.
     """
+
     def __init__(self):
         """
         Opens the pipe.
@@ -99,11 +100,8 @@ class SelectableEvent:
 
 
 def clear_postdata(data):
-    """checks for postdata and remove the key if the value is EMPTY.
-    """
-    return {
-        key: value for key, value in data.items() if value is not EMPTY
-    }
+    """checks for postdata and remove the key if the value is EMPTY."""
+    return {key: value for key, value in data.items() if value is not EMPTY}
 
 
 def filter_dict(data, keys):
@@ -117,20 +115,20 @@ def get_formdata(data, boundary_prefix=None):
     randhex = os.urandom(8).hex()
     boundary = f"{boundary_prefix}{randhex}"
 
-    content_type = f"multipart/form-data;boundary=\"{boundary}\""
+    content_type = f'multipart/form-data;boundary="{boundary}"'
 
     body = bytes()
 
     for key, value in data.items():
         body += f"--{boundary}\n".encode()
-        body += f"Content-Disposition: form-data; name=\"{key}\"".encode()
+        body += f'Content-Disposition: form-data; name="{key}"'.encode()
 
         if isinstance(value, dict):
             value = json.dumps(value).encode()
         elif isinstance(value, File):
             name = value.get_name()
             value = value.read()
-            body += f"; filename=\"{name}\"\n".encode()
+            body += f'; filename="{name}"\n'.encode()
             body += b"Content-Type: application/octet-stream"
 
         body += b"\n\n"

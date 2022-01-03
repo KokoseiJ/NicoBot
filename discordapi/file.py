@@ -43,6 +43,7 @@ class File:
             io object to the actual file content. This could be None if .read()
             method wasn't called yet- in which case path should not be None.
     """
+
     def __init__(self, obj=None):
         """Creates File object.
 
@@ -78,16 +79,19 @@ class File:
         if isinstance(obj, (list, tuple)):
             try:
                 if len(obj) != 2:
-                    raise ValueError("Length of the non-str argument "
-                                     "should be 2.")
+                    raise ValueError(
+                        "Length of the non-str argument " "should be 2."
+                    )
             except TypeError:
-                raise ValueError("Argument should be str or "
-                                 "tuple/list with 2 items.")
+                raise ValueError(
+                    "Argument should be str or " "tuple/list with 2 items."
+                )
             name, obj = obj
 
             if not isinstance(name, str):
-                raise ValueError("Type of filename should be str, "
-                                 f"not '{type(name)}'")
+                raise ValueError(
+                    "Type of filename should be str, " f"not '{type(name)}'"
+                )
 
         if isinstance(obj, str):
             self._from_path(obj, name)
@@ -95,7 +99,7 @@ class File:
 
         elif name is None:
             name = "file"
-        
+
         if isinstance(obj, BytesIO):
             self._from_io(name, obj)
 
@@ -176,8 +180,10 @@ class File:
                 Raised if obj was str and given path was a dir.
         """
         if not isinstance(byteobj, (bytes, bytearray)):
-            raise ValueError("Type of byteobj should be bytes or bytesarray, "
-                             f"not {type(byteobj)}")
+            raise ValueError(
+                "Type of byteobj should be bytes or bytesarray, "
+                f"not {type(byteobj)}"
+            )
         elif not isinstance(name, str):
             raise ValueError(f"Type of name should be str, not {type(name)}")
 

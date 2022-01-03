@@ -22,14 +22,26 @@ from .dictobject import DictObject
 
 __all__ = ["Embed"]
 
-KEYLIST = ["title", "description", "url", "timestamp", "color", "footer",
-           "image", "thumbnail", "video", "provider", "author", "fields",
-           "type"]
+KEYLIST = [
+    "title",
+    "description",
+    "url",
+    "timestamp",
+    "color",
+    "footer",
+    "image",
+    "thumbnail",
+    "video",
+    "provider",
+    "author",
+    "fields",
+    "type",
+]
 
 
 class Embed(DictObject):
     def __init__(self, *args, **kwargs):
-        kwargs.update(dict(zip(KEYLIST[:len(args)], args[:len(KEYLIST)])))
+        kwargs.update(dict(zip(KEYLIST[: len(args)], args[: len(KEYLIST)])))
         super().__init__(kwargs, KEYLIST)
 
         if self.fields is not None and not isinstance(self.fields, list):
@@ -44,18 +56,12 @@ class Embed(DictObject):
     def add_field(self, name, value, inline=False):
         if self.fields is None:
             self.fields = []
-        self.fields.append({
-            "name": name,
-            "value": value,
-            "inline": inline
-        })
+        self.fields.append({"name": name, "value": value, "inline": inline})
 
         self._json.update({"fields": self.fields})
 
     def set_footer(self, text, icon=None):
-        self.footer = {
-            "text": text
-        }
+        self.footer = {"text": text}
 
         if icon is not None:
             self.footer.update({"icon_url": icon})
@@ -63,9 +69,7 @@ class Embed(DictObject):
         self._json.update({"footer": self.footer})
 
     def set_author(self, name, url=None, icon=None):
-        self.author = {
-            "name": name
-        }
+        self.author = {"name": name}
 
         if url is not None:
             self.author.update({"url": url})

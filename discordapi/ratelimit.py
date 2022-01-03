@@ -41,6 +41,7 @@ class RateLimitHandler:
         limit_list:
             dict to store current rate limits in effect.
     """
+
     def __init__(self):
         self.bucket_map = {}
         self.limit_list = {}
@@ -80,7 +81,7 @@ class RateLimitHandler:
             route = f"/{route}"
         if route in self.bucket_map:
             route = self.bucket_map[route]
-        
+
         limit = self.limit_list.get(route)
         if limit:
             self._wait(limit)
@@ -91,7 +92,7 @@ class RateLimitHandler:
             self._wait(global_limit)
             self._reset_limit("global", global_limit)
 
-        return False  
+        return False
 
     def _wait(self, limit):
         now = time.time()

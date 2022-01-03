@@ -28,8 +28,13 @@ import subprocess
 from threading import Event, Lock
 from subprocess import PIPE, DEVNULL
 
-__all__ = ["AudioSource", "FFMPEGAudioSource", "AudioPlayer",
-           "SingleAudioPlayer", "QueuedAudioPlayer"]
+__all__ = [
+    "AudioSource",
+    "FFMPEGAudioSource",
+    "AudioPlayer",
+    "SingleAudioPlayer",
+    "QueuedAudioPlayer",
+]
 
 SILENCE = b"\xf8\xff\xfe"
 
@@ -39,8 +44,8 @@ logger = logging.getLogger("nicobot")
 
 
 class AudioSource:
-    """AudioSource providing the Opus packet to send to Voice server.
-    """
+    """AudioSource providing the Opus packet to send to Voice server."""
+
     def prepare(self):
         """Preparation to do before the song plays.
 
@@ -80,8 +85,10 @@ class FFMPEGAudioSource(AudioSource):
 
     This class requires ffmpeg to be installed on the system.
     """
-    def __init__(self, filename, inputargs=None, outputargs=None,
-                 ffmpeg="ffmpeg"):
+
+    def __init__(
+        self, filename, inputargs=None, outputargs=None, ffmpeg="ffmpeg"
+    ):
         """Initialize the ffmpeg settings.
 
         Args:
@@ -96,18 +103,21 @@ class FFMPEGAudioSource(AudioSource):
         """
         self.filename = filename
 
-        self.inputargs = [
-            "-vn"
-        ]
+        self.inputargs = ["-vn"]
         if inputargs is not None:
             self.inputargs.extend(inputargs)
 
         self.outputargs = [
-            "-f", "opus",
-            "-ar", "48000",
-            "-ac", "2",
-            "-b:a", "96K",
-            "-filter:a", "volume=0.5"
+            "-f",
+            "opus",
+            "-ar",
+            "48000",
+            "-ac",
+            "2",
+            "-b:a",
+            "96K",
+            "-filter:a",
+            "volume=0.5",
         ]
         if outputargs is not None:
             self.outputargs.extend(outputargs)
@@ -120,8 +130,13 @@ class FFMPEGAudioSource(AudioSource):
 
     def prepare(self):
         """Starts FFMPEG process and initializes Ogg parser."""
-        args = [self.FFMPEG] + self.inputargs + ["-i", self.filename] +\
-            self.outputargs + ["-"]
+        args = (
+            [self.FFMPEG]
+            + self.inputargs
+            + ["-i", self.filename]
+            + self.outputargs
+            + ["-"]
+        )
 
         self.proc = subprocess.Popen(args, stdout=PIPE, stderr=DEVNULL)
         self.parser = OggParser(self.proc.stdout)
@@ -168,6 +183,7 @@ class AudioPlayer(StoppableThread):
             Integer indicating when the transmission has started, to determine
             when to send the next packet.
     """
+
     def __init__(self, client=None, source=None, callback=None):
         """Initializes player.
 
@@ -201,7 +217,7 @@ class AudioPlayer(StoppableThread):
             self.set_source(source)
         if callback is not None:
             self.set_callback(callback)
-        
+
     def set_client(self, client):
         """Sets client. Also checks if client is in the right type."""
         if isinstance(client, DiscordVoiceClient):
@@ -331,6 +347,7 @@ class AudioPlayer(StoppableThread):
 
 class SingleAudioPlayer(AudioPlayer):
     """AudioPlayer that disconnects right after the source finishes."""
+
     def _source_is_finished(self):
         super(SingleAudioPlayer, self)._source_is_finished()
         self.client.disconnect()
@@ -342,6 +359,7 @@ class QueuedAudioPlayer(AudioPlayer):
     player keeps on playing until the queue gets empty. .play method can be
     called again to resume playing.
     """
+
     def __init__(self, client=None, source=None, callback=None):
         super(QueuedAudioPlayer, self).__init__(client, source, callback)
         self.queue = []
@@ -354,7 +372,7 @@ class QueuedAudioPlayer(AudioPlayer):
 
     def add_to_queue(self, source):
         """Adds list of source to the queue. can be used with single object."""
-        if hasattr(source, '__iter__'):
+        if hasattr(source, "__iter__"):
             for src in source:
                 self.set_source(src)
         else:
