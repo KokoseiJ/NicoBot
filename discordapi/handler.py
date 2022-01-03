@@ -80,8 +80,7 @@ class GeneratorEventHandler(EventHandler):
     usages.
 
     Attributes:
-        self.event_queue:
-            Queue object storing events.
+        event_queue: Queue object storing events.
     """
 
     def __init__(self, client=None):
@@ -98,17 +97,19 @@ class GeneratorEventHandler(EventHandler):
         type of the object and obj is the object itself. Same as .handle args.
 
         This generator could be used like this:
-        ```
-        for event, obj in handler.event_generator():
-            print(f"{event}: {obj}")
-        ```
+        
+        .. code-block:: python
+
+            for event, obj in handler.event_generator():
+                print(f"{event}: {obj}")
+
         or, in the interpreter: like this:
-        ```
+
         >>> gen = handler.event_generator()
         >>> event, obj = next(gen)
         >>> print(f"{event}: {obj}")
         >>> # Rinse and repeat
-        ```
+
 
         Additionally, This generator silences KeyboardInterrupt exception.
         """
