@@ -176,8 +176,6 @@ GitHub.sublime-settings
 token
 # Other local files could be used now, you served well :')
 nicotest.opus
-# Docs won't be commited for now
-docs/
 
 coverage-reports/
 xunit-reports/
