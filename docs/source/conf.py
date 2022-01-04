@@ -28,8 +28,6 @@ author = 'KokoseiJ'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'sphinx.ext.autodoc',
-    'sphinx.ext.autosummary',
     'sphinx.ext.napoleon',
     'autoapi.extension'
 ]
@@ -72,11 +70,13 @@ napoleon_preprocess_types = False
 napoleon_type_aliases = None
 napoleon_attr_annotations = True
 
-# -- Autosummary settings ----------------------------------------------------
-
-autosummary_generate = True
-
 # -- AutoAPI settings --------------------------------------------------------
+
+autoapi_options = ['members', 'undoc-members', 'private-members',
+                   'show-inheritance', 'show-module-summary',
+                   'special-members', 'imported-members']
+autoapi_options.extend(['show-inheritance-diagram'])
 
 autoapi_type = 'python'
 autoapi_dirs = ['../../discordapi']
+autoapi_python_class_content = 'both'
