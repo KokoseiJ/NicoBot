@@ -54,7 +54,7 @@ class DiscordInteractionClient(DiscordClient):
             name=name,
         )
 
-        self.command_manager = command_manager(self)
+        self._set_command_manager(command_manager)
 
     def _set_command_manager(self, manager):
         if isinstance(manager, SlashCommandManager):
