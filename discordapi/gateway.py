@@ -371,7 +371,7 @@ class GatewayEventParser:
         del payload["guild_id"]
         obj = Member(self.client, guild, payload)
 
-        guild.members.append(obj)
+        guild.members.update({obj.id: obj})
 
         return obj
 
