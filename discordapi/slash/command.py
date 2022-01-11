@@ -80,128 +80,102 @@ def get_func_args(func):
 
 
 class Option:
-    def __init__(self, type_, name, desc, choices, cmd, subcmds, required):
+    def __init__(self, type_, name, desc, choices, required, opts=None):
         self.type = type_
         self.name = name
         self.desc = desc
         self.choices = choices
-        self.cmd = cmd
-        self.subcmds = subcmds
         self.required = required
-
-        if subcmds is not None:
-            for cmd in subcmds:
-                if not isinstance(cmd, SlashCommand):
-                    raise ValueError(
-                        "Subcommand should be SlashCommand, "
-                        f"not '{type(cmd)}'"
-                    )
-            self.subcmds = {cmd.name: cmd for cmd in subcmds}
+        self.options = opts
 
     def _json(self):
         data = {
             "type": self.type,
             "name": self.name,
             "description": self.desc,
-            "required": self.required,
         }
 
         if self.choices is not None:
             data.update({"choices": self.choices})
-
-        if self.cmd is not None:
-            options = self.cmd.options
-            data.update({"options": options})
-
-        elif self.subcmds is not None:
-            options = [cmd._json() for cmd in self.subcmds.values()]
-            data.update({"options": options})
+        if self.required is not None:
+            data.update({"required": self.required})
+        if self.options is not None:
+            data.update({"options": self.options})
 
         return data
 
-
-class SubCommand(Option):
-    def __init__(self, cmd, name=None, desc=None, required=False):
-        super().__init__(SUB_COMMAND, name, desc, None, cmd, None, required)
-
-
-class SubCommandGroup(Option):
-    def __init__(self, name, desc, subcmds, required=False):
-        super().__init__(
-            SUB_COMMAND_GROUP, name, desc, None, None, subcmds, required
-        )
-
-    def execute(self, ctx, options, manager):
-        if options:
-            options = options[0]
+    @classmethod
+    def from_command(cls, cmd):
+        if isinstance(cmd, SubCommand):
+            type_ = SUB_COMMAND_GROUP
         else:
-            options = {}
-        handler = self.subcmds[options.get("name")]
-        if handler is not None:
-            return handler.execute(ctx, options.get("options"), manager)
+            type_ = SUB_COMMAND
+        options = [option._json() for option in cmd.options.values()]
+        return cls(type_, cmd.name, cmd.desc, None, None, options)
 
 
 class String(Option):
     def __init__(self, name, desc, choices=None, required=False):
-        super().__init__(STRING, name, desc, choices, None, None, required)
+        super().__init__(STRING, name, desc, choices, required)
 
 
 class Integer(Option):
     def __init__(self, name, desc, choices=None, required=False):
-        super().__init__(INTEGER, name, desc, choices, None, None, required)
+        super().__init__(INTEGER, name, desc, choices, required)
 
 
 class Boolean(Option):
     def __init__(self, name, desc, required=False):
-        super().__init__(BOOLEAN, name, desc, None, None, None, required)
+        super().__init__(BOOLEAN, name, desc, None, required)
 
 
 class UserOption(Option):
     def __init__(self, name, desc, required=False):
-        super().__init__(USER, name, desc, None, None, None, required)
+        super().__init__(USER, name, desc, None, required)
 
 
 class ChannelOption(Option):
     def __init__(self, name, desc, required=False):
-        super().__init__(CHANNEL, name, desc, None, None, None, required)
+        super().__init__(CHANNEL, name, desc, None, required)
 
 
 class RoleOption(Option):
     def __init__(self, name, desc, required=False):
-        super().__init__(ROLE, name, desc, None, None, None, required)
+        super().__init__(ROLE, name, desc, None, required)
 
 
 class Mentionable(Option):
     def __init__(self, name, desc, required=False):
-        super().__init__(MENTIONABLE, name, desc, None, None, None, required)
+        super().__init__(MENTIONABLE, name, desc, None, required)
 
 
 class Number(Option):
     def __init__(self, name, desc, choices=None, required=False):
-        super().__init__(NUMBER, name, desc, choices, None, None, required)
+        super().__init__(NUMBER, name, desc, choices, required)
 
 
 class SlashCommand:
-    def __init__(self, name, desc, func, options, default_permission):
+    def __init__(self, name, desc, func, options, defaultperm, argcheck=True):
         self.name = name
         self.desc = desc
         self.func = func
+        self.default_permission = defaultperm
         self.options = {option.name: option for option in options}
-        self.default_permission = default_permission
 
         func_args = get_func_args(func)
 
-        for option in self.options.values():
-            if not isinstance(option, Option):
-                raise ValueError(
-                    "option should be Option, " f"not '{type(option)}'"
-                )
+        if argcheck:
+            for option in self.options.values():
+                if not isinstance(option, Option):
+                    raise ValueError(
+                        "option should be Option, " f"not '{type(option)}'"
+                    )
 
-            if option.name not in func_args:
-                raise ValueError(
-                    f"Argument '{option.name}' not present in "
-                    f"function '{func.__code__.co_name}'"
-                )
+                if option.name not in func_args:
+                    raise ValueError(
+                        f"Argument '{option.name}' not present in "
+                        f"function '{func.__code__.co_name}'"
+                    )
 
     @classmethod
     def create(cls, desc, options, default_permission=True):
@@ -223,14 +197,11 @@ class SlashCommand:
             options = []
 
         for option in options:
-            type_ = option.get("type")
             name = option.get("name")
-            value = option.get("value")
-            opts = option.get("options")
-            if type_ == SUB_COMMAND:
-                value = self.options[name].cmd.execute(ctx, opts, manager)
-            elif type_ == SUB_COMMAND_GROUP:
-                value = self.options[name].execute(ctx, opts, manager)
+            value = option.get("options")
+            
+            if value is None:
+                value = option.get("value")
 
             kwargs[name] = value
 
@@ -252,6 +223,24 @@ class SlashCommand:
         }
 
         return data
+
+
+class SubCommand(SlashCommand):
+    def __init__(self, name, desc, *commands, default_permission=True):
+        options = [Option.from_command(cmd) for cmd in commands]
+        super().__init__(
+            name, desc, self.run, options, default_permission, False)
+
+        self.commands = {command.name: command for command in commands}
+
+    def run(self, ctx, **kwargs):
+        name, options = [(x, y) for x, y in kwargs.items() if y is not None][0]
+        command = self.commands[name]
+        return command.execute(ctx, options, ctx.manager)
+
+
+class SubCommandGroup(SubCommand):
+    pass
 
 
 class SlashCommandManager:

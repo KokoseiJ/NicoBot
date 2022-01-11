@@ -1,5 +1,5 @@
 from discordapi.const import LIB_NAME
-from discordapi.slash import SlashCommand, String, Integer, DiscordInteractionClient, SubCommandGroup
+from discordapi.slash import SlashCommand, String, Integer, DiscordInteractionClient, SubCommand, SubCommandGroup
 import sys
 import time
 import json
@@ -16,7 +16,7 @@ if __name__ != "__main__":
     logger.setLevel("DEBUG")
     handler.setLevel("DEBUG")
 else:
-    logger.setLevel("DEBUG")
+    logger.setLevel("INFO")
     handler.setLevel("DEBUG")
 
 
@@ -55,11 +55,9 @@ def execute(ctx, cmd):
         return tbtxt
 
 
-@SlashCommand.create("testing subcommand group", (
-    SubCommandGroup("meow", "lolol", (testcmd, update)),
-))
-def testsubgroup(ctx, meow):
-    return meow
+meow = SubCommand("meow", "meowmeow", update, testcmd)
+
+testsubgroup = SubCommandGroup("testsubgroup", "new subgroup test", meow, execute)
 
 
 @SlashCommand.create("Testing yield/edit", (
@@ -69,6 +67,9 @@ def testyield(ctx, interval):
     yield f"I will respond again after {interval} seconds..."
     time.sleep(interval)
     yield "... and Here I am!"
+
+
+print(json.dumps(testsubgroup._json(), indent=4))
 
 
 print(type(testcmd))
