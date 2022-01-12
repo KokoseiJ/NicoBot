@@ -22,7 +22,6 @@ from .const import LIB_NAME
 
 import time
 import logging
-from threading import Lock
 
 __all__ = ["RateLimitHandler"]
 
@@ -30,77 +29,64 @@ logger = logging.getLogger(LIB_NAME)
 
 
 class RateLimitHandler:
-    """Handler to handle Rate limits.
-
-    it works by storing already fired 429 response- So encountering 429 is not
-    avoidable.
-
-    Attributes:
-        bucket_map:
-            dict to match routes with corresponding bucket value.
-        limit_list:
-            dict to store current rate limits in effect.
-    """
-
     def __init__(self):
         self.bucket_map = {}
         self.limit_list = {}
-        self.bucket_map_lock = Lock()
-        self.limit_list_lock = Lock()
-
-    def is_in_bucket_map(self, route):
-        """Checks if route has been registered to bucket."""
-        return route in self.bucket_map
+        self.global_limit = None
+        # Locks are removed since most of the major python implements have
+        # thread-safe dict implementation.
 
     def register_bucket(self, route, bucket):
-        """Registers route to bucket value."""
-        with self.bucket_map_lock:
-            self.bucket_map[route] = bucket
+        route = self.uniformize_route(route)
+        self.bucket_map.update({route, bucket})
 
-        with self.limit_list_lock:
-            limit = self.limit_list.get(route)
-            if limit is not None:
-                del self.limit_list[route]
-                self.limit_list[bucket] = limit
+    def uniformize_route(self, route):
+        return route if route.startswith("/") else f"/{route}"
 
-        logger.info(f"Registered {bucket} to {route}")
-
-    def set_limit(self, route, limit):
-        """Sets 429 Rate Limit in action."""
+    def get_route(self, route):
+        route = self.uniformize_route(route)
         if route in self.bucket_map:
-            route = self.bucket_map[route]
+            return self.bucket_map.get(route)
 
-        logger.warning(f"You are being rate limited in {route} until {limit}!")
+    def update(self, route, data):
+        bucket = data.get("X-RateLimit-Bucket")
 
-        with self.limit_list_lock:
-            self.limit_list[route] = limit
+        if bucket is not None:
+            self.register_bucket(route, bucket)
+
+        self.limit_list.update(bucket, data)
+
+        if data.get("X-RateLimit-Global"):
+            self.global_limit = data.get("X-RateLimit-Reset")
+            logger.warning(
+                "You're globally rate limited until %d!", self.global_limit)
+
+    def check_global(self):
+        if self.global_limit:
+            self.wait_until(self.global_limit)
+            self.global_limit = None
+
+    def get_data(self, route):
+        data = self.limit_list.get(route)
+
+        if time.time() > data.get("X-RateLimit-Reset"):
+            self.limit_list.update({route: None})
+            return None
+
+        return data
 
     def check(self, route):
-        """Checks if limit is ongoing, and wait until it no longer is."""
-        if route[0] != "/":
-            route = f"/{route}"
-        if route in self.bucket_map:
-            route = self.bucket_map[route]
+        self.check_global()
 
-        limit = self.limit_list.get(route)
-        if limit:
-            self._wait(limit)
-            self._reset_limit(route, limit)
+        route = self.get_route(route)
+        data = self.get_data(route)
 
-        global_limit = self.limit_list.get("global")
-        if global_limit:
-            self._wait(global_limit)
-            self._reset_limit("global", global_limit)
+        if data and data.get("X-RateLimit-Remaining") == 0:
+            reset_time = data.get("X-RateLimit-Reset")
+            logger.warning(
+                "You're rate limited in %s until %d!", route, reset_time)
+            self.wait_until(reset_time)
+            self.limit_list.update({route: None})
 
-        return False
-
-    def _wait(self, limit):
-        now = time.time()
-        if now < limit:
-            time.sleep(limit - now)
-
-    def _reset_limit(self, route, expected_value):
-        """Checks if new limit hasn't been issued, then deletes limit"""
-        with self.limit_list_lock:
-            if self.limit_list.get(route) == expected_value:
-                del self.limit_list[route]
+    def wait_until(self, until):
+        time.sleep(max(until - time.time(), 0))

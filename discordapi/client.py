@@ -342,29 +342,14 @@ class DiscordClient(DiscordGateway):
                 return None
 
         logger.debug(f"Received from HTTP API: {resdata}")
-        # logger.debug(f"HTTP Header: {res.headers}")
+        
+        rl_headers = {key: value for key, value in res.headers.items()
+                      if key.startswith("X-RateLimit")}
+
+        self.ratelimit_handler.update(route, rl_headers)
 
         if code == 429:
-            limit = time.time() + resdata["retry_after"]
-            _route = "global" if resdata["global"] else route
-            self.ratelimit_handler.set_limit(_route, limit)
-
-            return self.send_request(
-                method,
-                route,
-                data,
-                expected_code,
-                raise_at_exc,
-                baseurl,
-                headers,
-            )
-
-        bucket = res.headers.get("X-RateLimit-Bucket")
-        if bucket is not None and not self.ratelimit_handler.is_in_bucket_map(
-            route
-        ):
-            self.ratelimit_handler.register_bucket(route, bucket)
-
+            logging.error("Rate Limit encountered at %s !", route)
         if raise_at_exc and (
             (expected_code is not None and code != expected_code) or exc
         ):
