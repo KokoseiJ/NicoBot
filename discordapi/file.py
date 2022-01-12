@@ -80,11 +80,11 @@ class File:
             try:
                 if len(obj) != 2:
                     raise ValueError(
-                        "Length of the non-str argument " "should be 2."
+                        "Length of the non-str argument should be 2."
                     )
             except TypeError:
                 raise ValueError(
-                    "Argument should be str or " "tuple/list with 2 items."
+                    "Argument should be str or tuple/list with 2 items."
                 )
             name, obj = obj
 

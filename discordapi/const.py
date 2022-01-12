@@ -27,7 +27,7 @@ try:
     path = os.path.join(path, data)
     data = open(path).read()
     commit = data[:7]
-except (FileNotFoundError, IndexError, Exception):
+except Exception:
     data = None
     path = None
     commit = None
