@@ -344,13 +344,13 @@ class DiscordClient(DiscordGateway):
         logger.debug(f"Received from HTTP API: {resdata}")
         
         rl_headers = {key: value for key, value in res.headers.items()
-                      if key.startswith("X-RateLimit")}
+                      if key.startswith("x-ratelimit")}
 
         self.ratelimit_handler.update(route, rl_headers)
 
         if code == 429:
-            logging.error("Rate Limit encountered at %s !", route)
-        if raise_at_exc and (
+            logger.error("Rate Limit encountered at %s !", route)
+        elif raise_at_exc and (
             (expected_code is not None and code != expected_code) or exc
         ):
             raise DiscordHTTPError(resdata["code"], resdata["message"], res)

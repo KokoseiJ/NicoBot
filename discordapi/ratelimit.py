@@ -38,7 +38,7 @@ class RateLimitHandler:
 
     def register_bucket(self, route, bucket):
         route = self.uniformize_route(route)
-        self.bucket_map.update({route, bucket})
+        self.bucket_map.update({route: bucket})
 
     def uniformize_route(self, route):
         return route if route.startswith("/") else f"/{route}"
@@ -49,15 +49,15 @@ class RateLimitHandler:
             return self.bucket_map.get(route)
 
     def update(self, route, data):
-        bucket = data.get("X-RateLimit-Bucket")
+        bucket = data.get("x-ratelimit-bucket")
 
         if bucket is not None:
             self.register_bucket(route, bucket)
 
-        self.limit_list.update(bucket, data)
+        self.limit_list.update({bucket: data})
 
-        if data.get("X-RateLimit-Global"):
-            self.global_limit = data.get("X-RateLimit-Reset")
+        if data.get("x-ratelimit-global"):
+            self.global_limit = float(data.get("x-ratelimit-reset"))
             logger.warning(
                 "You're globally rate limited until %d!", self.global_limit)
 
@@ -69,7 +69,7 @@ class RateLimitHandler:
     def get_data(self, route):
         data = self.limit_list.get(route)
 
-        if time.time() > data.get("X-RateLimit-Reset"):
+        if data and time.time() > float(data.get("x-ratelimit-reset")):
             self.limit_list.update({route: None})
             return None
 
@@ -81,10 +81,10 @@ class RateLimitHandler:
         route = self.get_route(route)
         data = self.get_data(route)
 
-        if data and data.get("X-RateLimit-Remaining") == 0:
-            reset_time = data.get("X-RateLimit-Reset")
+        if data and data.get("x-ratelimit-remaining") == "0":
+            reset_time = float(data.get("x-ratelimit-reset"))
             logger.warning(
-                "You're rate limited in %s until %d!", route, reset_time)
+                "You're rate limited in %s until %f!", route, reset_time)
             self.wait_until(reset_time)
             self.limit_list.update({route: None})
 

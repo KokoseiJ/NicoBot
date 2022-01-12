@@ -100,7 +100,7 @@ class EmbedCommandManager(CommandManager):
             embed = Embed(e.title, e.message, color=0xFF0000)
             yield embed
         except Exception as e:
-            content = type(e).__name__ + ": " + ",".join(e.args)
+            content = type(e).__name__
             embed = Embed(
                 "An error has been occured!",
                 f"```{content}```",
