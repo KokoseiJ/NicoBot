@@ -19,7 +19,6 @@
 #
 
 import os.path
-from types import SimpleNamespace
 
 try:
     path = os.path.dirname(os.path.abspath(__file__))
@@ -58,4 +57,4 @@ class EmptyClass:
 
 EMPTY = EmptyClass()
 
-del os, path, data, commit
+del os, path, data, commit, EmptyClass
