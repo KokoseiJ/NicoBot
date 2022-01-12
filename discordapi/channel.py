@@ -140,7 +140,7 @@ def get_channel(client, data, guild=None):
     elif _type == GROUP_DM:
         return GroupDMChannel(client, data)
     else:
-        logger.debug(f"Unknown Channel type {_type}")
+        logger.info(f"Unknown Channel type {_type}")
         return Channel(client, data)
 
 
