@@ -191,7 +191,7 @@ class DiscordGateway(WebSocketThread):
 
             self.heartbeat_ack_received.clear()
 
-        logger.debug("Terminating heartbeat thread...")
+        logger.info("Terminating heartbeat thread...")
 
     def send_heartbeat(self):
         data = self._get_payload(
@@ -207,7 +207,7 @@ class DiscordGateway(WebSocketThread):
         self.heartbeat_ack_received.set()
 
         if self.stop_flag.is_set():
-            logger.debug("Triggering voice client shutdown...")
+            logger.info("Triggering voice client shutdown...")
             for client in self.voice_clients.values():
                 if client is not None:
                     client.stop()
@@ -272,7 +272,7 @@ class GatewayEventParser:
         name = "on_" + event.lower()
         handler = getattr(self, name, None)
         if handler is None:
-            logger.debug(f"Unimplemented Event {event}")
+            logger.info(f"Unimplemented Event {event}")
             return payload
 
         value = handler(payload)
@@ -425,10 +425,10 @@ class GatewayEventParser:
         logger.debug(data._dict())
 
         if data.is_ready():
-            logger.debug(f"**Voice data for {data.session_id} ready!**")
+            logger.info(f"**Voice data for {data.session_id} ready!**")
             client = self.client.voice_clients.get(guild_id)
             if client is None:
-                logger.debug("**New client**")
+                logger.info("**New client**")
                 client = DiscordVoiceClient(self.client, **data._dict())
                 self.client.voice_clients[guild_id] = client
                 client.start()
@@ -436,7 +436,7 @@ class GatewayEventParser:
                 if voice_event is not None:
                     voice_event.set()
             else:
-                logger.debug("**Updating existing client**")
+                logger.info("**Updating existing client**")
                 client.reapply_info(**data._dict())
 
             del self.voice_data[guild_id]
@@ -449,7 +449,10 @@ class GatewayEventParser:
             else:
                 client = self.client.voice_clients.get(guild_id)
                 if client is not None:
-                    logger.debug("Client disconnected, running .disconnect")
+                    logger.info(
+                        f"Client in {guild_id} disconnected, "
+                        "disconnecting and deleting the client"
+                    )
                     client.disconnect()
                     del self.client.voice_clients[guild_id]
 

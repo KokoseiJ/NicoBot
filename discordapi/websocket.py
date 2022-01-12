@@ -107,7 +107,7 @@ class WebSocketThread(StoppableThread):
         self.run_heartbeat()
 
         while True:
-            logger.debug("Connecting to Gateway...")
+            logger.info("Connecting to Gateway...")
             try:
                 self._sock.connect(self.url)
             except Exception:
@@ -131,28 +131,30 @@ class WebSocketThread(StoppableThread):
             else:
                 time.sleep(random.randint(1, 5))
 
-        logger.debug("Stopping thread...")
+        logger.info("Stopping thread...")
 
         self.heartbeat_thread.stop()
 
         self.ready_to_run.clear()
 
     def run_heartbeat(self):
-        logger.debug("Starting heartbeat thread.")
+        logger.info("Starting heartbeat thread.")
         self.heartbeat_thread = StoppableThread(
             target=self.do_heartbeat, name=f"{self.name}_heartbeat"
         )
         self.heartbeat_thread.start()
 
     def run_init_connection(self):
-        logger.debug("Starting init thread.")
+        logger.info("Starting init thread.")
         self.init_thread = StoppableThread(
             target=self.init_connection, name=f"{self.name}_init"
         )
         self.init_thread.start()
 
     def _event_loop(self):
-        """Receives from _socket, parses it to JSON and passes it to dispatcher."""
+        """
+        Receives from _socket, parses it to JSON and passes it to dispatcher.
+        """
         while self._sock.connected:
             rl, _, _ = select.select(
                 (self._sock.sock,), (), (), SELECT_TIMEOUT
@@ -240,7 +242,7 @@ class WebSocketThread(StoppableThread):
         return self.ready_to_run.is_set()
 
     def reconnect(self, status=1006, *args, **kwargs):
-        logger.debug(f"Attempting reconnect: code {status}")
+        logger.info(f"Attempting reconnect: code {status}")
         self._sock.close(status=1006, *args, **kwargs)
 
     def stop(self, status=1000):

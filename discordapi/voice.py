@@ -95,7 +95,7 @@ class DiscordVoiceClient(WebSocketThread):
             self.server_id = server_id
 
     def reapply_info(self, endpoint, token, session_id, server_id=None):
-        logger.debug("Reconnecting session")
+        logger.info("Applying new information, Reconnecting session...")
         self._set_info(endpoint, token, session_id, server_id)
         self.reconnect(status=1000)
 
@@ -246,7 +246,7 @@ class DiscordVoiceClient(WebSocketThread):
 
             self.heartbeat_ack_received.clear()
 
-        logger.debug("Terminating heartbeat thread...")
+        logger.info("Terminating heartbeat thread...")
 
     def send_heartbeat(self):
         payload = self._get_payload(self.HEARTBEAT, d=time.time())
@@ -282,10 +282,10 @@ class DiscordVoiceClient(WebSocketThread):
 
         elif op == self.SESSION_DESCRIPTION:
             self.secret_key = bytes(payload["secret_key"])
-            logger.debug("Received secret key, generating SecretBox...")
+            logger.info("Received secret key, generating SecretBox...")
             self.secret_box = nacl.secret.SecretBox(self.secret_key)
             self.ready_to_run.set()
-            logger.debug("VOICE READY!!!")
+            logger.info("VOICE READY!!!")
 
         elif op == self.HEARTBEAT_ACK:
             self.heartbeat_ack_received.set()
