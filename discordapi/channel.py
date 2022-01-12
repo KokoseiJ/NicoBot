@@ -95,7 +95,38 @@ GuildVoiceChannel class.
 
 
 def get_channel(client, data, guild=None):
-    _type = data["type"]
+    """
+    Returns a channel object that has a corresponding type with given data.
+
+    Type is determined from 'type' key. If the object came from the proper
+    source, its type should be integer. Exception occurs if it doesn't.
+
+    This function only determines the correct subclass to make instance with.
+    Rest of the initialization is done under `__init__` from each classes.
+
+    Args:
+        client (DiscordClient):
+            DiscordClient object which a generated object will use.
+        data (dict):
+            Dictionary containing channel object returned from Discord.
+        guild (Guild):
+            Guild object for generated object to use. Can be ommited if the
+            channel is not included in a guild.
+
+    Returns:
+        Channel: instance of Channel with corresponding type.
+
+    Raises:
+        ValueError:
+            Raised If the key 'type' is not included in data or not integer.
+    """
+    _type = data.get("type")
+
+    if not isinstance(_type, int):
+        if _type is None:
+            raise ValueError("Malformed data! type is not present.")
+        raise ValueError(
+            "Malformed data! type is supposed to be int, not %s", type(_type))
 
     if _type == GUILD_TEXT:
         return GuildTextChannel(client, data, guild)
@@ -103,8 +134,8 @@ def get_channel(client, data, guild=None):
         return DMChannel(client, data)
     elif _type == GUILD_VOICE:
         return GuildVoiceChannel(client, data, guild)
+        # Below are used to silence warnings for now
     elif _type == GUILD_CATEGORY:
-        # silence warnings
         return Channel(client, data)
     elif _type == GROUP_DM:
         return GroupDMChannel(client, data)
