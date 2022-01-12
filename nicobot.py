@@ -12,11 +12,13 @@ import logging
 from websocket import enableTrace
 from urllib.parse import urljoin
 from logging import StreamHandler, FileHandler
+from colorlog import ColoredFormatter
+
 
 logger = logging.getLogger("nicobot")
 logger.setLevel("DEBUG")
-fmt = logging.Formatter("[%(levelname)s]|%(asctime)s|%(threadName)s|"
-                        "%(funcName)s|: %(message)s")
+fmt = ColoredFormatter("%(log_color)s[%(levelname)s]|%(asctime)s|"
+                       "%(threadName)s|%(funcName)s|: %(message)s")
 handler = StreamHandler(sys.stdout)
 handler.setFormatter(fmt)
 handler.setLevel("INFO")

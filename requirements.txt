@@ -1,2 +1,8 @@
-PyNaCl==1.4.0
-websocket-client==1.2.3
+websocket-client
+urllib3
+PyNaCl
+
+bs4
+requests
+
+colorlog
