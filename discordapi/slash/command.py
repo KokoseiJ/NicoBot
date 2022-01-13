@@ -20,6 +20,7 @@
 
 from ..file import File
 from ..user import User
+from ..embed import Embed
 from ..member import Member
 from ..message import Message
 from ..const import LIB_NAME, EMPTY
@@ -186,8 +187,8 @@ class SlashCommand:
         return decorator
 
     def execute(self, ctx, options, manager):
-        logger.info(options)
-        logger.info(ctx.token)
+        logger.debug(options)
+        logger.debug(ctx.token)
 
         ctx.manager = manager
 
@@ -292,7 +293,12 @@ class SlashCommandManager:
             if not res:
                 self.delete(ctx)
                 break
-            self.edit(ctx, content=res)
+            if not isinstance(res, dict):
+                if isinstance(res, Embed):
+                    res = {"embeds": [res]}
+                else:
+                    res = {"content": res}
+            self.edit(ctx, **res)
 
     def respond(self, ctx, type_, message=None):
         postdata = {"type": type_}
