@@ -33,15 +33,7 @@ And... well, as of August 2021, Discord.py is no longer being maintained. so... 
 I'm well aware that threading in python has a disadvantage due to Global Interpreter Lock. but since there are bottlenecks in HTTP requests, I don't think bottlenecks caused by GIL will affect the performance largely. of course, I didn't do any tests yet. I'll do it later though, and if it appears to degrade performance, I will migrate to multiprocessing library.
 
 ## Development Roadmap
-- [x] implement Channel HTTP API requests
-
-- [x] implement Guild HTTP API requests
-
-- [x] implement User HTTP API requests
-
-- [x] implement Message HTTP API requests
-
-- [x] implement Member HTTP API requests
+- [x] implement HTTP API requests
 
 - [x] Wire up discord object classes to Gateway events
 
@@ -49,11 +41,24 @@ I'm well aware that threading in python has a disadvantage due to Global Interpr
 
 - [x] Implement handlers
 
+- [x] Implement Slash Commands
+
+- [ ] Implement other interactions
+
+- [ ] Implement Message Components
+
 - [ ] Unify function behaviours and code styles
 
-- [ ] maybe implement slash commands?
 
 ## Contributions?
-Oh yes, I definitely need them! I'll happily accept any forms of contributions, just send me a PR! I'll review it right away.
+I'll happily accept any forms of contributions. but please do the followings:
+
+1. Run tests to ensure the code is working correctly - Test suite is being prepared, so before that please do it manually.
+
+2. Format your code properly using black or any other reformatting tools.
+
+3. Properly comment your code following [Google Python Style Guide](https://google.github.io/styleguide/pyguide.html#s3.8-comments-and-docstrings).
+
+PR will be merged after I'm done reviewing the changes.
 
 Contact kokoseij@gmail.com If you need any questions. Thanks!
