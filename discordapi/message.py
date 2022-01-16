@@ -66,8 +66,8 @@ class Message(DictObject):
 
         if self.channel_id:
             try:
-                self.guild = client.guilds[self.guild_id]
-                self.channel = self.guild.channels[self.channel_id]
+                self.guild = client.get_guild(self.guild_id)
+                self.channel = self.guild.get_channel(self.channel_id)
             except KeyError:
                 self.channel = client.fetch_channel(self.channel_id)
 
