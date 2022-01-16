@@ -1,16 +1,16 @@
-from discordapi import DiscordClient, CommandError, EmbedCommandManager, \
-                       ThreadedCommandEventHandler, QueuedAudioPlayer, \
-                       FFMPEGAudioSource, Embed, CDN_URL
+from discordapi.slash import (
+    SlashCommand, SubCommand, String, DiscordInteractionClient,
+    InteractionEventHandler
+)
+
+from discordapi import QueuedAudioPlayer, FFMPEGAudioSource, Embed
 from niconico import NicoPlayer
 
 import os
-import re
 import sys
-import random
 import logging
 
 from websocket import enableTrace
-from urllib.parse import urljoin
 from logging import StreamHandler, FileHandler
 from colorlog import ColoredFormatter
 
@@ -28,7 +28,7 @@ file_handler.setFormatter(fmt)
 file_handler.setLevel("DEBUG")
 logger.addHandler(file_handler)
 
-enableTrace(True, file_handler)
+enableTrace(False, file_handler)
 
 id_ = os.environ.get("ID")
 pw = os.environ.get("PW")
@@ -36,33 +36,6 @@ pw = os.environ.get("PW")
 player = NicoPlayer()
 if id_ and pw:
     player.login(id_, pw)
-
-id_check = re.compile("[a-z]{2}[0-9]+")
-mylist_check = re.compile(
-    "(?:https?\:\/\/)?(?:www.)?nicovideo.jp\/"
-    "(?:user\/[0-9]+\/)?mylist\/([0-9]+)"
-)
-watch_check = re.compile(
-    "(?:https?\:\/\/)?(?:www.)?nicovideo.jp\/watch\/([a-z]{2}?[0-9]+)"
-)
-
-
-def check_type(arg):
-    id_match = id_check.match(arg)
-    if id_match:
-        return 1, arg
-    watch_match = watch_check.match(arg)
-    if watch_match:
-        return 1, watch_match.groups()[0]
-    mylist_match = mylist_check.match(arg)
-    if mylist_match:
-        return 2, mylist_match.groups()[0]
-    else:
-        return 0, arg
-
-
-def get_user_avatar(user):
-    return urljoin(CDN_URL, f"avatars/{user.id}/{user.avatar}.png")
 
 
 class NicoAudioSource(FFMPEGAudioSource):
@@ -82,220 +55,58 @@ class NicoAudioSource(FFMPEGAudioSource):
         super().cleanup()
 
 
-class NicoBot(EmbedCommandManager):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.channels = dict()
-        self.clients = dict()
-        self.players = dict()
-
+class NicoBot:
+    def __init__(self):
         self.color = 0xffbe97
+        self.clients = {}
+        self.players = {}
 
-    def _callback(self, player):
-        if len(player.queue) < 1:
-            return
-        song = player.queue[0]
-        channel = player.client.get_channel()
-        textchannel = self.channels.get(player.client.server_id)
-        self.send_nowplaying(song, channel, textchannel)
+    def embed(self, title, message, user):
+        username = f"{user.name}#{user.discriminator}"
 
-    def send_nowplaying(self, song, channel, textchannel):
-        songname = song.video.title
-        songid = song.video.id
-        songurl = f"https://www.nicovideo.jp/watch/{songid}"
-        songthumb = song.video.thumbnail
-        embed = Embed(
-            "Play",
-            f"**`{channel.name}`: Now Playing [{songname}]({songurl}).**",
-            color=self.color
-        )
-        embed.set_thumbnail(songthumb)
-        textchannel.send(embed=embed)
+        embed = Embed(title=title, description=message, color=self.color)
+        embed.set_footer(f"Requested by {username}", user.avatar)
 
-    def execute_cmd(self, cmdinput, message):
-        if message.guild is None:
-            return
-        self.channels.update({message.guild.id: message.channel})
+        return embed
 
-        return super().execute_cmd(cmdinput, message)
+    def error_embed(self, message, user, title="An error has been occured!"):
+        username = f"{user.name}#{user.discriminator}"
+        
+        embed = Embed(title=title, description=message, color=0xffff00)
+        embed.set_footer(f"Requested by {username}", user.avatar)
 
-    def join(self, cmd, message):
-        user_id = message.author.id
-        channel = message.guild.voice_state.get(user_id)
+        return embed
+
+    @SlashCommand.create(
+        "Invite the bot to your current Voice Channel"
+    )
+    def join(self, ctx):
+        channel = ctx.message.guild.voice_state.get(ctx.user.id)
 
         if channel is None:
-            raise CommandError(
-                cmd,
-                "Failed to connect!",
-                "You are not connected to VC. please reconnect and try again."
-            )
+            return self.error_embed("You are not connected to VC. "
+                                    "Please reconnect and try again.",
+                                    ctx.user)
 
         vc = channel.connect()
         player = QueuedAudioPlayer(vc, callback=self._callback)
 
-        self.clients.update({message.guild.id: vc})
-        self.players.update({message.guild.id: player})
+        self.clients.update({ctx.guild.id: vc})
+        self.players.update({ctx.guild.id: player})
 
-        return f"Successfully joined {channel.name}!"
+        return self.embed(f"Successfully joined {channel.name}!")
 
-    def play(self, cmd, message):
-        music_player = self.players.get(message.guild.id)
-        if music_player is None:
-            raise CommandError(
-                cmd,
-                "Failed to play!",
-                "I am not connected to VC!"
-            )
+    def leave(self, ctx):
+        player = self.players.get(ctx.guild.id)
+        client = self.clients.get(ctx.guild.id)
 
-        type_, val = check_type(cmd)
-        if type_ == 2:
-            mylist = player.get_mylist(val)
-            videos = mylist.items
-        elif type_ == 0:
-            videos = player.search(val, _limit=1)[:1]
-            if len(videos) == 0:
-                raise CommandError(
-                    cmd,
-                    "Video not found!",
-                    "Video was not found. please try different keywords."
-                )
-        elif type_ == 1:
-            videos = [player.get_thumb_info(val)]
+        if player is None:
+            return self.error_embed("I am not connected to VC!", ctx.user)
 
-        sources = [NicoAudioSource(video) for video in videos]
-
-        if len(sources) == 1:
-            video = videos[0]
-            url = f"https://www.nicovideo.jp/watch/{video.id}"
-            desc = f"Added [{video.title}]({url}) to the queue!"
-        else:
-            url = f"https://www.nicovideo.jp/mylist/{val}"
-            desc = f"Added mylist [{mylist.name}]({url}) to the queue!"
-
-        user = message.author
-        username = f"{user.username}#{user.discriminator}"
-        useravatar = get_user_avatar(user)
-
-        embed = Embed("Play", desc, color=self.color)
-        embed.set_footer(username, useravatar)
-        embed.set_thumbnail(videos[0].thumbnail)
-
-        yield embed
-
-        music_player.add_to_queue(sources)
-        music_player.play()
-
-    def stop(self, cmd, message):
-        music_player = self.players.get(message.guild.id)
-        if music_player is None:
-            raise CommandError(
-                cmd,
-                "Failed to play!",
-                "I am not connected to VC!"
-            )
-
-        music_player.queue.clear()
-        music_player.stop()
-
-        return "Stopped playing!"
-
-    def skip(self, cmd, message):
-        music_player = self.players.get(message.guild.id)
-        if music_player is None:
-            raise CommandError(
-                cmd,
-                "Failed to play!",
-                "I am not connected to VC!"
-            )
-
-        title = music_player.source.video.title
-
-        music_player.stop()
-
-        return f"Skipped {title}!"
-
-    def shuffle(self, cmd, message):
-        music_player = self.players.get(message.guild.id)
-        if music_player is None:
-            raise CommandError(
-                cmd,
-                "Failed to play!",
-                "I am not connected to VC!"
-            )
-
-        random.shuffle(music_player.queue)
-
-        return "Shuffled the queue!"
-
-    def pause(self, cmd, message):
-        music_player = self.players.get(message.guild.id)
-        if music_player is None:
-            raise CommandError(
-                cmd,
-                "Failed to play!",
-                "I am not connected to VC!"
-            )
-
-        music_player.pause()
-        return "Paused!"
-
-    def resume(self, cmd, message):
-        music_player = self.players.get(message.guild.id)
-        if music_player is None:
-            raise CommandError(
-                cmd,
-                "Failed to play!",
-                "I am not connected to VC!"
-            )
-
-        music_player.resume()
-        return "Resumed!"
-
-    def leave(self, cmd, message):
-        music_player = self.players.get(message.guild.id)
-        client = self.clients.get(message.guild.id)
-        if music_player is None:
-            raise CommandError(
-                cmd,
-                "Failed to play!",
-                "I am not connected to VC!"
-            )
-
-        music_player.stop()
-        music_player.stop_flag.set()
+        player.stop()
+        player.stop_flag.set()
         client.disconnect()
-        self.players[message.guild.id] = None
-        self.clients[message.guild.id] = None
+        self.clients.update({ctx.guild.id: None})
+        self.players.update({ctx.guild.id: None})
 
-        return "Successfully disconnected!"
-
-    def eval(self, cmd, message):
-        if not message.author.id == "378898017249525771":
-            return
-        return str(eval(cmd))
-
-
-class NicobotHandler(ThreadedCommandEventHandler):
-    def on_ready(self, obj):
-        self.client.update_presence(
-            activities=[{'type': 2, 'name': 'Orangestar'}])
-
-    def on_resume(self, obj):
-        self.on_ready(obj)
-
-
-handler = NicobotHandler(NicoBot, "?")
-
-client = DiscordClient(
-    open("token").read(),
-    handler=handler
-)
-
-try:
-    client.start()
-    client.ready_to_run.wait()
-    client.update_presence(activities=[{'type': 2, 'name': 'Orangestar'}])
-    client.join()
-except KeyboardInterrupt:
-    client.stop()
-    client.join()
+        return self.embed("Successfully left the channel!")

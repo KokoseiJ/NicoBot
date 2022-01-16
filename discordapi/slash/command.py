@@ -292,6 +292,8 @@ class SlashCommandManager:
 
         self.respond(ctx, 5)
 
+        # TODO: Add the option to modify post-processor(res manipulation)
+
         for res in gen:
             if not res:
                 self.delete(ctx)
