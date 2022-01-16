@@ -18,6 +18,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
+import re
 import json
 import requests
 from base64 import b64decode
@@ -44,7 +45,16 @@ class NicoPlayer:
     SEARCH_URL = "https://api.search.nicovideo.jp/" + \
                  "api/v2/snapshot/video/contents/search"
     GETTHUMBINFO_URL = "http://ext.nicovideo.jp/api/getthumbinfo/{}"
-    
+
+    id_check = re.compile(r"[a-z]{2}[0-9]+")
+    mylist_check = re.compile(
+        r"(?:https?://)?(?:www.)?nicovideo.jp/"
+        r"(?:user/[0-9]+/)?mylist/([0-9]+)"
+    )
+    watch_check = re.compile(
+        r"(?:https?://)?(?:www.)?nicovideo.jp/watch/([a-z]{2}?[0-9]+)"
+    )
+
     def __init__(self, lang="ja-jp", headers={}, cookies={}, user_agent=None):
         self.lang = lang
         self.logged_in = False
@@ -66,6 +76,22 @@ class NicoPlayer:
         self.session.cookies.set("lang", self.lang)
         self.session.headers.update(headers)
         self.session.cookies.update(cookies)
+
+    def parse_id(self, arg):
+        arg = arg.strip().rstrip()
+        id_match = self.id_check.match(arg)
+        if id_match:
+            return 1, arg
+
+        watch_match = self.watch_check.match(arg)
+        if watch_match:
+            return 2, watch_match.group(1)
+
+        mylist_match = self.mylist_check.match(arg)
+        if mylist_match:
+            return 2, mylist_match.group(1)
+
+        return 0, arg
 
     def login(self, id, pw):
         self.session.post(
