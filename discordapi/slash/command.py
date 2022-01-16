@@ -77,7 +77,10 @@ logger = logging.getLogger(LIB_NAME)
 
 
 def get_func_args(func):
-    return func.__code__.co_varnames[: func.__code__.co_argcount]
+    args = func.__code__.co_varnames[:func.__code__.co_argcount]
+    if args[0] == "self":
+        args = args[1:]
+    return args
 
 
 class Option:
@@ -179,7 +182,7 @@ class SlashCommand:
                     )
 
     @classmethod
-    def create(cls, desc, options, default_permission=True):
+    def create(cls, desc, options=[], default_permission=True):
         def decorator(func):
             name = func.__code__.co_name
             return cls(name, desc, func, options, default_permission)
@@ -206,7 +209,7 @@ class SlashCommand:
 
             kwargs[name] = value
 
-        gen = self.func(ctx, **kwargs)
+        gen = self.func(ctx=ctx, **kwargs)
 
         if isinstance(gen, GeneratorType):
             for res in gen:
