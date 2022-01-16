@@ -19,11 +19,12 @@
 #
 
 from .file import File
-from .const import EMPTY
+from .const import EMPTY, CDN_URL
 from .util import clear_postdata
 from .dictobject import DictObject
 
 import base64
+from urljoin.parse import urljoin
 
 __all__ = ["User"]
 
@@ -54,6 +55,7 @@ class User(DictObject):
     def __init__(self, client, data):
         super(User, self).__init__(data, KEYLIST)
         self.client = client
+        self.avatar = urljoin(CDN_URL, f"avatars/{self.id}/{self.avatar}.png")
 
     def dm(self):
         return self.client.user.create_dm(self)
