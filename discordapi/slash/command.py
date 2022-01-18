@@ -160,11 +160,19 @@ class Number(Option):
 
 
 class SlashCommand:
-    def __init__(self, name, desc, func, options, defaultperm, argcheck=True):
+    def __init__(
+            self,
+            func,
+            name,
+            desc,
+            options=[],
+            default_permission=True,
+            argcheck=True
+    ):
         self.name = name
         self.desc = desc
         self.func = func
-        self.default_permission = defaultperm
+        self.default_permission = default_permission
         self.options = {option.name: option for option in options}
 
         func_args = get_func_args(func)
@@ -183,10 +191,14 @@ class SlashCommand:
                     )
 
     @classmethod
-    def create(cls, desc, options=[], default_permission=True):
+    def create(cls, desc, options=[], default_permission=True, cmdname=None):
         def decorator(func):
-            name = func.__code__.co_name
-            return cls(name, desc, func, options, default_permission)
+            if cmdname is None:
+                name = func.__code__.co_name
+            else:
+                name = cmdname
+
+            return cls(func, name, desc, options, default_permission)
 
         return decorator
 
@@ -209,6 +221,10 @@ class SlashCommand:
                 value = option.get("value")
 
             kwargs[name] = value
+
+        func_self = getattr(self.func, "__self__", None)
+        if func_self:
+            kwargs.update({"self": func_self})
 
         gen = self.func(ctx=ctx, **kwargs)
 
@@ -234,7 +250,7 @@ class SubCommand(SlashCommand):
     def __init__(self, name, desc, *commands, default_permission=True):
         options = [Option.from_command(cmd) for cmd in commands]
         super().__init__(
-            name, desc, self.run, options, default_permission, False)
+            self.run, name, desc, options, default_permission, False)
 
         self.commands = {command.name: command for command in commands}
 
