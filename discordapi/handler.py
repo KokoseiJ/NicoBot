@@ -21,7 +21,11 @@
 from queue import Queue
 from threading import Thread
 
-__all__ = ["EventHandler", "GeneratorEventHandler"]
+__all__ = [
+    "EventHandler", "GeneratorEventHandler", "MethodEventHandler",
+    "DecoratorEventHandler", "ThreadedMethodEventHandler",
+    "ThreadedDecoratorEventHandler"
+]
 
 
 class EventHandler:

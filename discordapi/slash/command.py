@@ -46,6 +46,7 @@ __all__ = [
     "Mentionable",
     "Number",
     "SlashCommand",
+    "SlashCommandManager"
 ]
 
 CTX_KEYLIST = [
