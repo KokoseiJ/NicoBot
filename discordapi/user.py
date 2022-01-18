@@ -24,7 +24,7 @@ from .util import clear_postdata
 from .dictobject import DictObject
 
 import base64
-from urljoin.parse import urljoin
+from urllib.parse import urljoin
 
 __all__ = ["User"]
 
