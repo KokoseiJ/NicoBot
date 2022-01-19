@@ -252,6 +252,9 @@ class SubCommand(SlashCommand):
         super().__init__(
             self.run, name, desc, options, default_permission, False)
 
+        if isinstance(commands[0], list) or isinstance(commands[0], tuple):
+            commands = commands[0]
+
         self.commands = {command.name: command for command in commands}
 
     def run(self, ctx, **kwargs):
