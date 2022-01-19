@@ -276,7 +276,6 @@ class DiscordVoiceClient(WebSocketThread):
             self.ssrc = payload["ssrc"]
             self.server_addr = (payload["ip"], payload["port"])
             self.udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            self.udp_sock.connect(self.server_addr)
             self.modes = payload["modes"]
             self.got_ready.set()
 
