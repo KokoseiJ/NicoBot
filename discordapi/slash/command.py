@@ -26,6 +26,7 @@ from ..message import Message
 from ..const import LIB_NAME, EMPTY
 from ..dictobject import DictObject
 from ..gateway import DiscordGateway
+from ..exceptions import DiscordError
 from ..util import get_formdata, clear_postdata
 
 import json
@@ -222,10 +223,6 @@ class SlashCommand:
 
             kwargs[name] = value
 
-        func_self = getattr(self.func, "__self__", None)
-        if func_self:
-            kwargs.update({"self": func_self})
-
         gen = self.func(ctx=ctx, **kwargs)
 
         if isinstance(gen, GeneratorType):
@@ -399,8 +396,28 @@ class Context(DictObject):
 
         if self.user is not None:
             self.user = User(client, self.user)
-        if self.member is not None and self.guild_id is not None:
-            guild = client.get_guild(self.guild_id)
-            self.member = Member(client, guild, self.member)
+        if self.guild_id is not None:
+            self.guild = client.get_guild(self.guild_id)
+            if self.guild is None:
+                logger.warning("Failed to locally retrieve guild <%s>! "
+                               "Sending HTTP request...", self.guild_id)
+                self.guild = client.fetch_guild(self.guild_id)
+                if self.guild is None:
+                    raise DiscordError("Failed to retrieve guild "
+                                       f"<{self.guild_id}>")
+
+            if self.channel_id is not None:
+                self.channel = self.guild.get_channel(self.channel_id)
+                if self.channel is None:
+                    logger.warning("Failed to locally retrieve channel <%s>! "
+                                   "Sending HTTP request...", self.channel_id)
+                    self.channel = client.fetch_channel(self.channel_id)
+                    if self.channel is None:
+                        raise DiscordError("Failed to retrieve channel "
+                                           f"<{self.channel_id}>")
+
+            if self.member is not None:
+                self.member = Member(client, self.guild, self.member)
+
         if self.message is not None:
             self.message = Message(client, self.message)
