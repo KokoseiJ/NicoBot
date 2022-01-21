@@ -348,7 +348,7 @@ class SlashCommandManager:
 
         postdata = {
             "content": content,
-            "embeds": embeds,
+            "embeds": [embed._json for embed in embeds],
             "allowed_mentions": allowed_mentions,
             "components": components,
         }
@@ -394,8 +394,6 @@ class Context(DictObject):
         self.client = client
         self.manager = None
 
-        if self.user is not None:
-            self.user = User(client, self.user)
         if self.guild_id is not None:
             self.guild = client.get_guild(self.guild_id)
             if self.guild is None:
@@ -418,6 +416,9 @@ class Context(DictObject):
 
             if self.member is not None:
                 self.member = Member(client, self.guild, self.member)
+
+        if self.member.user is not None:
+            self.user = self.member.user
 
         if self.message is not None:
             self.message = Message(client, self.message)
