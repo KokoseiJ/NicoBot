@@ -337,7 +337,7 @@ class GatewayEventParser:
 
     def on_guild_create(self, payload):
         obj = Guild(self.client, payload)
-        self.client.guilds[obj.id] = obj
+        self.client.guilds.update({obj.id: obj})
 
         if obj.voice_states:
             for voice_payload in [
@@ -353,7 +353,7 @@ class GatewayEventParser:
         return self.on_guild_create(payload)
 
     def on_guild_delete(self, payload):
-        self.client.guilds[payload.get("id")] = False
+        self.client.guilds.update({payload['id']: False})
 
     def on_guild_ban_add(self, payload):
         guild = self.client.guilds.get(payload.get("guild_id"))
@@ -439,7 +439,7 @@ class GatewayEventParser:
             if client is None:
                 logger.info("**New client**")
                 client = DiscordVoiceClient(self.client, **data._dict())
-                self.client.voice_clients[guild_id] = client
+                self.client.voice_clients.update({guild_id: client})
                 client.start()
                 voice_event = self.client.voice_queue.get(guild_id)
                 if voice_event is not None:
@@ -463,7 +463,7 @@ class GatewayEventParser:
                         "disconnecting and deleting the client"
                     )
                     client.disconnect()
-                    del self.client.voice_clients[guild_id]
+                    self.client.voice_clients.update({guild_id: None})
 
         if payload.get("guild_id") is not None:
             guild = self.client.get_guild(guild_id)
@@ -481,9 +481,17 @@ class GatewayEventParser:
         # Silencing frequent warning
         pass
 
-    def on_typing(self, payload):
+    def on_typing_start(self, payload):
         pass
 
+    def on_message_reaction_add(self, payload):
+        pass
+
+    def on_message_reaction_remove(self, payload):
+        pass
+
+    def on_integration_update(self, payload):
+        pass
     # Add GUILD_ROLE event
 
 
