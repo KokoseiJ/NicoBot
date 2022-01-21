@@ -282,13 +282,16 @@ class SlashCommandManager:
             )
         self.client = client
 
-    def register(self, command):
-        if not isinstance(command, SlashCommand):
-            raise TypeError(
-                "command should be SlashCommand, not " f"'{type(command)}'"
-            )
+    def register(self, *commands):
+        for command in commands:
+            if not isinstance(command, SlashCommand):
+                raise TypeError(
+                    "command should be SlashCommand, not " f"'{type(command)}'"
+                )
 
-        self.map.update({command.name: command})
+            logger.info("Registering %s", command.name)
+
+            self.map.update({command.name: command})
 
     def update(self):
         prev_raw = self.client.get_global_commands()
@@ -303,6 +306,8 @@ class SlashCommandManager:
 
     def execute(self, ctx):
         cmdname = ctx.data["name"]
+        logger.info(f"Executing command '{cmdname}'")
+
         command = self.map.get(cmdname)
         if command is None:
             logger.warning(f"Command '{cmdname}' not found")
