@@ -1,6 +1,6 @@
 from discordapi.slash import (
     SlashCommand, SubCommand, String, DiscordInteractionClient,
-    InteractionEventHandler
+    InteractionEventHandler, SlashCommandManager
 )
 
 from discordapi import QueuedAudioPlayer, FFMPEGAudioSource, Embed
@@ -77,11 +77,8 @@ class NicoBot:
 
         return embed
 
-    @SlashCommand.create(
-        "Invite the bot to your current Voice Channel"
-    )
     def join(self, ctx):
-        channel = ctx.message.guild.voice_state.get(ctx.user.id)
+        channel = ctx.message.guild.get_voice_state(ctx.user)
 
         if channel is None:
             return self.error_embed("You are not connected to VC. "
@@ -102,6 +99,8 @@ class NicoBot:
 
         if player is None:
             return self.error_embed("I am not connected to VC!", ctx.user)
+        if client.get_channel() != ctx.guild.get_voice_state(ctx.user):
+            return self.error_embed("You are not in the VC!", ctx.user)
 
         player.stop()
         player.stop_flag.set()
@@ -110,3 +109,46 @@ class NicoBot:
         self.players.update({ctx.guild.id: None})
 
         return self.embed("Successfully left the channel!")
+
+
+class NicobotEventHandler(InteractionEventHandler):
+    def on_ready(self, obj):
+        self.client.update_presence(
+            activities=[{'type': 2, 'name': 'Orangestar'}])
+
+    def on_resume(self, obj):
+        self.on_ready(obj)
+
+
+manager = SlashCommandManager()
+
+nicobot = NicoBot()
+
+join = SlashCommand(
+    nicobot.join,
+    "join",
+    "Invite the bot to your current voice channel"
+)
+
+leave = SlashCommand(
+    nicobot.leave,
+    "leave",
+    "Leave the current voice channel"
+)
+
+manager.register(join, leave)
+
+client = DiscordInteractionClient(
+    open("token").read().strip().rstrip().replace("\n", ""),
+    handler=NicobotEventHandler,
+    command_manager=manager
+)
+
+try:
+    client.start()
+    client.ready_to_run.wait()
+    manager.update()
+    client.join()
+except KeyboardInterrupt:
+    client.stop()
+    client.join()

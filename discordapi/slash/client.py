@@ -46,6 +46,9 @@ class DiscordInteractionClient(DiscordClient):
             event_parser = InteractionEventParser
         if command_manager is None:
             command_manager = SlashCommandManager
+
+        self._set_command_manager(command_manager)
+
         super(DiscordInteractionClient, self).__init__(
             token=token,
             handler=handler,
@@ -53,8 +56,6 @@ class DiscordInteractionClient(DiscordClient):
             intents=intents,
             name=name,
         )
-
-        self._set_command_manager(command_manager)
 
     def _set_command_manager(self, manager):
         if isinstance(manager, SlashCommandManager):
