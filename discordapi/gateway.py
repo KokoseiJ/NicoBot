@@ -338,6 +338,15 @@ class GatewayEventParser:
     def on_guild_create(self, payload):
         obj = Guild(self.client, payload)
         self.client.guilds[obj.id] = obj
+
+        if obj.voice_states:
+            for voice_payload in [
+                x for x in obj.voice_states
+                if x['user_id'] != self.client.user.id
+            ]:
+                voice_payload.update({'guild_id': obj.id})
+                self.on_voice_state_update(voice_payload)
+
         return obj
 
     def on_guild_update(self, payload):
