@@ -3,16 +3,17 @@ from discordapi.slash import (
     InteractionEventHandler, SlashCommandManager
 )
 
-from discordapi import QueuedAudioPlayer, FFMPEGAudioSource, Embed
+from discordapi import (
+    QueuedAudioPlayer, FFMPEGAudioSource, Embed, ThreadedMethodEventHandler
+)
 from niconico import NicoPlayer
 
 import os
 import sys
 import logging
 
-from websocket import enableTrace
-from logging import StreamHandler, FileHandler
 from colorlog import ColoredFormatter
+from logging import StreamHandler, FileHandler
 
 
 logger = logging.getLogger("nicobot")
@@ -21,14 +22,12 @@ fmt = ColoredFormatter("%(log_color)s[%(levelname)s]|%(asctime)s|"
                        "%(threadName)s|%(funcName)s|: %(message)s")
 handler = StreamHandler(sys.stdout)
 handler.setFormatter(fmt)
-handler.setLevel("INFO")
+handler.setLevel("DEBUG")
 logger.addHandler(handler)
 file_handler = FileHandler("nicobot.log")
 file_handler.setFormatter(fmt)
 file_handler.setLevel("DEBUG")
 logger.addHandler(file_handler)
-
-enableTrace(False, file_handler)
 
 id_ = os.environ.get("ID")
 pw = os.environ.get("PW")
@@ -39,9 +38,10 @@ if id_ and pw:
 
 
 class NicoAudioSource(FFMPEGAudioSource):
-    def __init__(self, video, *args, **kwargs):
+    def __init__(self, video, user, *args, **kwargs):
         super().__init__(None, *args, **kwargs)
         self.video = video
+        self.user = user
         self.session = None
 
     def prepare(self):
@@ -60,9 +60,10 @@ class NicoBot:
         self.color = 0xffbe97
         self.clients = {}
         self.players = {}
+        self.channels = {}
 
     def embed(self, title, message, user):
-        username = f"{user.name}#{user.discriminator}"
+        username = f"{user.username}#{user.discriminator}"
 
         embed = Embed(title=title, description=message, color=self.color)
         embed.set_footer(f"Requested by {username}", user.avatar)
@@ -70,15 +71,37 @@ class NicoBot:
         return embed
 
     def error_embed(self, message, user, title="An error has been occured!"):
-        username = f"{user.name}#{user.discriminator}"
+        username = f"{user.username}#{user.discriminator}"
         
         embed = Embed(title=title, description=message, color=0xffff00)
         embed.set_footer(f"Requested by {username}", user.avatar)
 
         return embed
 
+    def _callback(self, player):
+        if len(player.queue) < 1:
+            return
+        song = player.queue[0]
+        channel = player.client.get_channel()
+        textchannel = self.channels.get(player.client.server_id)
+        self.send_nowplaying(song, channel, textchannel)
+
+    def send_nowplaying(self, song, channel, textchannel):
+        songname = song.video.title
+        songid = song.video.id
+        songurl = f"https://www.nicovideo.jp/watch/{songid}"
+        songthumb = song.video.thumbnail
+        embed = self.embed(
+            "Play",
+            f"**`{channel.name}`: Now Playing [{songname}]({songurl}).**",
+            song.user
+        )
+        embed.set_thumbnail(songthumb)
+        textchannel.send(embed=embed)
+        return embed
+
     def join(self, ctx):
-        channel = ctx.message.guild.get_voice_state(ctx.user)
+        channel = ctx.guild.get_voice_state(ctx.user)
 
         if channel is None:
             return self.error_embed("You are not connected to VC. "
@@ -90,8 +113,10 @@ class NicoBot:
 
         self.clients.update({ctx.guild.id: vc})
         self.players.update({ctx.guild.id: player})
+        self.channels.update({ctx.guild.id: None})
 
-        return self.embed(f"Successfully joined {channel.name}!")
+        return self.embed(
+            "Join", f"Successfully joined {channel.name}!", ctx.user)
 
     def leave(self, ctx):
         player = self.players.get(ctx.guild.id)
@@ -108,10 +133,10 @@ class NicoBot:
         self.clients.update({ctx.guild.id: None})
         self.players.update({ctx.guild.id: None})
 
-        return self.embed("Successfully left the channel!")
+        return self.embed("Leave", "Successfully left the channel!", ctx.user)
 
 
-class NicobotEventHandler(InteractionEventHandler):
+class NicobotEventHandler(ThreadedMethodEventHandler, InteractionEventHandler):
     def on_ready(self, obj):
         self.client.update_presence(
             activities=[{'type': 2, 'name': 'Orangestar'}])
