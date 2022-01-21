@@ -344,7 +344,14 @@ class GatewayEventParser:
                 x for x in obj.voice_states
                 if x['user_id'] != self.client.user.id
             ]:
-                voice_payload.update({'guild_id': obj.id})
+                voice_payload.update({
+                    'guild_id': obj.id,
+                    'member': {
+                        'user': {
+                            'id': voice_payload['user_id']
+                        }
+                    }
+                })
                 self.on_voice_state_update(voice_payload)
 
         return obj
