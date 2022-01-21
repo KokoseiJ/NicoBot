@@ -20,11 +20,12 @@
 
 from .file import File
 from .user import User
+from .const import EMPTY
 from .const import LIB_NAME
 from .message import Message
-from .util import clear_postdata, get_formdata
 from .dictobject import DictObject
-from .const import EMPTY
+from .exceptions import DiscordError
+from .util import clear_postdata, get_formdata
 
 import json
 import base64
@@ -247,9 +248,6 @@ class Channel(DictObject):
         else:
             message = self._send_request("POST", "/messages", postdata)
 
-        # Workaround for Message object yielding exception
-        message.update({"guild_id": self.guild_id})
-
         return Message(self.client, message)
 
     def edit_message(
@@ -444,21 +442,28 @@ class GuildChannel(Channel):
     def __init__(self, client, data, guild=None):
         super(GuildChannel, self).__init__(client, data)
 
-        if self.guild_id is None and guild is not None:
-            self.guild_id = guild.id
-
-    def get_guild(self):
-        guild = self.client.guilds.get(self.guild_id)
-        if guild is None or not guild:
-            return self.client.get_guild(self.guild_id)
+        if guild is None:
+            if self.guild_id is None:
+                raise DiscordError("Guild ID is not present for channel"
+                                   f"<{self.id}>!")
+            self.guild = self.client.get_guild(self.guild_id)
+            if self.guild is None:
+                logger.warning("Failed to locally retrieve guild <%s>! "
+                               "sending HTTP request...", self.guild_id)
+                self.guild = self.client.fetch_guild(self.guild_id)
+                if self.guild is None:
+                    raise DiscordError("Failed to retrieve guild "
+                                       f"<{self.guild_id}>")
         else:
-            return guild
+            self.guild = guild
+            if self.guild_id is None:
+                self.guild_id = guild.id
 
     def get_parent(self):
         if self.parent_id is None:
             return None
         else:
-            parent = self.get_guild().channels.get(self.parent_id)
+            parent = self.guild.channels.get(self.parent_id)
             if parent is None:
                 return self.client.get_channel(self.parent_id)
             else:
