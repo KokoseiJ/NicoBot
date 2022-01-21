@@ -247,6 +247,9 @@ class Channel(DictObject):
         else:
             message = self._send_request("POST", "/messages", postdata)
 
+        # Workaround for Message object yielding exception
+        message.update({"guild_id": self.guild_id})
+
         return Message(self.client, message)
 
     def edit_message(

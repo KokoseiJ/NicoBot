@@ -121,7 +121,7 @@ class NicoBot(EmbedCommandManager):
 
     def join(self, cmd, message):
         user_id = message.author.id
-        channel = message.guild.voice_state.get(user_id)
+        channel = message.guild.voice_states.get(user_id)
 
         if channel is None:
             raise CommandError(

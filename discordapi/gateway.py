@@ -339,9 +339,11 @@ class GatewayEventParser:
         obj = Guild(self.client, payload)
         self.client.guilds.update({obj.id: obj})
 
-        if obj.voice_states:
+        voice_states = payload.get("voice_states")
+
+        if voice_states:
             for voice_payload in [
-                x for x in obj.voice_states
+                x for x in voice_states
                 if x['user_id'] != self.client.user.id
             ]:
                 voice_payload.update({
@@ -480,7 +482,7 @@ class GatewayEventParser:
             else:
                 channel = None
 
-            guild.voice_state.update(
+            guild.voice_states.update(
                 {payload["member"]["user"]["id"]: channel}
             )
 

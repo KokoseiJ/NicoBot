@@ -115,6 +115,8 @@ class EmbedCommandManager(CommandManager):
             )
             yield embed
 
+            raise
+
 
 class CommandEventHandler(MethodEventHandler):
     def __init__(self, manager, prefix):

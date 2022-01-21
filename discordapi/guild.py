@@ -114,7 +114,7 @@ class Guild(DictObject):
             else None
         )
 
-        self.voice_state = dict()
+        self.voice_states = dict()
 
     def get_channels(self):
         return self.channels.copy()

@@ -101,7 +101,7 @@ class DiscordVoiceClient(WebSocketThread):
 
     def get_channel(self):
         guild = self.client.get_guild(self.server_id)
-        return guild.voice_state.get(self.client.user.id)
+        return guild.voice_states.get(self.client.user.id)
 
     def speak(self, speaking=1):
         """Send SPEAKING event to the gateway.
