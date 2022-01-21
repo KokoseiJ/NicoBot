@@ -116,6 +116,14 @@ class Guild(DictObject):
 
         self.voice_states = dict()
 
+    def get_voice_state(self, user):
+        if isinstance(user, User):
+            user = user.id
+        if not isinstance(user, str):
+            raise TypeError(f"user should be User or str, not {type(user)}")
+
+        return self.voice_states.get(user)
+
     def get_channels(self):
         return self.channels.copy()
 
