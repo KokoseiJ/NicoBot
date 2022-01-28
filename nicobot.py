@@ -32,9 +32,9 @@ logger.addHandler(file_handler)
 id_ = os.environ.get("ID")
 pw = os.environ.get("PW")
 
-player = NicoPlayer()
+nicoplayer = NicoPlayer()
 if id_ and pw:
-    player.login(id_, pw)
+    nicoplayer.login(id_, pw)
 
 
 class NicoAudioSource(FFMPEGAudioSource):
@@ -45,7 +45,7 @@ class NicoAudioSource(FFMPEGAudioSource):
         self.session = None
 
     def prepare(self):
-        self.session = player.play(self.video.id)
+        self.session = nicoplayer.play(self.video.id)
         self.session.prepare("best", "worst")
         self.filename = self.session.start()
         super().prepare()
@@ -73,7 +73,7 @@ class NicoBot:
     def error_embed(self, message, user, title="An error has been occured!"):
         username = f"{user.username}#{user.discriminator}"
         
-        embed = Embed(title=title, description=message, color=0xffff00)
+        embed = Embed(title=title, description=message, color=0xff0000)
         embed.set_footer(f"Requested by {username}", user.avatar)
 
         return embed
@@ -108,6 +108,11 @@ class NicoBot:
                                     "Please reconnect and try again.",
                                     ctx.user)
 
+        client = self.clients.get(ctx.guild.id)
+        if client and channel == client.get_channel():
+            return self.error_embed("I am already connected in this channel!",
+                                    ctx.user)
+
         vc = channel.connect()
         player = QueuedAudioPlayer(vc, callback=self._callback)
 
@@ -135,6 +140,80 @@ class NicoBot:
 
         return self.embed("Leave", "Successfully left the channel!", ctx.user)
 
+    def play_nico(self, ctx, query):
+        player = self.players.get(ctx.guild.id)
+        client = self.clients.get(ctx.guild.id)
+
+        if player is None:
+            return self.error_embed("I am not connected to VC!", ctx.user)
+        if client.get_channel() != ctx.guild.get_voice_state(ctx.user):
+            return self.error_embed("You are not in the VC!", ctx.user)
+
+        videos = None
+        mylist = None
+        type_, val = nicoplayer.parse_id(query)
+
+        if type_ == 0:
+            videos = nicoplayer.search(val, _limit=1)[:1]
+            if not videos:
+                return self.error_embed(
+                    "Video was not found. Please try different keywords.",
+                    ctx.user
+                )
+        elif type_ == 1:
+            videos = [nicoplayer.get_thumb_info(val)]
+
+        elif type_ == 2:
+            mylist = nicoplayer.get_mylist(val)
+            videos = mylist.items
+        else:
+            return "This should never happen. You win."
+
+        sources = [NicoAudioSource(video, ctx.user) for video in videos]
+
+        player.add_to_queue(sources)
+        player.play()
+
+        if type_ != 2:
+            video = videos[0]
+            url = f"https://www.nicovideo.jp/watch/{video.id}"
+            desc = f"Added [{video.title}]({url}) to the queue!"
+        else:
+            url = f"https://www.nicovideo.jp/mylist/{val}"
+            desc = f"Added mlist [{mylist.name}]({url}) to the queue!"
+
+        embed = self.embed("Play", desc, ctx.user)
+        embed.set_thumbnail(videos[0].thumbnail)
+
+        return embed
+
+    def stop(self, ctx):
+        player = self.players.get(ctx.guild.id)
+        client = self.clients.get(ctx.guild.id)
+
+        if player is None:
+            return self.error_embed("I am not connected to VC!", ctx.user)
+        if client.get_channel() != ctx.guild.get_voice_state(ctx.user):
+            return self.error_embed("You are not in the VC!", ctx.user)
+
+        player.queue.clear()
+        player.stop()
+
+        return self.embed("Stop", "Stopped Playing.", ctx.user)
+
+    def skip(self, ctx):
+        player = self.players.get(ctx.guild.id)
+        client = self.clients.get(ctx.guild.id)
+
+        if player is None:
+            return self.error_embed("I am not connected to VC!", ctx.user)
+        if client.get_channel() != ctx.guild.get_voice_state(ctx.user):
+            return self.error_embed("You are not in the VC!", ctx.user)
+
+        player.stop()
+
+        return self.embed("Skip", "Skipped the music.", ctx.user)
+
 
 class NicobotEventHandler(ThreadedMethodEventHandler, InteractionEventHandler):
     def on_ready(self, obj):
@@ -161,7 +240,27 @@ leave = SlashCommand(
     "Leave the current voice channel"
 )
 
-manager.register(join, leave)
+play_nico = SlashCommand(
+    nicobot.play_nico,
+    "nico",
+    "Search/Play music from nicovideo.",
+    (
+        String("query", "Search query/id/url", required=True),
+    )
+)
+
+stop = SlashCommand(
+    nicobot.stop,
+    "stop",
+    "Stops the music."
+)
+
+play = SubCommand(
+    "play",
+    play_nico
+)
+
+manager.register(join, leave, play, stop)
 
 client = DiscordInteractionClient(
     open("token").read().strip().rstrip().replace("\n", ""),
