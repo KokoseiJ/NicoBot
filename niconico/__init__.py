@@ -85,7 +85,7 @@ class NicoPlayer:
 
         watch_match = self.watch_check.match(arg)
         if watch_match:
-            return 2, watch_match.group(1)
+            return 1, watch_match.group(1)
 
         mylist_match = self.mylist_check.match(arg)
         if mylist_match:
@@ -119,7 +119,16 @@ class NicoPlayer:
         while True:
             url = self.MYLIST_URL.format(id_, pagesize, index)
             r = self.session.get(url)
-            r.raise_for_status()
+            
+            if r.status_code != 200:
+                meta = r.json()['meta']
+                status = meta['status']
+                code = meta['errorCode']
+
+                excmsg = f"{status} {code}"
+
+                raise NicoError(excmsg)
+
             data = r.json()["data"]["mylist"]
 
             _id = data['id']
@@ -193,10 +202,17 @@ class NicoPlayer:
 
     def get_thumb_info(self, id_):
         r = self.session.get(self.GETTHUMBINFO_URL.format(id_))
-        r.raise_for_status()
 
         elem = ET.fromstring(r.text)
         thumb = elem[0]
+
+        error = thumb.find("error")
+        if error:
+            code = error.find("code")
+            desc = error.find("description")
+            excmsg = f"{code}: {desc}"
+
+            raise NicoError(excmsg)
 
         title = thumb.find("title").text
         desc = thumb.find("description").text
