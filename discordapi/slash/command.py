@@ -223,7 +223,7 @@ class SlashCommand:
 
             kwargs[name] = value
 
-        gen = self.func(ctx=ctx, **kwargs)
+        gen = self.func(ctx, **kwargs)
 
         if isinstance(gen, GeneratorType):
             for res in gen:
@@ -244,7 +244,7 @@ class SlashCommand:
 
 
 class SubCommand(SlashCommand):
-    def __init__(self, name, desc, *commands, default_permission=True):
+    def __init__(self, name, *commands, default_permission=True, desc="sub"):
         options = [Option.from_command(cmd) for cmd in commands]
         super().__init__(
             self.run, name, desc, options, default_permission, False)
