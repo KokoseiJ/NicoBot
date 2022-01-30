@@ -399,3 +399,10 @@ class Context(DictObject):
             self.member = Member(client, guild, self.member)
         if self.message is not None:
             self.message = Message(client, self.message)
+
+    def __str__(self):
+        class_name = self.__class__.__name__
+        return self._get_str(class_name, hex(id(self)), None)
+
+    def __repr__(self):
+        return self.__str__()
