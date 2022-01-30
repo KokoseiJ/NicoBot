@@ -51,6 +51,7 @@ __all__ = [
 
 CTX_KEYLIST = [
     "id",
+    "name",
     "application_id",
     "type",
     "data",
