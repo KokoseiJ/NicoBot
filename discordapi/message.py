@@ -19,6 +19,7 @@
 #
 
 from .user import User
+from .channel import DM
 from .member import Member
 from .const import EMPTY, LIB_NAME
 from .dictobject import DictObject
@@ -70,21 +71,20 @@ class Message(DictObject):
         self.client = client
 
         if self.channel_id:
-            try:
-                self.guild = client.get_guild(self.guild_id)
-                self.channel = self.guild.get_channel(self.channel_id)
-            except AttributeError:
-                self.channel = client.get_channel(self.channel_id)
+            self.channel = client.get_channel(self.channel_id)
+            if self.channel is None:
+                logger.warning("Failed to locally retrieve channel <%s>! "
+                               "sending HTTP request...", self.channel_id)
+                self.channel = client.fetch_channel(self.channel_id)
                 if self.channel is None:
-                    logger.warning("Failed to locally retrieve channel <%s>! "
-                                   "sending HTTP request...", self.channel_id)
-                    self.channel = client.fetch_channel(self.channel_id)
-                    if self.channel is None:
-                        raise DiscordError("Failed to retrieve channel "
-                                           f"<{self.channel_id}>")
+                    raise DiscordError("Failed to retrieve channel "
+                                       f"<{self.channel_id}>")
 
-                self.guild = self.channel.guild
-                self.guild_id = self.guild.id
+        if self.guild_id:
+            self.guild = client.get_guild(self.guild_id)
+            if self.guild is None:
+                logger.error("Failed to retrieve guild <%s>! ",
+                             self.guild_id)
 
         if self.author is not None:
             self.author = User(client, self.author)
