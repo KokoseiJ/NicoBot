@@ -84,6 +84,21 @@ class Message(DictObject):
             if self.guild is None:
                 logger.error("Failed to retrieve guild <%s>! ",
                              self.guild_id)
+        else:
+            self.guild = None
+
+        if self.channel_id:
+            if self.guild is not None:
+                self.channel = self.guild.get_channel(self.channel_id)
+            else:
+                self.channel = client.get_channel(self.channel_id)
+            if self.channel is None:
+                logger.warning("Failed to locally retrieve channel <%s>! "
+                               "sending HTTP request...", self.channel_id)
+                self.channel = client.fetch_channel(self.channel_id)
+                if self.channel is None:
+                    raise DiscordError("Failed to retrieve channel "
+                                       f"<{self.channel_id}>")
 
         if self.author is not None:
             self.author = User(client, self.author)
