@@ -19,7 +19,6 @@
 #
 
 from .user import User
-from .channel import DM
 from .member import Member
 from .const import EMPTY, LIB_NAME
 from .dictobject import DictObject
