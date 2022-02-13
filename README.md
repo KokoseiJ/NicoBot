@@ -17,6 +17,9 @@ Since It doesn't use coroutine on purpose, It currently uses threading library t
 
 since `websocket-client` is written in pure Python and could cause a bottleneck in some cases, installing `wsaccel` package from pip is recommended.
 
+Use [this link](https://discordapp.com/api/oauth2/authorize?client_id=769981832006598718&scope=bot%20applications.commands&permissions=104201280) to invite the test bot: IA!
+**WARNING: This bot is being used to test codes, and can be offline/unfunctionable time to time!**
+
 ## Why though? wasn't Discord.py enough?
 Well, I just made it because I can ¯\\\_(ツ)\_/¯
 

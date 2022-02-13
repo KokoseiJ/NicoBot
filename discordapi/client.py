@@ -395,7 +395,7 @@ class DiscordClient(DiscordGateway):
         if headers is not None:
             req_headers.update(headers)
 
-        logger.info("Sending requests to %s\nData: %s", url, data)
+        logger.info("Sending %s requests to %s", method, url)
 
         req = Request(url, data, req_headers, method=method)
 

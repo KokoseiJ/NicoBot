@@ -47,9 +47,9 @@ class DictObject:
             elif getattr(self, key, None) is None:
                 setattr(self, key, None)
 
-    def _get_str(self, class_, id_, repr=None):
-        if repr is not None:
-            return f"<{class_} '{repr}' ({id_})>"
+    def _get_str(self, class_, id_, repr_=None):
+        if repr_ is not None:
+            return f"<{class_} '{repr_}' ({id_})>"
         else:
             return f"<{class_} ({id_})>"
 
