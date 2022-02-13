@@ -10,14 +10,14 @@ Music bot that plays music from Nicovideo, written from the scratch, without usi
 [![Quality gate](https://sonar.kokoseij.xyz/api/project_badges/quality_gate?project=KokoseiJ_NicoBot)](https://sonar.kokoseij.xyz/dashboard?id=KokoseiJ_NicoBot)
 
 ## What is this bot?
-Just like its name, It plays songs from [Nicovideo](https://nicovideo.jp) server. Streaming-related code is mostly from [`nico.py` module from my previous bot](https://github.com/KokoseiJ/DiscordBot/blob/master/modules/nico.py), while Discord-side API wrapper was completely written from the scratch.
+Just like its name, It plays songs from [Nicovideo](https://nicovideo.jp) server. Streaming-related code is mostly from [`nico.py` module from my previous bot](https://github.com/KokoseiJ/DiscordBot/blob/master/modules/nico.py), while Discord-side API wrapper is completely written from the scratch.
 
 It currently uses `urllib` to communicate with their HTTP endpoints, `websocket-client` to communicate with Gateway. 
 Since It doesn't use coroutine on purpose, It currently uses threading library to parallelly run websockets and heartbeats.
 
-since `websocket-client` is written in pure Python and could cause a bottleneck in some cases, installing `wsaccel` package from pip is recommended.
+Additionally, installing [`wsaccel`](https://github.com/methane/wsaccel) package from pip is recommended, since UTF8 implementation in `websocket-client` can cause bottlenecks. wsaccel solves this by providing an alternative C implementation.
 
-Use [this link](https://discordapp.com/api/oauth2/authorize?client_id=769981832006598718&scope=bot%20applications.commands&permissions=104201280) to invite the test bot: IA!
+Use [this link](https://discordapp.com/api/oauth2/authorize?client_id=769981832006598718&scope=bot%20applications.commands&permissions=104201280) to invite the test bot: "IA -ARIA ON THE PLANETES-".
 **WARNING: This bot is being used to test codes, and can be offline/unfunctionable time to time!**
 
 ## Why though? wasn't Discord.py enough?
@@ -35,23 +35,24 @@ And... well, as of August 2021, Discord.py is no longer being maintained. so... 
 
 I'm well aware that threading in python has a disadvantage due to Global Interpreter Lock. but since there are bottlenecks in HTTP requests, I don't think bottlenecks caused by GIL will affect the performance largely. of course, I didn't do any tests yet. I'll do it later though, and if it appears to degrade performance, I will migrate to multiprocessing library.
 
-## Development Roadmap
-- [x] implement HTTP API requests
+## Features
+- [x] Full Gateway V9 Implementation
 
-- [x] Wire up discord object classes to Gateway events
+- [x] HTTP API requests
 
-- [x] Implement Voice Connection based on WebSocketThread
+- [x] Voice Connection
 
-- [x] Implement handlers
+- [x] Slash Command
 
-- [x] Implement Slash Commands
+- [ ] User Command
 
-- [ ] Implement other interactions
+- [ ] Message Command
 
-- [ ] Implement Message Components
+- [ ] Message Components
 
-- [ ] Unify function behaviours and code styles
+- [ ] Autocomplete
 
+- [ ] Modal
 
 ## Contributions?
 I'll happily accept any forms of contributions. but please do the followings:
@@ -64,4 +65,14 @@ I'll happily accept any forms of contributions. but please do the followings:
 
 PR will be merged after I'm done reviewing the changes.
 
-Contact kokoseij@gmail.com If you need any questions. Thanks!
+## Contact
+
+You can reach out to me on:
+
+E-mail: kokoseij@gmail.com
+
+Discord: KokoseiJ#2113
+
+Or [issue tracker](https://github.com/KokoseiJ/NicoBot/issues) if you're trying to reach out regarding the bug or issue.
+
+Please contact me if you have any questions. Thanks.
