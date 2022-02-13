@@ -23,17 +23,13 @@ Use [this link](https://discordapp.com/api/oauth2/authorize?client_id=7699818320
 ## Why though? wasn't Discord.py enough?
 Well, I just made it because I can ¯\\\_(ツ)\_/¯
 
-I just wanted to understand its underlying protocols, as well as practice to write a big package.
-
-Also, since `Discord.py` heavily depends on coroutine which coufuses the hell out of beginners and make them write a spaghetti,
-I thought we might need a corountine-less library. That's why I didn't use a famous `websockets` library, and went with `websocket-client` instead. [They stated that its purpose is to provide a convenient asynchronous API, not synchronous one.](https://github.com/aaugustin/websockets/issues/173)
-
-And... well, as of August 2021, Discord.py is no longer being maintained. so... yeah.
+More specifically, since `Discord.py` heavily depends on coroutine which coufuses the hell out of beginners and make them write a spaghetti,
+I thought we might need a corountine-less library. That's why I didn't use a famous `websockets` library([They stated that its purpose is to provide a convenient asynchronous API, not synchronous one.](https://github.com/aaugustin/websockets/issues/173)), and went with `websocket-client` instead.
 
 ## Using threading instead of multiprocessing?! Cast it into the fire, DESTROY IT!!
 ![No.](https://media1.tenor.com/images/27364728e09d58e670154b50a59ca9c8/tenor.gif?itemid=5743603)
 
-I'm well aware that threading in python has a disadvantage due to Global Interpreter Lock. but since there are bottlenecks in HTTP requests, I don't think bottlenecks caused by GIL will affect the performance largely. of course, I didn't do any tests yet. I'll do it later though, and if it appears to degrade performance, I will migrate to multiprocessing library.
+I'm well aware that threading in python has a disadvantage due to Global Interpreter Lock. but since there are overheads in HTTP requests, I expect performance degradation caused by GIL to be ignorable. There's no test done regarding this, but I'm planning to do one. If it appears to degrade performance, I will gradually migrate to multiprocessing library.
 
 ## Features
 - [x] Full Gateway V9 Implementation
