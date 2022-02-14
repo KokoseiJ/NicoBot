@@ -264,6 +264,19 @@ class NicoBot:
             self.channels.update({ctx.guild.id: None})
             return self.embed("Notify", "Disabled notification!", ctx.user)
 
+    def loop(self, ctx):
+        player = self.players.get(ctx.guild.id)
+        client = self.clients.get(ctx.guild.id)
+
+        if player is None:
+            return self.error_embed("I am not connected to VC!", ctx.user)
+        if client.get_channel() != ctx.guild.get_voice_state(ctx.user):
+            return self.error_embed("You are not in the VC!", ctx.user)
+
+        status = "Enabled" if player.toggle_loop() else "Disabled"
+
+        return self.embed("Notify", f"{status} looping!")
+
 
 class NicobotEventHandler(ThreadedMethodEventHandler, InteractionEventHandler):
     def on_ready(self, obj):
@@ -329,12 +342,18 @@ notify = SlashCommand(
     "Toggles the notification when the song plays."
 )
 
+loop = SlashCommand(
+    nicobot.loop,
+    "loop",
+    "Toggles looping the queue."
+)
+
 play = SubCommand(
     "play",
     play_nico
 )
 
-manager.register(join, leave, play, stop, skip, pause, resume, notify)
+manager.register(join, leave, play, stop, skip, pause, resume, notify, loop)
 
 client = DiscordInteractionClient(
     open("token").read().strip().rstrip().replace("\n", ""),
