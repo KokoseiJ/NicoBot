@@ -279,6 +279,9 @@ class AudioPlayer(StoppableThread):
             self._prepare_play()
             self._resumed.set()
 
+    def is_paused(self):
+        return not self._resumed.is_set()
+
     def _prepare_play(self):
         """Initializes needed attributes to start playing."""
         self.loop = 0
