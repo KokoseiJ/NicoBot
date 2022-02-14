@@ -82,9 +82,10 @@ class NicoBot:
         if len(player.queue) < 1:
             return
         song = player.queue[0]
-        channel = player.client.get_channel()
+        voicechannel = player.client.get_channel()
         textchannel = self.channels.get(player.client.server_id)
-        self.send_nowplaying(song, channel, textchannel)
+        if textchannel is not None:
+            self.send_nowplaying(song, voicechannel, textchannel)
 
     def send_nowplaying(self, song, channel, textchannel):
         songname = song.video.title
@@ -214,6 +215,55 @@ class NicoBot:
 
         return self.embed("Skip", "Skipped the music.", ctx.user)
 
+    def pause(self, ctx):
+        player = self.players.get(ctx.guild.id)
+        client = self.clients.get(ctx.guild.id)
+
+        if player is None:
+            return self.error_embed("I am not connected to VC!", ctx.user)
+        if client.get_channel() != ctx.guild.get_voice_state(ctx.user):
+            return self.error_embed("You are not in the VC!", ctx.user)
+
+        if player.is_paused():
+            return self.embed("Pause", "Player has already been paused!",
+                              ctx.user)
+        else:
+            player.pause()
+            return self.embed("Pause", "Paused the music.", ctx.user)
+
+    def resume(self, ctx):
+        player = self.players.get(ctx.guild.id)
+        client = self.clients.get(ctx.guild.id)
+
+        if player is None:
+            return self.error_embed("I am not connected to VC!", ctx.user)
+        if client.get_channel() != ctx.guild.get_voice_state(ctx.user):
+            return self.error_embed("You are not in the VC!", ctx.user)
+
+        if not player.is_paused():
+            return self.embed("Resume", "Player is already playing!", ctx.user)
+        else:
+            player.resume()
+            return self.embed("Resume", "Resumed the music.", ctx.user)
+
+    def notify(self, ctx):
+        player = self.players.get(ctx.guild.id)
+        client = self.clients.get(ctx.guild.id)
+
+        if player is None:
+            return self.error_embed("I am not connected to VC!", ctx.user)
+        if client.get_channel() != ctx.guild.get_voice_state(ctx.user):
+            return self.error_embed("You are not in the VC!", ctx.user)
+
+        channel = self.channels.get(ctx.guild.id)
+        if channel is None:
+            self.channels.update({ctx.guild.id: ctx.channel})
+            return self.embed("Notify", "Set the notification channel to "
+                                        f"{ctx.channel.name}!", ctx.user)
+        else:
+            self.channels.update({ctx.guild.id: None})
+            return self.embed("Notify", "Disabled notification!", ctx.user)
+
 
 class NicobotEventHandler(ThreadedMethodEventHandler, InteractionEventHandler):
     def on_ready(self, obj):
@@ -255,12 +305,36 @@ stop = SlashCommand(
     "Stops the music."
 )
 
+skip = SlashCommand(
+    nicobot.skip,
+    "skip",
+    "Skips the music."
+)
+
+pause = SlashCommand(
+    nicobot.pause,
+    "pause",
+    "Pauses the music."
+)
+
+resume = SlashCommand(
+    nicobot.resume,
+    "resume",
+    "Resumes the music."
+)
+
+notify = SlashCommand(
+    nicobot.notify,
+    "notify",
+    "Toggles the notification when the song plays."
+)
+
 play = SubCommand(
     "play",
     play_nico
 )
 
-manager.register(join, leave, play, stop)
+manager.register(join, leave, play, stop, skip, pause, resume, notify)
 
 client = DiscordInteractionClient(
     open("token").read().strip().rstrip().replace("\n", ""),
