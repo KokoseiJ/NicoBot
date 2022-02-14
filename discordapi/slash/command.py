@@ -394,6 +394,9 @@ class Context(DictObject):
         self.client = client
         self.manager = None
 
+        self.guild = None
+        self.channel = None
+
         if self.guild_id is not None:
             self.guild = client.get_guild(self.guild_id)
             if self.guild is None:
@@ -417,8 +420,10 @@ class Context(DictObject):
             if self.member is not None:
                 self.member = Member(client, self.guild, self.member)
 
-        if self.member.user is not None:
+        if self.member is not None and self.member.user is not None:
             self.user = self.member.user
+        elif self.user is not None:
+            self.user = User(client, self.user)
 
         if self.message is not None:
             self.message = Message(client, self.message)
