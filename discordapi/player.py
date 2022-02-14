@@ -366,6 +366,7 @@ class QueuedAudioPlayer(AudioPlayer):
     def __init__(self, client=None, source=None, callback=None):
         super(QueuedAudioPlayer, self).__init__(client, source, callback)
         self.queue = []
+        self.loop = False
 
     def set_source(self, source):
         if not isinstance(source, AudioSource):
@@ -380,6 +381,10 @@ class QueuedAudioPlayer(AudioPlayer):
                 self.set_source(src)
         else:
             self.set_source(source)
+
+    def toggle_loop(self):
+        self.loop = not self.loop
+        return self.loop
 
     def _update_source(self):
         if len(self.queue) == 0:
@@ -405,6 +410,8 @@ class QueuedAudioPlayer(AudioPlayer):
 
     def _source_is_finished(self):
         super()._source_is_finished()
+        if self.loop:
+            self.set_source(self.source)
         if len(self.queue) > 0:
             self._update_source()
             self.source.prepare()
