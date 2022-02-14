@@ -256,7 +256,7 @@ class NicoBot:
             return self.error_embed("You are not in the VC!", ctx.user)
 
         channel = self.channels.get(ctx.guild.id)
-        if channel is None:
+        if channel != ctx.channel:
             self.channels.update({ctx.guild.id: ctx.channel})
             return self.embed("Notify", "Set the notification channel to "
                                         f"{ctx.channel.name}!", ctx.user)
